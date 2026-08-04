@@ -49,6 +49,33 @@ test('one Gladys device is published per Daikin climate unit', () => {
   }
 });
 
+test('every published feature carries the fields Gladys requires', () => {
+  // These columns are NOT NULL in the Gladys schema — for EVERY feature, a
+  // binary one included. A feature missing one of them makes the device
+  // creation fail with a 422 the user cannot do anything about.
+  for (const capabilities of [FULL, BASE]) {
+    for (const device of buildDiscoveredDevices(gladys, parseUnits(ALL_DEVICES), capabilities)) {
+      for (const feature of device.features) {
+        const where = `${device.name} / ${feature.name}`;
+        assert.equal(typeof feature.name, 'string', `${where}: name`);
+        assert.equal(typeof feature.min, 'number', `${where}: min must be a number`);
+        assert.equal(typeof feature.max, 'number', `${where}: max must be a number`);
+        assert.ok(feature.min <= feature.max, `${where}: min must not exceed max`);
+        assert.equal(typeof feature.read_only, 'boolean', `${where}: read_only`);
+        assert.equal(typeof feature.has_feedback, 'boolean', `${where}: has_feedback`);
+        assert.equal(typeof feature.keep_history, 'boolean', `${where}: keep_history`);
+      }
+    }
+  }
+});
+
+test('the on/off feature is bounded to the two values it can take', () => {
+  const [device] = buildDiscoveredDevices(gladys, [splitUnit()], FULL);
+  const power = featureOf(device, FEATURE.POWER);
+  assert.equal(power.min, 0);
+  assert.equal(power.max, 1);
+});
+
 test('a split unit exposes the full air conditioning catalog', () => {
   const [device] = buildDiscoveredDevices(gladys, [splitUnit()], FULL);
   const keys = device.features.map((feature) => feature.external_id.split(':').pop());

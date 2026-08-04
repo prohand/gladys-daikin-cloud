@@ -48,13 +48,18 @@
       "required": true
     },
     {
+      "key": "connect_intro",
+      "type": "section",
+      "label": { "en": "Link your Daikin account", "fr": "Liez votre compte Daikin" },
+      "description": {
+        "en": "Click Save BEFORE clicking Connect: the integration reads the client ID and the secret from the SAVED configuration, so connecting with an unsaved form fails. Then sign in with the Daikin account your air conditioners are paired with in the Onecta app. The address displayed under the button is the Redirect URI to declare on the developer portal.",
+        "fr": "Cliquez sur Enregistrer AVANT de cliquer sur Connecter : l'intégration lit le client ID et le secret dans la configuration ENREGISTRÉE, se connecter avec un formulaire non enregistré échoue donc. Identifiez-vous ensuite avec le compte Daikin auquel vos climatiseurs sont associés dans l'application Onecta. L'adresse affichée sous le bouton est la Redirect URI à déclarer sur le portail développeur."
+      }
+    },
+    {
       "key": "daikin_account",
       "type": "oauth2",
       "label": { "en": "Daikin account", "fr": "Compte Daikin" },
-      "description": {
-        "en": "Sign in with the Daikin account your air conditioners are paired with, in the Onecta app.",
-        "fr": "Connectez-vous avec le compte Daikin auquel vos climatiseurs sont associés dans l'application Onecta."
-      },
       "required": true
     },
     {

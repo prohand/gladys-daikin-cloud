@@ -127,6 +127,11 @@ export function buildDevice(gladys, unit, capabilities) {
     external_id: ids.feature(FEATURE.POWER),
     category: DEVICE_FEATURE_CATEGORIES.AIR_CONDITIONING,
     type: DEVICE_FEATURE_TYPES.AIR_CONDITIONING.BINARY,
+    // `min` and `max` are NOT NULL in the Gladys schema, for every feature —
+    // a binary one included. Omitting them makes the device creation fail
+    // with "t_device_feature.min cannot be null".
+    min: 0,
+    max: 1,
     read_only: false,
     has_feedback: true,
     keep_history: true,
