@@ -1,0 +1,94 @@
+{
+  "manifest_version": 1,
+  "type": "device",
+  "name": "Daikin Cloud",
+  "description": {
+    "en": "Control your Daikin air conditioners through the official Onecta cloud API.",
+    "fr": "Pilotez vos climatiseurs Daikin via l'API cloud officielle Daikin Onecta."
+  },
+  "version": "1.0.0",
+  "docker_image": "ghcr.io/prohand/gladys-daikin-cloud:1.0.0",
+  "gladys_version": ">=4.62.0",
+  "cover_image": "https://raw.githubusercontent.com/prohand/gladys-daikin-cloud/main/cover.png",
+  "transports": ["cloud"],
+  "config_schema": [
+    {
+      "key": "intro",
+      "type": "section",
+      "label": { "en": "Create your Daikin application", "fr": "Créez votre application Daikin" },
+      "description": {
+        "en": "The Onecta API is free but personal: create an account on the Daikin developer portal, add an application, and copy its Client ID and Client secret below. The portal asks for a Redirect URI: paste there the address displayed under the Connect button.",
+        "fr": "L'API Onecta est gratuite mais personnelle : créez un compte sur le portail développeur Daikin, ajoutez une application, puis copiez son Client ID et son Client secret ci-dessous. Le portail demande une Redirect URI : collez-y l'adresse affichée sous le bouton Connecter."
+      },
+      "links": [
+        {
+          "url": "https://developer.cloud.daikineurope.com/",
+          "label": { "en": "Daikin developer portal", "fr": "Portail développeur Daikin" }
+        }
+      ]
+    },
+    {
+      "key": "client_id",
+      "type": "string",
+      "label": { "en": "Client ID", "fr": "Client ID" },
+      "description": {
+        "en": "The Client ID of your application on the Daikin developer portal.",
+        "fr": "Le Client ID de votre application sur le portail développeur Daikin."
+      },
+      "required": true
+    },
+    {
+      "key": "client_secret",
+      "type": "secret",
+      "label": { "en": "Client secret", "fr": "Client secret" },
+      "description": {
+        "en": "The Client secret of your application. Save the configuration before connecting your account.",
+        "fr": "Le Client secret de votre application. Enregistrez la configuration avant de connecter votre compte."
+      },
+      "required": true
+    },
+    {
+      "key": "daikin_account",
+      "type": "oauth2",
+      "label": { "en": "Daikin account", "fr": "Compte Daikin" },
+      "description": {
+        "en": "Sign in with the Daikin account your air conditioners are paired with, in the Onecta app.",
+        "fr": "Connectez-vous avec le compte Daikin auquel vos climatiseurs sont associés dans l'application Onecta."
+      },
+      "required": true
+    },
+    {
+      "key": "quota",
+      "type": "section",
+      "label": { "en": "Refresh rate and API quota", "fr": "Rafraîchissement et quota d'API" },
+      "description": {
+        "en": "Daikin allows 200 API calls per day and 20 per minute. Every refresh reads all your units in a single call, and each command you send costs one more call. 900 seconds (15 minutes) uses 96 calls a day and leaves room for commands; lower it only if you rarely control your units from Gladys.",
+        "fr": "Daikin autorise 200 appels d'API par jour et 20 par minute. Chaque rafraîchissement lit toutes vos unités en un seul appel, et chaque commande envoyée coûte un appel de plus. 900 secondes (15 minutes) consomment 96 appels par jour et laissent de la marge pour les commandes ; ne le baissez que si vous pilotez peu vos unités depuis Gladys."
+      }
+    },
+    {
+      "key": "poll_frequency",
+      "type": "number",
+      "label": { "en": "Refresh interval (s)", "fr": "Intervalle de rafraîchissement (s)" },
+      "description": {
+        "en": "How often the Daikin cloud is read, in seconds.",
+        "fr": "Fréquence de lecture du cloud Daikin, en secondes."
+      },
+      "required": false,
+      "default": 900,
+      "min": 600,
+      "max": 21600
+    }
+  ],
+  "actions": [
+    {
+      "key": "test_connection",
+      "label": { "en": "Test the connection", "fr": "Tester la connexion" },
+      "description": {
+        "en": "Read your Daikin account now: lists the units found and the API calls left for today.",
+        "fr": "Lit votre compte Daikin maintenant : affiche les unités trouvées et les appels d'API restants pour aujourd'hui."
+      },
+      "timeout_seconds": 30
+    }
+  ]
+}
