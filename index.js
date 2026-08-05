@@ -286,17 +286,23 @@ const USED_CHARACTERISTICS = new Set([
 ]);
 
 /**
- * The characteristics a unit declares that this integration does not map, on
- * the two management points it reads.
+ * The characteristics a unit declares that this integration does not map,
+ * across EVERY management point of the gateway — not just the two this code
+ * reads. Reporting only those two would let a function hiding on another point
+ * look like one Daikin does not expose at all, which is the opposite of what
+ * this diagnostic is for.
  * @param {object} unit the normalized Daikin unit
  * @returns {Array<string>} the characteristic names, prefixed by their point
  */
 function unusedCharacteristics(unit) {
   const unused = [];
-  for (const type of ['climateControl', 'indoorUnit']) {
-    for (const name of unit.characteristics?.[type] ?? []) {
-      if (!USED_CHARACTERISTICS.has(name)) {
-        unused.push(type === 'indoorUnit' ? `indoorUnit.${name}` : name);
+  for (const [type, names] of Object.entries(unit.characteristics ?? {})) {
+    for (const name of names) {
+      // A name is "used" only on the point this integration reads it from.
+      const used =
+        USED_CHARACTERISTICS.has(name) && (type === 'climateControl' || type === 'indoorUnit');
+      if (!used) {
+        unused.push(type === 'climateControl' ? name : `${type}.${name}`);
       }
     }
   }
