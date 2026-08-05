@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { parseUnits } from '../src/daikin/model.js';
+import { parseConsumption, parseUnits } from '../src/daikin/model.js';
 import {
   ALL_DEVICES,
   HEAT_PUMP_UNIT,
@@ -107,6 +107,44 @@ test('a unit missing a comfort characteristic simply has no toggle for it', () =
   assert.equal(unit.toggles.econo, null);
   assert.equal(unit.toggles.streamer, null);
   assert.ok(!unit.characteristics.climateControl.includes('econoMode'));
+});
+
+test('the consumption counts the current period only, not the previous one', () => {
+  const [unit] = parseUnits([SPLIT_UNIT]);
+  // `d` holds yesterday in its first 12 slots: counting the whole array would
+  // report 1.8 + 9.6 kWh, and every dashboard would be wrong by a day.
+  assert.equal(unit.energy.today, 1.8, '12 x 0.1 heating + 12 x 0.05 cooling');
+  // `m` holds last year in its first 12 entries, worth 9 + 8 a month.
+  assert.equal(unit.energy.thisYear, 84, '(1+2+...+12) heating + 12 x 0.5 cooling');
+});
+
+test('the month is read at its own index inside the current year', () => {
+  const consumption = SPLIT_UNIT.managementPoints[1].consumptionData;
+  // The fixture puts the month number in each of this year's heating slots,
+  // and a flat 0.5 in the cooling ones.
+  for (const [month, heating] of [
+    [0, 1],
+    [7, 8],
+    [11, 12],
+  ]) {
+    const energy = parseConsumption(consumption, new Date(2026, month, 15));
+    assert.equal(energy.thisMonth, heating + 0.5, `month ${month}`);
+  }
+});
+
+test('a bucket Daikin has not measured yet counts as zero, not as a gap', () => {
+  const consumption = {
+    value: { electrical: { heating: { d: [...Array(12).fill(1), 0.4, null, null], m: null } } },
+  };
+  const energy = parseConsumption(consumption, new Date(2026, 0, 1));
+  assert.equal(energy.today, 0.4);
+  assert.equal(energy.thisYear, 0, 'a missing monthly array is not an error');
+});
+
+test('a unit reporting no consumption gets no energy at all', () => {
+  assert.equal(parseConsumption(undefined), null);
+  assert.equal(parseConsumption({ value: {} }), null);
+  assert.equal(parseUnits([OFFLINE_UNIT])[0].energy, null);
 });
 
 test('an offline unit in error state is reported as such', () => {

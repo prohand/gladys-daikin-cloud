@@ -78,6 +78,29 @@ export const SPLIT_UNIT = {
           outdoorTemperature: { settable: false, value: 31 },
         },
       },
+      // Electrical consumption, exactly as Daikin shapes it: `d` is 24
+      // two-hour slots (12 for yesterday, then 12 for today) and `m` is 24
+      // months (12 for last year, then 12 for this one).
+      consumptionData: {
+        settable: false,
+        value: {
+          electrical: {
+            unit: 'kWh',
+            heating: {
+              // yesterday: 0.5 each — must NOT be counted; today: 0.1 each
+              d: [...Array(12).fill(0.5), ...Array(12).fill(0.1)],
+              w: [...Array(7).fill(1), ...Array(7).fill(0.5)],
+              // last year: 9 each; this year: 1 in January, 2 in February...
+              m: [...Array(12).fill(9), ...Array.from({ length: 12 }, (_, i) => i + 1)],
+            },
+            cooling: {
+              d: [...Array(12).fill(0.3), ...Array(12).fill(0.05)],
+              w: [...Array(7).fill(2), ...Array(7).fill(0.25)],
+              m: [...Array(12).fill(8), ...Array(12).fill(0.5)],
+            },
+          },
+        },
+      },
       fanControl: {
         settable: true,
         value: {

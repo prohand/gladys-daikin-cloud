@@ -10,20 +10,23 @@ today, Gladys just becomes another remote control.
 For every air conditioner of your Daikin account, Gladys creates one device
 with the features your model actually supports:
 
-| Feature             | What it does                                                        |
-| ------------------- | ------------------------------------------------------------------- |
-| On/Off              | Turn the unit on and off                                            |
-| Mode                | Auto, Cooling, Heating, Drying, Fan only                            |
-| Target temperature  | The setpoint of the mode currently active                           |
-| Fan speed           | The fan speed, on the scale your unit declares (often 1-5)          |
-| Horizontal airflow  | The left/right airflow direction                                    |
-| Vertical airflow    | The up/down airflow direction                                       |
-| Powerful mode       | Daikin's "Powerful" mode (switch)                                   |
-| Econo mode          | Daikin's "Econo" mode (switch)                                      |
-| Streamer mode       | The "Streamer" air purification mode (switch)                       |
-| Keep dry            | The indoor unit's "Keep dry" advanced function                      |
-| Room temperature    | The temperature the unit measures (sensor, kept in history)         |
-| Outdoor temperature | The temperature the outdoor unit measures (sensor, kept in history) |
+| Feature             | What it does                                                         |
+| ------------------- | -------------------------------------------------------------------- |
+| On/Off              | Turn the unit on and off                                             |
+| Mode                | Auto, Cooling, Heating, Drying, Fan only                             |
+| Target temperature  | The setpoint of the mode currently active                            |
+| Fan speed           | The fan speed, on the scale your unit declares (often 1-5)           |
+| Horizontal airflow  | The left/right airflow direction                                     |
+| Vertical airflow    | The up/down airflow direction                                        |
+| Powerful mode       | Daikin's "Powerful" mode (switch)                                    |
+| Econo mode          | Daikin's "Econo" mode (switch)                                       |
+| Streamer mode       | The "Streamer" air purification mode (switch)                        |
+| Keep dry            | The indoor unit's "Keep dry" advanced function                       |
+| Room temperature    | The temperature the unit measures (sensor, kept in history)          |
+| Outdoor temperature | The temperature the outdoor unit measures (sensor, kept in history)  |
+| Energy today        | Electrical consumption for the day, in kWh (sensor, kept in history) |
+| Energy this month   | Electrical consumption for the current month, in kWh                 |
+| Energy this year    | Electrical consumption for the current year, in kWh                  |
 
 A model without louvers gets no airflow direction, a model without a fan gets
 no fan speed, a model without the Streamer function gets no Streamer switch:
@@ -47,6 +50,14 @@ in Drying, for example: without that, a device discovered while the unit was
 dehumidifying would have lost its speed control for good. In exchange, a
 command sent in a mode that cannot take it is refused with a clear message
 rather than failing silently.
+
+**The electrical consumption** comes from the per-period counters Daikin keeps.
+They are totals that **reset**: today's goes back to zero at midnight, the
+monthly one on the first of the month. They are sensors, not the ever-growing
+index of an electricity meter — do not wire them into a widget expecting an
+index. Daikin splits those counters per mode (heating, cooling…); the
+integration sums them, because what a dashboard wants is what the unit consumed,
+not how it was split.
 
 Daikin reports some functions read-only depending on the model and firmware —
 "Keep dry" almost always is. Those are published as sensors, without a switch
@@ -132,6 +143,17 @@ the API" — two problems with completely different answers. If a function you s
 in Onecta is missing, run this action: when its name appears neither in the
 published features nor in the ignored characteristics, the Daikin API does not
 expose it for your model.
+
+## API quota left
+
+Under the **Connect** button, the Configuration screen permanently shows what is
+left of today's Daikin quota:
+
+> Connected. 184/200 Daikin API calls left today.
+
+The count is the one Daikin returns on every call, refreshed each time the cloud
+is read — so at least once per refresh interval, and immediately after clicking
+_Test the connection_.
 
 ## Device status badge
 

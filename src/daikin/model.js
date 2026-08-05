@@ -77,6 +77,7 @@ function parseUnit(gatewayDevice, managementPoint) {
     roomTemperature: sensor(managementPoint.sensoryData, 'roomTemperature'),
     outdoorTemperature: sensor(managementPoint.sensoryData, 'outdoorTemperature'),
     fan,
+    energy: parseConsumption(managementPoint.consumptionData),
     // Every characteristic name the unit declares, per management point. Not
     // used to drive anything: it is what lets the "Test the connection" action
     // answer "this model does not report it" instead of leaving the user to
@@ -92,6 +93,76 @@ function parseUnit(gatewayDevice, managementPoint) {
       dryKeep: toggle(indoorUnit?.dryKeepSetting, indoorUnit?.embeddedId),
     },
   };
+}
+
+// Daikin reports electrical consumption as fixed-length buckets, two periods
+// deep, and the split is positional — nothing in the payload labels it:
+//   `d`: 24 two-hour slots, the first 12 for YESTERDAY, the last 12 for today;
+//   `m`: 24 months, the first 12 for LAST year, the last 12 for this one.
+// Reading the whole array would therefore double-count the previous period.
+const DAILY_TODAY_FROM = 12;
+const MONTHLY_THIS_YEAR_FROM = 12;
+
+/**
+ * Total electrical consumption of a unit, in kWh, for the periods worth
+ * charting. Daikin splits its buckets per operation mode (heating, cooling…);
+ * they are summed, because what a dashboard wants is what the unit consumed,
+ * not how it was split.
+ * @param {Record<string, unknown>} consumptionData the consumptionData characteristic
+ * @param {Date} [now] the current date, injectable for the tests
+ * @returns {{ today: number, thisMonth: number, thisYear: number }|null} the totals, or null when the unit reports none
+ */
+export function parseConsumption(consumptionData, now = new Date()) {
+  const electrical = consumptionData?.value?.electrical;
+  if (!electrical || typeof electrical !== 'object') {
+    return null;
+  }
+
+  // 0-based index of the current month inside the "this year" half.
+  const monthIndex = MONTHLY_THIS_YEAR_FROM + now.getMonth();
+  let today = 0;
+  let thisMonth = 0;
+  let thisYear = 0;
+  let found = false;
+
+  for (const buckets of Object.values(electrical)) {
+    if (!buckets || typeof buckets !== 'object') {
+      continue;
+    }
+    found = true;
+    today += sumFrom(buckets.d, DAILY_TODAY_FROM);
+    thisYear += sumFrom(buckets.m, MONTHLY_THIS_YEAR_FROM);
+    thisMonth += numberOr(Array.isArray(buckets.m) ? buckets.m[monthIndex] : null, 0);
+  }
+
+  if (!found) {
+    return null;
+  }
+  // Daikin sends tenths of a kWh: keep three decimals so summing modes does
+  // not drift into 0.30000000000000004.
+  return { today: round(today), thisMonth: round(thisMonth), thisYear: round(thisYear) };
+}
+
+/**
+ * Sum a bucket array from an index, treating the `null` Daikin uses for "not
+ * measured yet" as zero.
+ * @param {unknown} buckets the bucket array
+ * @param {number} from the first index to count
+ * @returns {number} the total
+ */
+function sumFrom(buckets, from) {
+  if (!Array.isArray(buckets)) {
+    return 0;
+  }
+  return buckets.slice(from).reduce((total, value) => total + numberOr(value, 0), 0);
+}
+
+/**
+ * @param {number} value the value to round
+ * @returns {number} the value with three decimals at most
+ */
+function round(value) {
+  return Number(value.toFixed(3));
 }
 
 // Keys every management point carries: they describe the point itself, not

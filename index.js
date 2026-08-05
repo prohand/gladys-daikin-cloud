@@ -93,7 +93,7 @@ gladys.onOAuthCallback(async (key, { code, state, redirectUri }) => {
   // The account is linked: read it right away so the units show up in the
   // Discovery screen without waiting for the next scheduled refresh.
   await refreshAndPublish({ publishDevices: true });
-  await gladys.setConnectionStatus(true);
+  await reportConnected();
 });
 
 // --- Discovery: Gladys asks for the list of devices --------------------------
@@ -182,6 +182,7 @@ gladys.onAction('test_connection', async () => {
   }
   const units = await store.refresh();
   await publishEverything(units, { publishDevices: true });
+  await reportConnected();
   const remaining = api.rateLimits.remainingDay;
 
   // Report what was published AND what the unit declares that this
@@ -248,7 +249,7 @@ gladys.on('connected', async () => {
 
     // 3) Read the account and publish everything we know about it.
     await refreshAndPublish({ publishDevices: true });
-    await gladys.setConnectionStatus(true);
+    await reportConnected();
 
     // 4) Keep it fresh, on our own schedule.
     startPolling();
@@ -380,12 +381,34 @@ function startPolling() {
   store.startPolling(config.poll_frequency, async (units) => {
     try {
       await publishEverything(units);
-      await gladys.setConnectionStatus(true);
+      await reportConnected();
     } catch (err) {
       logger.error('Could not publish the refreshed states', err);
       await reportFailure(err);
     }
   });
+}
+
+/**
+ * Report the integration as connected, and show what is left of the Daikin
+ * daily quota under the Connect button. The Configuration screen renders the
+ * status message whether the integration is up or down, which makes it the one
+ * place a live counter can live without inventing a UI for it — and the quota
+ * is the number that actually decides how this integration behaves.
+ */
+async function reportConnected() {
+  const { remainingDay, limitDay } = api.rateLimits;
+  if (remainingDay === null) {
+    await gladys.setConnectionStatus(true).catch(() => {});
+    return;
+  }
+  const total = limitDay === null ? '' : `/${limitDay}`;
+  await gladys
+    .setConnectionStatus(true, {
+      en: `Connected. ${remainingDay}${total} Daikin API calls left today.`,
+      fr: `Connecté. ${remainingDay}${total} appels d'API Daikin restants aujourd'hui.`,
+    })
+    .catch(() => {});
 }
 
 /**

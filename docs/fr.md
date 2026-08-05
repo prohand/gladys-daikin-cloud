@@ -25,6 +25,9 @@ fonctionnalités que votre modèle prend réellement en charge :
 | Garder au sec           | La fonction avancée « Garder au sec » de l'unité intérieure                     |
 | Température intérieure  | La température mesurée par l'unité (capteur, historisé)                         |
 | Température extérieure  | La température mesurée par le groupe extérieur (capteur, historisé)             |
+| Énergie aujourd'hui     | Consommation électrique du jour, en kWh (capteur, historisé)                    |
+| Énergie ce mois-ci      | Consommation électrique du mois en cours, en kWh                                |
+| Énergie cette année     | Consommation électrique de l'année en cours, en kWh                             |
 
 Un modèle sans volets n'obtient pas de sens du flux d'air, un modèle sans
 ventilateur n'obtient pas de vitesse, un modèle sans fonction Streamer n'obtient
@@ -50,6 +53,14 @@ sans cela, une unité découverte pendant qu'elle déshumidifiait aurait perdu s
 contrôle de vitesse définitivement. En contrepartie, une commande envoyée dans
 un mode qui ne l'accepte pas est refusée avec un message explicite plutôt que
 d'échouer en silence.
+
+**La consommation électrique** vient des compteurs que Daikin tient par période.
+Ce sont des totaux qui **repartent de zéro** : celui du jour retombe à 0 à
+minuit, celui du mois au premier du mois. Ce sont donc des capteurs, pas l'index
+toujours croissant d'un compteur électrique — ne les branchez pas sur un widget
+qui attend un index. Daikin ventile ces compteurs par mode (chaud, froid…) :
+l'intégration les additionne, parce que ce qui intéresse un tableau de bord
+c'est ce que l'unité a consommé, pas comment ça se répartit.
 
 Certaines fonctions sont signalées en lecture seule par Daikin selon le modèle
 et le firmware — c'est presque toujours le cas de « Garder au sec ». Elles sont
@@ -145,6 +156,17 @@ la même réponse. Si une fonction visible dans Onecta vous manque, lancez cette
 action : si son nom n'apparaît ni dans les fonctionnalités publiées ni dans les
 caractéristiques ignorées, c'est que l'API Daikin ne l'expose pas pour votre
 modèle.
+
+## Quota d'API restant
+
+Sous le bouton **Connecter**, l'écran de configuration affiche en permanence ce
+qu'il reste du quota Daikin du jour :
+
+> Connecté. 184/200 appels d'API Daikin restants aujourd'hui.
+
+Le compteur est celui que Daikin renvoie lui-même à chaque appel, et il est
+rafraîchi à chaque lecture du cloud — donc au moins une fois par intervalle de
+rafraîchissement, et immédiatement après un clic sur _Tester la connexion_.
 
 ## Badge d'état des appareils
 

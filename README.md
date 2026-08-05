@@ -24,6 +24,8 @@ actually reports:
 - **Powerful**, **Econo**, **Streamer** and **Keep dry**, each published as a
   switch or, when Daikin reports it read-only, as a sensor
 - **Room temperature** and **outdoor temperature** sensors, kept in history
+- **Energy consumed** today, this month and this year, in kWh
+- The remaining Daikin API quota, shown live in the Configuration screen
 - A per-device transport badge: `cloud`, `cloud + degraded` when the unit
   reports a fault, `unreachable` when Daikin cannot reach it
 
@@ -46,7 +48,7 @@ src/devices/climateUnit.js  one unit -> discovery payload, states, commands
 src/devices/index.js      the catalog: discovery, transports, routing
 ```
 
-Four design points are worth knowing before touching the code.
+Five design points are worth knowing before touching the code.
 
 **The polling is ours, not Gladys'.** A developer account is limited to 200 API
 calls a day, and `poll_frequency` on a discovered device tops out at one minute
@@ -59,7 +61,7 @@ values for a few seconds after a `PATCH`, so a command updates the local
 snapshot and publishes the new state immediately; the store then waits out a
 short quiet period before its next read.
 
-**The feature catalog is found by trying, not by guessing.** Publishing a feature type
+**The feature catalog is found by trying, not by guessing.** Publishing a feature
 — an older core does not know makes the WHOLE discovery payload fail. Deriving
 the catalog from the Gladys version looked right and was not: the probe is a
 single point of failure, and its failure silently stripped working features.

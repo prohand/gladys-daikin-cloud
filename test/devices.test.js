@@ -83,6 +83,9 @@ test('a split unit exposes the full air conditioning catalog', () => {
     keys.sort(),
     [
       FEATURE.ECONO,
+      FEATURE.ENERGY_MONTH,
+      FEATURE.ENERGY_TODAY,
+      FEATURE.ENERGY_YEAR,
       FEATURE.FAN_LEVEL,
       FEATURE.MODE,
       FEATURE.OUTDOOR_TEMPERATURE,
@@ -248,6 +251,29 @@ test('steering one louver axis writes only that axis', () => {
     ],
     state: AC_SWING.OFF,
   });
+});
+
+test('the consumption is published as kWh energy sensors', () => {
+  const [device] = buildDiscoveredDevices(gladys, [splitUnit()], FULL);
+  for (const key of [FEATURE.ENERGY_TODAY, FEATURE.ENERGY_MONTH, FEATURE.ENERGY_YEAR]) {
+    const feature = featureOf(device, key);
+    assert.equal(feature.category, DEVICE_FEATURE_CATEGORIES.ENERGY_SENSOR);
+    assert.equal(feature.type, DEVICE_FEATURE_TYPES.ENERGY_SENSOR.ENERGY);
+    assert.equal(feature.unit, 'kilowatt-hour');
+    // Daikin period totals RESET: today goes back to zero at midnight, so
+    // these are sensors, never an ever-growing meter index.
+    assert.equal(feature.read_only, true);
+    assert.equal(feature.keep_history, true);
+  }
+  const states = buildStates(gladys, splitUnit(), FULL);
+  assert.equal(stateOf(states, FEATURE.ENERGY_TODAY), 1.8);
+  assert.equal(stateOf(states, FEATURE.ENERGY_YEAR), 84);
+});
+
+test('a unit reporting no consumption gets no energy features', () => {
+  const [device] = buildDiscoveredDevices(gladys, parseUnits([OFFLINE_UNIT]), FULL);
+  const keys = device.features.map((feature) => feature.external_id.split(':').pop());
+  assert.ok(!keys.includes(FEATURE.ENERGY_TODAY));
 });
 
 test('the published device carries the Daikin identifiers as params', () => {

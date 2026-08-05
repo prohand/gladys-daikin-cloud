@@ -45,6 +45,9 @@ export const FEATURE = {
   FAN_ROCK: 'fan-rock',
   SWING_HORIZONTAL: 'swing-horizontal',
   SWING_VERTICAL: 'swing-vertical',
+  ENERGY_TODAY: 'energy-today',
+  ENERGY_MONTH: 'energy-month',
+  ENERGY_YEAR: 'energy-year',
   POWERFUL: 'powerful',
   ECONO: 'econo',
   STREAMER: 'streamer',
@@ -68,6 +71,13 @@ const TOGGLES = [
   { key: 'econo', feature: 'ECONO', name: 'Econo mode', characteristic: 'econoMode' },
   { key: 'streamer', feature: 'STREAMER', name: 'Streamer mode', characteristic: 'streamerMode' },
   { key: 'dryKeep', feature: 'DRY_KEEP', name: 'Keep dry', characteristic: 'dryKeepSetting' },
+];
+
+// The consumption periods Daikin reports, and the features they feed.
+const ENERGY_PERIODS = [
+  { key: 'today', feature: 'ENERGY_TODAY', name: 'Energy today' },
+  { key: 'thisMonth', feature: 'ENERGY_MONTH', name: 'Energy this month' },
+  { key: 'thisYear', feature: 'ENERGY_YEAR', name: 'Energy this year' },
 ];
 
 // Labels of the `supported_options`, stored by Gladys as the fallback text of
@@ -282,6 +292,27 @@ export function buildDevice(gladys, unit, capabilities) {
     }
   }
 
+  // Electrical consumption. Daikin reports it as period totals that RESET —
+  // today's counter goes back to zero at midnight — so these are plain
+  // sensors, not the ever-growing index of an electricity meter.
+  for (const { key, feature, name } of ENERGY_PERIODS) {
+    if (unit.energy?.[key] === undefined || unit.energy?.[key] === null) {
+      continue;
+    }
+    features.push({
+      name,
+      external_id: ids.feature(FEATURE[feature]),
+      category: DEVICE_FEATURE_CATEGORIES.ENERGY_SENSOR,
+      type: DEVICE_FEATURE_TYPES.ENERGY_SENSOR.ENERGY,
+      unit: DEVICE_FEATURE_UNITS.KILOWATT_HOUR,
+      min: 0,
+      max: 100000,
+      read_only: true,
+      has_feedback: false,
+      keep_history: true,
+    });
+  }
+
   // The comfort toggles. Daikin reports some of them read-only depending on
   // the model and the firmware ("keep dry" usually is): the feature follows
   // what the unit says rather than offering a switch that would be refused.
@@ -358,6 +389,10 @@ export function buildStates(gladys, unit, capabilities) {
     push(FEATURE.SWING_VERTICAL, swingToGladys(current?.direction?.vertical?.value));
   } else if (capabilities.fanCategory) {
     push(FEATURE.FAN_ROCK, rockSettingToGladys(current?.direction));
+  }
+
+  for (const { key, feature } of ENERGY_PERIODS) {
+    push(FEATURE[feature], unit.energy?.[key] ?? null);
   }
 
   for (const { key, feature } of TOGGLES) {
