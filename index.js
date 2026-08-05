@@ -17,7 +17,13 @@
 
 import { randomUUID } from 'node:crypto';
 import { GladysIntegration, logger } from '@gladysassistant/integration-sdk';
-import { hasCredentials, normalizeConfig, readTokens, tokensToConfig } from './src/config.js';
+import {
+  hasCredentials,
+  hasStoredTokens,
+  normalizeConfig,
+  readTokens,
+  tokensToConfig,
+} from './src/config.js';
 import {
   CAPABILITY_LEVELS,
   detectSupportedOptions,
@@ -94,6 +100,13 @@ gladys.onOAuthCallback(async (key, { code, state, redirectUri }) => {
   // Discovery screen without waiting for the next scheduled refresh.
   await refreshAndPublish({ publishDevices: true });
   await reportConnected();
+
+  // ...and arm the schedule. On a first install the `connected` handler ran
+  // BEFORE any account existed and returned without starting it: this callback
+  // is the moment the integration becomes able to read the cloud, so it is
+  // also the moment the periodic refresh has to start. Without this the very
+  // first values would be the only ones ever published, until a restart.
+  startPolling();
 });
 
 // --- Discovery: Gladys asks for the list of devices --------------------------
@@ -183,6 +196,9 @@ gladys.onAction('test_connection', async () => {
   const units = await store.refresh();
   await publishEverything(units, { publishDevices: true });
   await reportConnected();
+  // The one button the user presses when "nothing updates any more": make it
+  // repair a schedule that is not running instead of just reporting on it.
+  startPolling();
   const remaining = api.rateLimits.remainingDay;
 
   // Report what was published AND what the unit declares that this
@@ -212,14 +228,18 @@ gladys.onAction('test_connection', async () => {
 // --- Configuration updated by the user ---------------------------------------
 gladys.onConfigUpdated(async (newConfig) => {
   logger.info('onConfigUpdated -> new configuration received');
-  const previous = config;
   config = normalizeConfig(newConfig);
   api.setCredentials({ clientId: config.client_id, clientSecret: config.client_secret });
-  api.setTokens(readTokens(newConfig));
-
-  if (config.poll_frequency !== previous.poll_frequency) {
-    startPolling();
+  // Only take the session from a payload that actually carries one, otherwise
+  // saving the form would unlink a perfectly working account (see config.js).
+  if (hasStoredTokens(newConfig)) {
+    api.setTokens(readTokens(newConfig));
   }
+
+  // Idempotent: this restarts the timer when the interval changed, and starts
+  // it when it was never armed — which is what a user who saves the form after
+  // linking their account expects, whatever order they did it in.
+  startPolling();
 });
 
 // --- Connection lifecycle ----------------------------------------------------
@@ -376,9 +396,20 @@ async function publishEverything(units, { publishDevices = false } = {}) {
   }
 }
 
-/** (Re)start the scheduled refresh with the interval currently configured. */
+/**
+ * Make sure the scheduled refresh runs with the interval currently configured.
+ *
+ * Safe to call from anywhere: the store restarts the timer only when the
+ * interval changed, so an extra call never delays the next read. Nothing is
+ * armed until an account is linked — a timer reading an integration without a
+ * session would only log an authentication error every 15 minutes.
+ */
 function startPolling() {
-  store.startPolling(config.poll_frequency, async (units) => {
+  if (!api.isConnected) {
+    store.stopPolling();
+    return;
+  }
+  store.ensurePolling(config.poll_frequency, async (units) => {
     try {
       await publishEverything(units);
       await reportConnected();
