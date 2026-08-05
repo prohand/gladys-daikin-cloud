@@ -71,6 +71,11 @@ jobs:
             gladys-assistant-integration.json > "$tmp"
           mv "$tmp" gladys-assistant-integration.json
 
+          # jq re-indents the whole file in its own style, which is not
+          # Prettier's: without this the release commit lands and the next CI
+          # run fails on `npm run format:check`. Reformat what jq just wrote.
+          npx --yes prettier@3 --write gladys-assistant-integration.json
+
           echo "version=${new_version}" >> "$GITHUB_OUTPUT"
 
       # Note: if the branch you release from is protected against direct pushes,
