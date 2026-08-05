@@ -33,6 +33,25 @@ The connection to the Daikin account uses the OAuth2 flow relayed by Gladys: the
 tokens are exchanged and stored by the integration itself, and never transit
 through the Gladys frontend.
 
+### What the Onecta app shows and this integration cannot
+
+The Onecta mobile app talks to Daikin's internal API. This integration talks to
+the **public** Onecta API, through the `onecta:basic.integration` scope — and
+that scope hands out a smaller payload. A function you use daily in the app can
+therefore be simply absent from what the API returns, for your unit.
+
+`econoMode`, `streamerMode` and `dryKeepSetting` are the usual ones. When they
+are in the payload this integration publishes them as switches; when they are
+not, nothing can drive them — no integration built on the public API can, and
+that is not a limitation of this code.
+
+It depends on the model and the firmware, not on the function: those three do
+appear for some units and not for others. Do not guess which case you are in —
+run the **Test the connection** action. It reports the features published AND
+the characteristics your unit declares that this integration ignores. A name
+missing from **both** lists is one the API does not expose for your unit, and
+there is nothing to be done about it.
+
 ## How it works
 
 ```

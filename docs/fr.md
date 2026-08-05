@@ -208,6 +208,19 @@ C'est normal : l'API Daikin n'envoie aucune notification, Gladys ne voit un
 changement qu'au rafraîchissement suivant. Baissez l'intervalle, ou utilisez
 l'action _Tester la connexion_ pour forcer une lecture.
 
+**Une fonction que j'utilise dans Onecta est absente (Econo, Streamer, Garder au
+sec…).**
+L'application Onecta dialogue avec l'API interne de Daikin. Cette intégration
+utilise l'API **publique**, via le scope `onecta:basic.integration`, qui renvoie
+une charge utile plus réduite : une fonction peut donc être tout simplement
+absente de ce que l'API envoie pour votre unité. Quand elle y est, l'intégration
+la publie ; quand elle n'y est pas, rien ne peut la piloter — aucune intégration
+bâtie sur l'API publique ne le peut, et ce n'est pas une limite de celle-ci. Cela
+dépend du modèle et du firmware, donc vérifiez plutôt que de supposer : lancez
+**Tester la connexion**. Un nom qui n'apparaît ni dans les fonctionnalités
+publiées ni dans les caractéristiques ignorées est un nom que l'API n'expose pas
+pour votre unité.
+
 **Rien n'apparaît dans l'onglet Découverte.**
 Vérifiez que les unités sont bien visibles dans l'application Onecta avec le même
 compte, puis lancez _Tester la connexion_ : le message indique combien d'unités

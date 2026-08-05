@@ -192,6 +192,17 @@ Expected: Daikin's API has no push notifications, so Gladys only sees a change
 at the next refresh. Lower the interval, or use the _Test the connection_ action
 to force a read.
 
+**A function I use in the Onecta app is missing (Econo, Streamer, Keep dry…).**
+The Onecta app talks to Daikin's internal API. This integration talks to the
+**public** Onecta API, through the `onecta:basic.integration` scope, and that
+scope returns a smaller payload: a function can simply be absent from what the
+API sends for your unit. When it is there, this integration publishes it; when
+it is not, nothing can drive it — no integration built on the public API can,
+and that is not a limitation of this one. It depends on the model and the
+firmware, so check rather than assume: run **Test the connection**. A name that
+appears neither in the published features nor in the ignored characteristics is
+one the API does not expose for your unit.
+
 **Nothing appears in the Discovery tab.**
 Make sure the units are visible in the Onecta app with the same account, then
 run _Test the connection_: the message tells you how many units the API
