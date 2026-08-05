@@ -7,7 +7,7 @@ import { createFakeGladys } from './helpers/fakeGladys.js';
 import { ALL_DEVICES, SPLIT_UNIT } from './fixtures/gatewayDevices.js';
 
 const gladys = createFakeGladys();
-const CAPABILITIES = { fanCategory: true, supportedOptions: true };
+const CAPABILITIES = { fanCategory: true, supportedOptions: true, acSwing: true };
 
 /**
  * @param {Array<object>} payload what the fake Daikin cloud answers
@@ -145,8 +145,37 @@ test('a swing write updates the right axis', async () => {
       value: 'swing',
     },
   ]);
-  assert.equal(unit.fan.direction.horizontal.value, 'swing');
-  assert.equal(unit.fan.direction.vertical.value, 'swing', 'untouched, it was already swinging');
+  assert.equal(unit.fan.current.direction.horizontal.value, 'swing');
+  assert.equal(
+    unit.fan.current.direction.vertical.value,
+    'swing',
+    'untouched, it was already swinging',
+  );
+});
+
+test('a comfort toggle write is reflected locally', async () => {
+  const { api } = createFakeApi([SPLIT_UNIT]);
+  const store = new DaikinStore({ api });
+  const [unit] = await store.refresh();
+  assert.equal(unit.toggles.powerful.on, false);
+  store.applyWrites(unit, [{ characteristic: 'powerfulMode', value: 'on' }]);
+  assert.equal(unit.toggles.powerful.on, true);
+  const states = buildStates(gladys, unit, CAPABILITIES);
+  assert.equal(
+    states.find((s) => s.device_feature_external_id.endsWith(FEATURE.POWERFUL)).state,
+    1,
+  );
+});
+
+test('changing the operation mode moves the fan block with it', async () => {
+  const { api } = createFakeApi([SPLIT_UNIT]);
+  const store = new DaikinStore({ api });
+  const [unit] = await store.refresh();
+  store.applyWrites(unit, [{ characteristic: 'operationMode', value: 'dry' }]);
+  // `dry` runs on auto and has no louvers on this unit: the snapshot must
+  // follow, otherwise the next read would describe the mode it just left.
+  assert.equal(unit.fan.current.speed.currentMode, 'auto');
+  assert.equal(unit.fan.current.direction, null);
 });
 
 test('a write on a unit without a fan is ignored instead of throwing', async () => {

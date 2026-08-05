@@ -34,8 +34,8 @@ export const FAN_MODE = {
 };
 
 // Bitmap, same encoding as the Matter FanControl RockSetting: bit 0 is the
-// left/right movement, bit 1 the up/down one. Daikin drives its two louver
-// axes separately, so a single Gladys feature covers both.
+// left/right movement, bit 1 the up/down one. Used as the fallback on a Gladys
+// too old for the per-axis air conditioning features.
 export const FAN_ROCK_SETTING = {
   OFF: 0,
   LEFT_RIGHT: 1,
@@ -43,8 +43,23 @@ export const FAN_ROCK_SETTING = {
   LEFT_RIGHT_AND_UP_DOWN: 3,
 };
 
+// Per-axis airflow direction (air conditioning category, Gladys 4.84.3+):
+// one feature per Daikin louver axis, which is how the Onecta app presents
+// them too.
+export const AC_SWING = {
+  OFF: 0,
+  SWING: 1,
+};
+
 const ROCK_HORIZONTAL_BIT = 1;
 const ROCK_VERTICAL_BIT = 2;
+
+const SWING_TO_GLADYS = {
+  stop: AC_SWING.OFF,
+  swing: AC_SWING.SWING,
+};
+
+const SWING_TO_DAIKIN = invert(SWING_TO_GLADYS);
 
 const MODE_TO_GLADYS = {
   auto: AC_MODE.AUTO,
@@ -125,23 +140,23 @@ export function fanModeToDaikin(gladysMode, speed) {
 }
 
 /**
- * The Gladys fan modes a unit can actually reach, used to decide whether the
- * feature is worth publishing at all.
- * @param {object|null} speed the normalized `fan.speed` block of the unit
+ * The Gladys fan modes a unit can reach in AT LEAST one operation mode, used
+ * to decide whether the feature is worth publishing at all.
+ * @param {object|null} capabilities the union `fan.capabilities` of the unit
  * @returns {Array<number>} the reachable FAN_MODE values
  */
-export function supportedFanModes(speed) {
-  if (!speed) {
+export function supportedFanModes(capabilities) {
+  if (!capabilities) {
     return [];
   }
   const modes = [];
-  if (speed.modes.includes('quiet')) {
+  if (capabilities.speedModes.includes('quiet')) {
     modes.push(FAN_MODE.LOW);
   }
-  if (speed.modes.includes('fixed')) {
+  if (capabilities.speedModes.includes('fixed')) {
     modes.push(FAN_MODE.MEDIUM);
   }
-  if (speed.modes.includes('auto')) {
+  if (capabilities.speedModes.includes('auto')) {
     modes.push(FAN_MODE.AUTO);
   }
   return modes;
@@ -233,13 +248,12 @@ export function rockSettingToDaikin(gladysRock, direction) {
 /**
  * The bounds of the oscillation feature: the Gladys select offers every enum
  * value between `min` and `max`, so the maximum encodes which axes exist.
- * @param {object|null} direction the normalized `fan.direction` block
+ * @param {object|null} capabilities the union `fan.capabilities` of the unit
  * @returns {{ min: number, max: number }|null} the bounds, or null when there is nothing to steer
  */
-export function rockSettingBounds(direction) {
-  const canSwing = (axis) => Boolean(direction?.[axis]?.values.includes('swing'));
-  const horizontal = canSwing('horizontal');
-  const vertical = canSwing('vertical');
+export function rockSettingBounds(capabilities) {
+  const horizontal = canSwingAxis(capabilities, 'horizontal');
+  const vertical = canSwingAxis(capabilities, 'vertical');
   if (!horizontal && !vertical) {
     return null;
   }
@@ -250,6 +264,53 @@ export function rockSettingBounds(direction) {
     min: FAN_ROCK_SETTING.OFF,
     max: horizontal ? FAN_ROCK_SETTING.LEFT_RIGHT : FAN_ROCK_SETTING.UP_DOWN,
   };
+}
+
+// --- Louvers, per axis (Gladys 4.84.3+) --------------------------------------
+// One feature per axis, the way the Onecta app presents them. Daikin also has
+// comfort airflows on some axes (`windNice`, `floorHeatingAirflow`) which have
+// no Gladys counterpart: they read as "not swinging" and are never written.
+
+/**
+ * @param {object|null} capabilities the union `fan.capabilities` of the unit
+ * @param {string} axis 'horizontal' or 'vertical'
+ * @returns {boolean} true when this axis can be told to swing
+ */
+export function canSwingAxis(capabilities, axis) {
+  return Boolean(capabilities?.axes?.[axis]?.includes('swing'));
+}
+
+/**
+ * @param {string|null} daikinDirection the Daikin fan direction of one axis
+ * @returns {number|null} the Gladys AC_SWING value, or null when the axis is
+ * running a Daikin comfort airflow Gladys has no word for
+ */
+export function swingToGladys(daikinDirection) {
+  return SWING_TO_GLADYS[daikinDirection] ?? null;
+}
+
+/**
+ * @param {number} gladysSwing the requested AC_SWING value
+ * @returns {string|null} the Daikin fan direction, or null when unknown
+ */
+export function swingToDaikin(gladysSwing) {
+  return SWING_TO_DAIKIN[gladysSwing] ?? null;
+}
+
+/**
+ * The Gladys swing values one axis accepts, across every operation mode.
+ * @param {object|null} capabilities the union `fan.capabilities` of the unit
+ * @param {string} axis 'horizontal' or 'vertical'
+ * @returns {Array<number>} the supported AC_SWING values
+ */
+export function supportedSwings(capabilities, axis) {
+  if (!canSwingAxis(capabilities, axis)) {
+    return [];
+  }
+  const swings = capabilities.axes[axis]
+    .map((value) => swingToGladys(value))
+    .filter((value) => value !== null);
+  return [...new Set(swings)].sort((a, b) => a - b);
 }
 
 /**

@@ -18,15 +18,20 @@ fonctionnalités que votre modèle prend réellement en charge :
 | Température de consigne | La consigne du mode actuellement actif                                      |
 | Mode ventilateur        | Comment l'unité choisit son souffle : Auto, Silencieux, ou vitesse manuelle |
 | Vitesse (niveau)        | Le niveau manuel, sur l'échelle déclarée par votre unité (souvent 1-5)      |
-| Oscillation             | Orienter les volets : arrêt, gauche/droite, haut/bas, ou les deux           |
+| Balayage horizontal     | Le sens du flux d'air gauche/droite                                         |
+| Balayage vertical       | Le sens du flux d'air haut/bas                                              |
+| Mode puissant           | Le mode « Puissant » de Daikin (interrupteur)                               |
+| Mode Econo              | Le mode « Econo » de Daikin (interrupteur)                                  |
+| Mode Streamer           | Le mode « Streamer » de purification d'air (interrupteur)                   |
+| Garder au sec           | La fonction avancée « Garder au sec » de l'unité intérieure                 |
 | Température intérieure  | La température mesurée par l'unité (capteur, historisé)                     |
 | Température extérieure  | La température mesurée par le groupe extérieur (capteur, historisé)         |
 
-Un modèle sans volets n'obtient pas d'oscillation, un modèle sans ventilateur
-n'obtient pas de vitesse, etc. : seul ce que le matériel déclare est publié. Les
-choix proposés dans l'interface sont également limités à ce que l'unité accepte
-— une unité sans mode « Déshumidification » ne l'affiche jamais, et l'oscillation
-ne propose que les axes dont vos volets disposent réellement.
+Un modèle sans volets n'obtient pas de sens du flux d'air, un modèle sans
+ventilateur n'obtient pas de vitesse, un modèle sans fonction Streamer n'obtient
+pas l'interrupteur correspondant : seul ce que le matériel déclare est publié.
+Les choix proposés dans l'interface sont également limités à ce que l'unité
+accepte — une unité sans mode « Déshumidification » ne l'affiche jamais.
 
 Deux précisions sur la ventilation, parce que Gladys et Daikin n'emploient pas
 tout à fait les mêmes mots :
@@ -42,10 +47,24 @@ tout à fait les mêmes mots :
   niveau à montrer : le contrôle reste vide jusqu'à ce que vous en régliez un —
   et en régler un bascule l'unité en manuel.
 
-> **Les contrôles de ventilation nécessitent Gladys 4.79 ou plus récent**, et
-> limiter la liste des modes à ce que votre unité gère nécessite la 4.84.3. Sur
-> une version antérieure l'intégration fonctionne quand même, elle publie
-> simplement moins de choses.
+Les fonctionnalités publiées décrivent ce que votre unité sait faire **tous
+modes confondus**, pas ce qu'elle peut faire à l'instant présent. Daikin ne
+déclare par exemple aucun niveau de ventilation manuel en Déshumidification :
+sans cela, une unité découverte pendant qu'elle déshumidifiait aurait perdu son
+contrôle de vitesse définitivement. En contrepartie, une commande envoyée dans
+un mode qui ne l'accepte pas est refusée avec un message explicite plutôt que
+d'échouer en silence.
+
+Certaines fonctions sont signalées en lecture seule par Daikin selon le modèle
+et le firmware — c'est presque toujours le cas de « Garder au sec ». Elles sont
+alors publiées comme capteurs, sans interrupteur qui serait de toute façon
+refusé par l'API.
+
+> **Les contrôles de ventilation nécessitent Gladys 4.79 ou plus récent**, et le
+> sens du flux d'air par axe (ainsi que les listes de modes restreintes)
+> nécessitent la 4.84.3. Entre les deux, les volets sont regroupés dans une
+> unique fonctionnalité « Oscillation ». Sur une version antérieure
+> l'intégration fonctionne quand même, elle publie simplement moins de choses.
 
 Les pompes à chaleur (Altherma…) sont partiellement prises en charge : leur
 marche/arrêt, leur mode et leur température extérieure fonctionnent, mais leur

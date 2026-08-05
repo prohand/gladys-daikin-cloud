@@ -2,6 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   AC_MODE,
+  AC_SWING,
   FAN_MODE,
   FAN_ROCK_SETTING,
   fanLevelToDaikin,
@@ -15,6 +16,9 @@ import {
   rockSettingToGladys,
   roundToStep,
   supportedFanModes,
+  supportedSwings,
+  swingToDaikin,
+  swingToGladys,
 } from '../src/mapping.js';
 
 const speedBlock = (overrides = {}) => ({
@@ -93,9 +97,14 @@ test('a fan mode round trips through the Daikin vocabulary', () => {
   }
 });
 
-test('supportedFanModes lists only what the unit can reach', () => {
-  assert.deepEqual(supportedFanModes(speedBlock()), [FAN_MODE.LOW, FAN_MODE.MEDIUM, FAN_MODE.AUTO]);
-  assert.deepEqual(supportedFanModes(speedBlock({ modes: ['auto'] })), [FAN_MODE.AUTO]);
+test('supportedFanModes reads the union over every operation mode', () => {
+  const capabilities = (speedModes) => ({ speedModes, fixed: null, axes: {} });
+  assert.deepEqual(supportedFanModes(capabilities(['quiet', 'auto', 'fixed'])), [
+    FAN_MODE.LOW,
+    FAN_MODE.MEDIUM,
+    FAN_MODE.AUTO,
+  ]);
+  assert.deepEqual(supportedFanModes(capabilities(['auto'])), [FAN_MODE.AUTO]);
   assert.deepEqual(supportedFanModes(null), []);
 });
 
@@ -193,27 +202,54 @@ test('an axis that cannot swing at all is not written to', () => {
   ]);
 });
 
+const axesCapabilities = (axes) => ({ speedModes: [], fixed: null, axes });
+
 test('the oscillation bounds tell Gladys which axes exist', () => {
-  assert.deepEqual(rockSettingBounds(directionBlock()), {
-    min: FAN_ROCK_SETTING.OFF,
-    max: FAN_ROCK_SETTING.LEFT_RIGHT_AND_UP_DOWN,
-  });
   assert.deepEqual(
-    rockSettingBounds({ horizontal: { value: 'stop', values: ['stop', 'swing'] } }),
+    rockSettingBounds(
+      axesCapabilities({ horizontal: ['stop', 'swing'], vertical: ['stop', 'swing'] }),
+    ),
     {
       min: FAN_ROCK_SETTING.OFF,
-      max: FAN_ROCK_SETTING.LEFT_RIGHT,
+      max: FAN_ROCK_SETTING.LEFT_RIGHT_AND_UP_DOWN,
     },
   );
-  assert.deepEqual(rockSettingBounds({ vertical: { value: 'stop', values: ['stop', 'swing'] } }), {
+  assert.deepEqual(rockSettingBounds(axesCapabilities({ horizontal: ['stop', 'swing'] })), {
+    min: FAN_ROCK_SETTING.OFF,
+    max: FAN_ROCK_SETTING.LEFT_RIGHT,
+  });
+  assert.deepEqual(rockSettingBounds(axesCapabilities({ vertical: ['stop', 'swing'] })), {
     min: FAN_ROCK_SETTING.OFF,
     max: FAN_ROCK_SETTING.UP_DOWN,
   });
 });
 
 test('a unit whose louvers cannot swing gets no oscillation feature', () => {
-  assert.equal(rockSettingBounds({ vertical: { value: 'stop', values: ['stop'] } }), null);
+  assert.equal(rockSettingBounds(axesCapabilities({ vertical: ['stop'] })), null);
   assert.equal(rockSettingBounds(null), null);
+});
+
+test('supportedSwings lists the per-axis values, across every operation mode', () => {
+  const capabilities = axesCapabilities({
+    horizontal: ['stop', 'swing'],
+    vertical: ['stop', 'swing', 'windNice'],
+  });
+  assert.deepEqual(supportedSwings(capabilities, 'horizontal'), [AC_SWING.OFF, AC_SWING.SWING]);
+  assert.deepEqual(
+    supportedSwings(capabilities, 'vertical'),
+    [AC_SWING.OFF, AC_SWING.SWING],
+    'windNice has no Gladys counterpart and is dropped',
+  );
+  assert.deepEqual(supportedSwings(axesCapabilities({ vertical: ['stop'] }), 'vertical'), []);
+  assert.deepEqual(supportedSwings(null, 'horizontal'), []);
+});
+
+test('the per-axis swing maps both ways', () => {
+  assert.equal(swingToGladys('stop'), AC_SWING.OFF);
+  assert.equal(swingToGladys('swing'), AC_SWING.SWING);
+  assert.equal(swingToGladys('windNice'), null);
+  assert.equal(swingToDaikin(AC_SWING.SWING), 'swing');
+  assert.equal(swingToDaikin(9), null);
 });
 
 // --- Setpoint grid -----------------------------------------------------------

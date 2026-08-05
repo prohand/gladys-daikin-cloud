@@ -17,15 +17,20 @@ with the features your model actually supports:
 | Target temperature  | The setpoint of the mode currently active                           |
 | Fan mode            | How the unit picks its airflow: Auto, Quiet, or a manual speed      |
 | Fan speed           | The manual speed level, on the scale your unit declares (often 1-5) |
-| Oscillation         | Move the louvers: off, left/right, up/down, or both                 |
+| Horizontal airflow  | The left/right airflow direction                                    |
+| Vertical airflow    | The up/down airflow direction                                       |
+| Powerful mode       | Daikin's "Powerful" mode (switch)                                   |
+| Econo mode          | Daikin's "Econo" mode (switch)                                      |
+| Streamer mode       | The "Streamer" air purification mode (switch)                       |
+| Keep dry            | The indoor unit's "Keep dry" advanced function                      |
 | Room temperature    | The temperature the unit measures (sensor, kept in history)         |
 | Outdoor temperature | The temperature the outdoor unit measures (sensor, kept in history) |
 
-A model without louvers gets no oscillation, a model without a fan gets no fan
-speed, and so on: only what the hardware reports is published. The choices
-offered in the interface are also restricted to what the unit accepts — a unit
-without a "Drying" mode never shows one, and the oscillation only offers the
-axes your louvers actually have.
+A model without louvers gets no airflow direction, a model without a fan gets
+no fan speed, a model without the Streamer function gets no Streamer switch:
+only what the hardware reports is published. The choices offered in the
+interface are also restricted to what the unit accepts — a unit without a
+"Drying" mode never shows one.
 
 Two details about the fan, because Gladys and Daikin do not use quite the same
 words:
@@ -40,9 +45,21 @@ words:
   manual level. In auto or quiet there is no level to show, so the control stays
   empty until you set one — and setting one switches the unit to manual.
 
-> **The fan controls need Gladys 4.79 or newer**, and restricting the mode list
-> to what your unit supports needs 4.84.3. On an older Gladys the integration
-> still works and simply publishes less.
+The features describe what your unit can do across **all** its operation
+modes, not what it can do at this instant. Daikin declares no manual fan level
+in Drying, for example: without that, a device discovered while the unit was
+dehumidifying would have lost its speed control for good. In exchange, a
+command sent in a mode that cannot take it is refused with a clear message
+rather than failing silently.
+
+Daikin reports some functions read-only depending on the model and firmware —
+"Keep dry" almost always is. Those are published as sensors, without a switch
+the API would refuse anyway.
+
+> **The fan controls need Gladys 4.79 or newer**, and the per-axis airflow
+> direction (plus the restricted mode lists) need 4.84.3. In between, the
+> louvers fold into a single "Oscillation" feature. On an older Gladys the
+> integration still works and simply publishes less.
 
 Heat pumps (Altherma…) are partially supported: their on/off, mode and outdoor
 temperature work, but their water temperature setpoint is not exposed — this

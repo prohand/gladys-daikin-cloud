@@ -21,6 +21,11 @@ export const SPLIT_UNIT = {
       name: { settable: false, value: 'Living room' },
       onOffMode: { settable: true, values: ['on', 'off'], value: 'on' },
       isInErrorState: { settable: false, value: false },
+      // The comfort toggles of a split unit, as the Onecta app shows them.
+      powerfulMode: { settable: true, values: ['on', 'off'], value: 'off' },
+      econoMode: { settable: true, values: ['on', 'off'], value: 'off' },
+      streamerMode: { settable: true, values: ['on', 'off'], value: 'on' },
+      isPowerfulModeActive: { settable: false, value: false },
       operationMode: {
         settable: true,
         values: ['auto', 'dry', 'cooling', 'heating', 'fanOnly'],
@@ -116,6 +121,9 @@ export const SPLIT_UNIT = {
       embeddedId: 'indoorUnit',
       managementPointType: 'indoorUnit',
       softwareVersion: { settable: false, value: '1.2.3' },
+      // "Keep dry" belongs to the indoor unit, and Daikin reports it
+      // read-only on most models.
+      dryKeepSetting: { settable: false, values: ['on', 'off'], value: 'on' },
     },
   ],
 };

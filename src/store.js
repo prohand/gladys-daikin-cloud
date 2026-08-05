@@ -88,11 +88,18 @@ export class DaikinStore {
       } else if (write.characteristic === 'operationMode') {
         unit.operationMode = write.value;
         unit.setpoint = unit.setpoints[write.value] ?? null;
+        // The fan block is per operation mode: follow the unit into the new
+        // one, otherwise the next read would describe the mode it just left.
+        if (unit.fan) {
+          unit.fan.current = unit.fan.byMode[write.value] ?? null;
+        }
       } else if (write.characteristic === 'temperatureControl' && unit.setpoint) {
         unit.setpoint = { ...unit.setpoint, value: write.value };
         unit.setpoints[unit.operationMode] = unit.setpoint;
       } else if (write.characteristic === 'fanControl') {
         applyFanWrite(unit, write);
+      } else {
+        applyToggleWrite(unit, write);
       }
     }
   }
@@ -138,18 +145,42 @@ export class DaikinStore {
  * @param {object} write the accepted write
  */
 function applyFanWrite(unit, write) {
-  if (!unit.fan) {
+  // A fan write always targets the operation mode the unit runs, which is
+  // exactly the block `current` points at.
+  const current = unit.fan?.current;
+  if (!current) {
     return;
   }
-  if (write.path?.endsWith('/fanSpeed/currentMode') && unit.fan.speed) {
-    unit.fan.speed.currentMode = write.value;
-  } else if (write.path?.endsWith('/fanSpeed/modes/fixed') && unit.fan.speed?.fixed) {
-    unit.fan.speed.fixed.value = write.value;
+  if (write.path?.endsWith('/fanSpeed/currentMode') && current.speed) {
+    current.speed.currentMode = write.value;
+  } else if (write.path?.endsWith('/fanSpeed/modes/fixed') && current.speed?.fixed) {
+    current.speed.fixed.value = write.value;
   } else {
     const axisMatch = write.path?.match(/\/fanDirection\/(horizontal|vertical)\/currentMode$/);
-    if (axisMatch && unit.fan.direction?.[axisMatch[1]]) {
-      unit.fan.direction[axisMatch[1]].value = write.value;
+    if (axisMatch && current.direction?.[axisMatch[1]]) {
+      current.direction[axisMatch[1]].value = write.value;
     }
+  }
+}
+
+// Which unit toggle each Daikin characteristic feeds.
+const TOGGLE_BY_CHARACTERISTIC = {
+  powerfulMode: 'powerful',
+  econoMode: 'econo',
+  streamerMode: 'streamer',
+  dryKeepSetting: 'dryKeep',
+};
+
+/**
+ * Reflect a comfort toggle write in the local snapshot.
+ * @param {object} unit the unit that received the command
+ * @param {object} write the accepted write
+ */
+function applyToggleWrite(unit, write) {
+  const key = TOGGLE_BY_CHARACTERISTIC[write.characteristic];
+  const toggle = key ? unit.toggles?.[key] : null;
+  if (toggle) {
+    toggle.on = write.value === 'on';
   }
 }
 

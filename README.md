@@ -18,7 +18,11 @@ actually reports:
 
 - **On/Off**, **Mode** (auto, cooling, heating, drying, fan only)
 - **Target temperature**, with the min/max/step of the active operation mode
-- **Fan mode** (auto / quiet / manual), **fan speed level**, and **oscillation**
+- **Fan mode** (auto / quiet / manual) and **fan speed level**
+- **Horizontal and vertical airflow**, per axis (one folded oscillation feature
+  on a Gladys older than 4.84.3)
+- **Powerful**, **Econo**, **Streamer** and **Keep dry**, each published as a
+  switch or, when Daikin reports it read-only, as a sensor
 - **Room temperature** and **outdoor temperature** sensors, kept in history
 - A per-device transport badge: `cloud`, `cloud + degraded` when the unit
   reports a fault, `unreachable` when Daikin cannot reach it
@@ -42,7 +46,7 @@ src/devices/climateUnit.js  one unit -> discovery payload, states, commands
 src/devices/index.js      the catalog: discovery, transports, routing
 ```
 
-Three design points are worth knowing before touching the code.
+Four design points are worth knowing before touching the code.
 
 **The polling is ours, not Gladys'.** A developer account is limited to 200 API
 calls a day, and `poll_frequency` on a discovered device tops out at one minute
@@ -63,13 +67,22 @@ accepts) since 4.84.3. `src/capabilities.js` reads the connected version and the
 catalog is built from it, so an older Gladys gets a working integration with
 fewer features rather than none.
 
+**The catalog comes from the union of every operation mode, the state from the
+active one.** Daikin describes the fan per operation mode and the modes do not
+offer the same things — no manual level in `dry`, no louvers in several of
+them. Building the feature list from the active mode made the controls appear
+and disappear depending on what the unit happened to be doing at discovery
+time, so `parseFanControl` computes a union for the catalog and keeps
+`current` for reading and writing.
+
 **The fan is three Gladys features for two Daikin concepts.** Daikin has an
 airflow mode (`auto` / `quiet` / `fixed`) and, in `fixed`, a level on a
 model-dependent scale. That maps onto `fan.mode` (auto / quiet / manual) plus
 `fan.speed` (a slider carrying the device's own bounds, so no scaling is
-needed). The two louver axes fold into a single `fan.rock-setting`, whose
-bitmap encoding — bit 0 left/right, bit 1 up/down — expresses exactly what
-Daikin drives separately.
+needed). The louvers get one air conditioning feature per axis, matching what
+Daikin drives and what the Onecta app shows; a Gladys older than 4.84.3 has no
+per-axis type, so they fold there into a single `fan.rock-setting` whose bitmap
+encoding — bit 0 left/right, bit 1 up/down — carries both.
 
 ## Development
 

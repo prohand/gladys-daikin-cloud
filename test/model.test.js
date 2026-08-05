@@ -43,13 +43,45 @@ test('the active setpoint is the one of the current operation mode', () => {
   assert.equal(unit.setpoints.dry, undefined, 'dry has no room setpoint on this model');
 });
 
-test('the fan block describes the current operation mode only', () => {
+test('the current fan block describes the operation mode the unit is running', () => {
   const [unit] = parseUnits([SPLIT_UNIT]);
-  assert.equal(unit.fan.speed.currentMode, 'fixed');
-  assert.deepEqual(unit.fan.speed.modes, ['quiet', 'auto', 'fixed']);
-  assert.deepEqual(unit.fan.speed.fixed, { value: 3, min: 1, max: 5, step: 1 });
-  assert.equal(unit.fan.direction.vertical.value, 'swing');
-  assert.deepEqual(unit.fan.direction.horizontal.values, ['stop', 'swing']);
+  assert.equal(unit.fan.current.speed.currentMode, 'fixed');
+  assert.deepEqual(unit.fan.current.speed.modes, ['quiet', 'auto', 'fixed']);
+  assert.deepEqual(unit.fan.current.speed.fixed, { value: 3, min: 1, max: 5, step: 1 });
+  assert.equal(unit.fan.current.direction.vertical.value, 'swing');
+  assert.deepEqual(unit.fan.current.direction.horizontal.values, ['stop', 'swing']);
+});
+
+test('the fan capabilities are the union over every operation mode', () => {
+  const [unit] = parseUnits([SPLIT_UNIT]);
+  // On this unit `dry` offers only the auto airflow and no louvers, while
+  // `heating` has a manual level but no louver block at all: the capabilities
+  // must still describe everything the hardware can do.
+  assert.deepEqual(unit.fan.capabilities.speedModes.sort(), ['auto', 'fixed', 'quiet']);
+  // A range, not a reading: the current value belongs to the active mode.
+  assert.deepEqual(unit.fan.capabilities.fixed, { min: 1, max: 5, step: 1 });
+  assert.deepEqual(unit.fan.capabilities.axes, {
+    horizontal: ['stop', 'swing'],
+    vertical: ['stop', 'swing', 'windNice'],
+  });
+});
+
+test('a unit sitting in Drying keeps every fan capability', () => {
+  // The regression this guards: Daikin declares no manual level in `dry`, so
+  // reading the active mode alone made the speed control vanish for anyone
+  // who discovered their device while the unit was dehumidifying.
+  const drying = structuredClone(SPLIT_UNIT);
+  const climate = drying.managementPoints.find((p) => p.managementPointType === 'climateControl');
+  climate.operationMode.value = 'dry';
+  const [unit] = parseUnits([drying]);
+
+  assert.equal(unit.fan.current.speed.currentMode, 'auto', 'dry runs on auto only');
+  assert.equal(unit.fan.current.speed.fixed, null, 'dry has no manual level');
+  assert.ok(
+    unit.fan.capabilities.speedModes.includes('fixed'),
+    'but the unit does have a manual level in other modes',
+  );
+  assert.deepEqual(unit.fan.capabilities.fixed, { min: 1, max: 5, step: 1 });
 });
 
 test('an offline unit in error state is reported as such', () => {

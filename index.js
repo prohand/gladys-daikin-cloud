@@ -116,7 +116,9 @@ gladys.onSetValue(async (device, feature, value) => {
   for (const write of writes) {
     await api.setCharacteristic({
       deviceId: unit.deviceId,
-      embeddedId: unit.embeddedId,
+      // Most characteristics belong to the climate control point, but a few
+      // (the indoor unit's "keep dry") live on another one and carry it.
+      embeddedId: write.embeddedId ?? unit.embeddedId,
       characteristic: write.characteristic,
       path: write.path,
       value: write.value,

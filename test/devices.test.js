@@ -17,7 +17,7 @@ import {
   featureKeyOf,
   findUnitByDevice,
 } from '../src/devices/index.js';
-import { AC_MODE, FAN_MODE, FAN_ROCK_SETTING } from '../src/mapping.js';
+import { AC_MODE, AC_SWING, FAN_MODE, FAN_ROCK_SETTING } from '../src/mapping.js';
 import { createFakeGladys } from './helpers/fakeGladys.js';
 import {
   ALL_DEVICES,
@@ -27,8 +27,8 @@ import {
 } from './fixtures/gatewayDevices.js';
 
 const gladys = createFakeGladys();
-const FULL = { fanCategory: true, supportedOptions: true };
-const BASE = { fanCategory: false, supportedOptions: false };
+const FULL = { fanCategory: true, supportedOptions: true, acSwing: true };
+const BASE = { fanCategory: false, supportedOptions: false, acSwing: false };
 
 const splitUnit = () => parseUnits([SPLIT_UNIT])[0];
 const featureOf = (device, key) =>
@@ -82,13 +82,18 @@ test('a split unit exposes the full air conditioning catalog', () => {
   assert.deepEqual(
     keys.sort(),
     [
+      FEATURE.ECONO,
       FEATURE.FAN_LEVEL,
       FEATURE.FAN_MODE,
-      FEATURE.FAN_ROCK,
       FEATURE.MODE,
       FEATURE.OUTDOOR_TEMPERATURE,
       FEATURE.POWER,
+      FEATURE.POWERFUL,
       FEATURE.ROOM_TEMPERATURE,
+      FEATURE.STREAMER,
+      FEATURE.DRY_KEEP,
+      FEATURE.SWING_HORIZONTAL,
+      FEATURE.SWING_VERTICAL,
       FEATURE.TARGET_TEMPERATURE,
     ].sort(),
   );
@@ -142,6 +147,111 @@ test('an older Gladys gets the catalog it understands', () => {
   assert.ok(keys.includes(FEATURE.POWER) && keys.includes(FEATURE.TARGET_TEMPERATURE));
 });
 
+test('the fan controls survive a unit discovered while it dehumidifies', () => {
+  // Daikin declares no manual level in `dry` and no louvers in several modes:
+  // the catalog must come from the union, not from the active mode.
+  const drying = structuredClone(SPLIT_UNIT);
+  const climate = drying.managementPoints.find((p) => p.managementPointType === 'climateControl');
+  climate.operationMode.value = 'dry';
+  const [device] = buildDiscoveredDevices(gladys, parseUnits([drying]), FULL);
+  const keys = device.features.map((feature) => feature.external_id.split(':').pop());
+  assert.ok(keys.includes(FEATURE.FAN_LEVEL), 'the speed control must not vanish');
+  assert.ok(keys.includes(FEATURE.FAN_MODE));
+  assert.ok(keys.includes(FEATURE.SWING_HORIZONTAL));
+  assert.ok(keys.includes(FEATURE.SWING_VERTICAL));
+});
+
+test('the fan speed slider carries the widest range the unit declares', () => {
+  const [device] = buildDiscoveredDevices(gladys, [splitUnit()], FULL);
+  const level = featureOf(device, FEATURE.FAN_LEVEL);
+  assert.equal(level.min, 1);
+  assert.equal(level.max, 5);
+  assert.equal(level.category, 'fan');
+  assert.equal(level.type, 'speed');
+});
+
+test('each louver axis is its own writable feature', () => {
+  const [device] = buildDiscoveredDevices(gladys, [splitUnit()], FULL);
+  for (const [key, type] of [
+    [FEATURE.SWING_HORIZONTAL, 'swing-horizontal'],
+    [FEATURE.SWING_VERTICAL, 'swing-vertical'],
+  ]) {
+    const feature = featureOf(device, key);
+    assert.equal(feature.category, DEVICE_FEATURE_CATEGORIES.AIR_CONDITIONING);
+    assert.equal(feature.type, type);
+    assert.equal(feature.read_only, false);
+    assert.deepEqual(
+      feature.supported_options.map((option) => option.value),
+      [AC_SWING.OFF, AC_SWING.SWING],
+    );
+  }
+});
+
+test('the comfort toggles are switches, and follow what Daikin allows', () => {
+  const [device] = buildDiscoveredDevices(gladys, [splitUnit()], FULL);
+  for (const key of [FEATURE.POWERFUL, FEATURE.ECONO, FEATURE.STREAMER]) {
+    const feature = featureOf(device, key);
+    assert.equal(feature.category, DEVICE_FEATURE_CATEGORIES.SWITCH);
+    assert.equal(feature.type, DEVICE_FEATURE_TYPES.SWITCH.BINARY);
+    assert.equal(feature.read_only, false, 'these three are settable on this unit');
+  }
+  // Daikin reports "keep dry" read-only on this model: publish it as a sensor
+  // rather than a switch the unit would refuse.
+  const dryKeep = featureOf(device, FEATURE.DRY_KEEP);
+  assert.equal(dryKeep.read_only, true);
+  assert.equal(dryKeep.has_feedback, false);
+});
+
+test('a unit without a given comfort mode does not get its feature', () => {
+  const [device] = buildDiscoveredDevices(gladys, parseUnits([OFFLINE_UNIT]), FULL);
+  const keys = device.features.map((feature) => feature.external_id.split(':').pop());
+  assert.ok(!keys.includes(FEATURE.POWERFUL));
+  assert.ok(!keys.includes(FEATURE.DRY_KEEP), 'this gateway has no indoor unit block');
+});
+
+test('toggling a comfort mode writes its characteristic', () => {
+  const unit = splitUnit();
+  assert.deepEqual(buildCommands(unit, FEATURE.POWERFUL, 1), {
+    writes: [{ characteristic: 'powerfulMode', value: 'on' }],
+    state: 1,
+  });
+  assert.deepEqual(buildCommands(unit, FEATURE.ECONO, 0), {
+    writes: [{ characteristic: 'econoMode', value: 'off' }],
+    state: 0,
+  });
+});
+
+test('a read-only comfort mode is refused with a readable error', () => {
+  assert.throws(() => buildCommands(splitUnit(), FEATURE.DRY_KEEP, 1), /read-only on this unit/);
+});
+
+test('a comfort mode the unit does not have is refused', () => {
+  const unit = parseUnits([OFFLINE_UNIT])[0];
+  assert.throws(() => buildCommands(unit, FEATURE.STREAMER, 1), /has no streamer mode/);
+});
+
+test('the keep-dry write is addressed to the indoor unit, not the climate point', () => {
+  const unit = splitUnit();
+  unit.toggles.dryKeep.settable = true;
+  const { writes } = buildCommands(unit, FEATURE.DRY_KEEP, 1);
+  assert.equal(writes[0].characteristic, 'dryKeepSetting');
+  assert.equal(writes[0].embeddedId, 'indoorUnit', 'it lives on another management point');
+});
+
+test('steering one louver axis writes only that axis', () => {
+  const unit = splitUnit();
+  assert.deepEqual(buildCommands(unit, FEATURE.SWING_VERTICAL, AC_SWING.OFF), {
+    writes: [
+      {
+        characteristic: 'fanControl',
+        path: '/operationModes/cooling/fanDirection/vertical/currentMode',
+        value: 'stop',
+      },
+    ],
+    state: AC_SWING.OFF,
+  });
+});
+
 test('the published device carries the Daikin identifiers as params', () => {
   const [device] = buildDiscoveredDevices(gladys, [splitUnit()], FULL);
   const params = Object.fromEntries(device.params.map((param) => [param.name, param.value]));
@@ -159,19 +269,34 @@ test('states mirror the unit as the Daikin cloud reports it', () => {
   assert.equal(stateOf(states, FEATURE.OUTDOOR_TEMPERATURE), 31);
   assert.equal(stateOf(states, FEATURE.FAN_MODE), FAN_MODE.MEDIUM);
   assert.equal(stateOf(states, FEATURE.FAN_LEVEL), 3);
-  assert.equal(stateOf(states, FEATURE.FAN_ROCK), FAN_ROCK_SETTING.UP_DOWN);
+  assert.equal(stateOf(states, FEATURE.SWING_HORIZONTAL), AC_SWING.OFF);
+  assert.equal(stateOf(states, FEATURE.SWING_VERTICAL), AC_SWING.SWING);
+  assert.equal(stateOf(states, FEATURE.STREAMER), 1);
+  assert.equal(stateOf(states, FEATURE.ECONO), 0);
+  assert.equal(stateOf(states, FEATURE.DRY_KEEP), 1);
 });
 
-test('a Daikin comfort airflow reads as not oscillating, not as an error', () => {
+test('a Daikin comfort airflow is left out rather than published wrong', () => {
   const unit = splitUnit();
-  unit.fan.direction.vertical.value = 'windNice';
+  unit.fan.current.direction.vertical.value = 'windNice';
   const states = buildStates(gladys, unit, FULL);
-  assert.equal(stateOf(states, FEATURE.FAN_ROCK), FAN_ROCK_SETTING.OFF);
+  assert.equal(stateOf(states, FEATURE.SWING_VERTICAL), undefined);
+  assert.equal(stateOf(states, FEATURE.SWING_HORIZONTAL), AC_SWING.OFF, 'the other axis is fine');
+});
+
+test('on an older Gladys the louvers fold into one oscillation feature', () => {
+  const capabilities = { fanCategory: true, supportedOptions: false, acSwing: false };
+  const [device] = buildDiscoveredDevices(gladys, [splitUnit()], capabilities);
+  const keys = device.features.map((feature) => feature.external_id.split(':').pop());
+  assert.ok(keys.includes(FEATURE.FAN_ROCK), 'the bitmap fallback');
+  assert.ok(!keys.includes(FEATURE.SWING_HORIZONTAL), 'per-axis needs 4.84.3');
+  const states = buildStates(gladys, splitUnit(), capabilities);
+  assert.equal(stateOf(states, FEATURE.FAN_ROCK), FAN_ROCK_SETTING.UP_DOWN);
 });
 
 test('the fan level is left out while the unit runs in auto', () => {
   const unit = splitUnit();
-  unit.fan.speed.currentMode = 'auto';
+  unit.fan.current.speed.currentMode = 'auto';
   const states = buildStates(gladys, unit, FULL);
   assert.equal(stateOf(states, FEATURE.FAN_MODE), FAN_MODE.AUTO);
   assert.equal(stateOf(states, FEATURE.FAN_LEVEL), undefined, 'auto is not a level');

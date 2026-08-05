@@ -41,14 +41,17 @@ test('the capabilities are read from the connected Gladys', async () => {
   assert.deepEqual(await detectCapabilities(createFakeGladys({ gladysVersion: '4.84.3' })), {
     fanCategory: true,
     supportedOptions: true,
+    acSwing: true,
   });
   assert.deepEqual(await detectCapabilities(createFakeGladys({ gladysVersion: '4.80.0' })), {
     fanCategory: true,
     supportedOptions: false,
+    acSwing: false,
   });
   assert.deepEqual(await detectCapabilities(createFakeGladys({ gladysVersion: '4.70.0' })), {
     fanCategory: false,
     supportedOptions: false,
+    acSwing: false,
   });
 });
 

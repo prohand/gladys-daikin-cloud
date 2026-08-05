@@ -17,6 +17,7 @@ import {
 } from '@gladysassistant/integration-sdk';
 import {
   AC_MODE,
+  AC_SWING,
   fanLevelToDaikin,
   fanLevelToGladys,
   fanModeToDaikin,
@@ -28,6 +29,9 @@ import {
   rockSettingToGladys,
   roundToStep,
   supportedFanModes,
+  supportedSwings,
+  swingToDaikin,
+  swingToGladys,
 } from '../mapping.js';
 
 // Gladys device type prefix, part of every external_id.
@@ -43,15 +47,33 @@ export const FEATURE = {
   FAN_MODE: 'fan-mode',
   FAN_LEVEL: 'fan-level',
   FAN_ROCK: 'fan-rock',
+  SWING_HORIZONTAL: 'swing-horizontal',
+  SWING_VERTICAL: 'swing-vertical',
+  POWERFUL: 'powerful',
+  ECONO: 'econo',
+  STREAMER: 'streamer',
+  DRY_KEEP: 'dry-keep',
 };
 
-// The FAN category and its types exist since Gladys 4.79 but are absent from
-// the SDK constants (v0.9): declared as literals, published only when the
-// connected instance is recent enough (see src/capabilities.js).
+// The FAN category and its types exist since Gladys 4.79, the per-axis air
+// conditioning swing since 4.84.3, and neither is in the SDK constants
+// (v0.9): declared as literals, published only when the connected instance is
+// recent enough (see src/capabilities.js).
 const FAN_CATEGORY = 'fan';
 const FAN_MODE_TYPE = 'mode';
 const FAN_SPEED_TYPE = 'speed';
 const FAN_ROCK_SETTING_TYPE = 'rock-setting';
+const AC_SWING_HORIZONTAL_TYPE = 'swing-horizontal';
+const AC_SWING_VERTICAL_TYPE = 'swing-vertical';
+
+// The Daikin comfort toggles, each an on/off characteristic of the climate
+// control point — except "keep dry", which the indoor unit owns.
+const TOGGLES = [
+  { key: 'powerful', feature: 'POWERFUL', name: 'Powerful mode', characteristic: 'powerfulMode' },
+  { key: 'econo', feature: 'ECONO', name: 'Econo mode', characteristic: 'econoMode' },
+  { key: 'streamer', feature: 'STREAMER', name: 'Streamer mode', characteristic: 'streamerMode' },
+  { key: 'dryKeep', feature: 'DRY_KEEP', name: 'Keep dry', characteristic: 'dryKeepSetting' },
+];
 
 // Labels of the `supported_options`, stored by Gladys as the fallback text of
 // an option it cannot translate.
@@ -61,6 +83,11 @@ const MODE_LABELS = {
   [AC_MODE.HEATING]: 'Heating',
   [AC_MODE.DRYING]: 'Drying',
   [AC_MODE.FAN]: 'Fan only',
+};
+
+const SWING_LABELS = {
+  [AC_SWING.OFF]: 'Off',
+  [AC_SWING.SWING]: 'Swing',
 };
 
 /**
@@ -102,7 +129,7 @@ export function featureKeyOf(gladys, unit, externalId) {
  * temperature gets no room setpoint...).
  * @param {object} gladys the SDK instance
  * @param {object} unit the normalized Daikin unit
- * @param {{ fanCategory: boolean, supportedOptions: boolean }} capabilities what the Gladys instance accepts
+ * @param {{ fanCategory: boolean, supportedOptions: boolean, acSwing: boolean }} capabilities what the Gladys instance accepts
  * @returns {object} the device to publish
  */
 export function buildDevice(gladys, unit, capabilities) {
@@ -190,10 +217,17 @@ export function buildDevice(gladys, unit, capabilities) {
     });
   }
 
+  // Everything below is built from `fan.capabilities`, the UNION over every
+  // operation mode — never from the mode the unit happens to run right now.
+  // Daikin drops the manual level in Drying and the louvers in several modes,
+  // so reading the active mode would make the controls appear and disappear
+  // depending on when the device was discovered.
+  const fanCapabilities = unit.fan?.capabilities;
+
   if (capabilities.fanCategory) {
     // Mode: how the unit picks its airflow (auto / quiet / manual). Worth a
     // feature only when there is a real choice to make.
-    if (supportedFanModes(unit.fan?.speed).length > 1) {
+    if (supportedFanModes(fanCapabilities).length > 1) {
       features.push({
         name: 'Fan mode',
         external_id: ids.feature(FEATURE.FAN_MODE),
@@ -209,7 +243,7 @@ export function buildDevice(gladys, unit, capabilities) {
 
     // Level: the manual speed. Gladys renders a slider bounded by min/max, so
     // the Daikin range goes in as is — no scaling, no rounding.
-    const fixed = unit.fan?.speed?.fixed;
+    const fixed = fanCapabilities?.fixed;
     if (fixed && fixed.max > fixed.min) {
       features.push({
         name: 'Fan speed',
@@ -223,10 +257,35 @@ export function buildDevice(gladys, unit, capabilities) {
         keep_history: true,
       });
     }
+  }
 
-    // Oscillation: ONE feature for the two Daikin louver axes, thanks to the
-    // bitmap encoding of rock-setting (bit 0 = left/right, bit 1 = up/down).
-    const rock = rockSettingBounds(unit.fan?.direction);
+  // Louvers. One feature per axis when Gladys can store them — that is how the
+  // Onecta app presents them, and how a scene can steer one axis alone. Older
+  // instances fall back to the single oscillation bitmap of the FAN category.
+  if (capabilities.acSwing) {
+    for (const [axis, featureKey, featureType, name] of [
+      ['horizontal', FEATURE.SWING_HORIZONTAL, AC_SWING_HORIZONTAL_TYPE, 'Horizontal airflow'],
+      ['vertical', FEATURE.SWING_VERTICAL, AC_SWING_VERTICAL_TYPE, 'Vertical airflow'],
+    ]) {
+      const swings = supportedSwings(fanCapabilities, axis);
+      if (swings.length < 2) {
+        continue;
+      }
+      features.push({
+        name,
+        external_id: ids.feature(featureKey),
+        category: DEVICE_FEATURE_CATEGORIES.AIR_CONDITIONING,
+        type: featureType,
+        min: Math.min(...swings),
+        max: Math.max(...swings),
+        read_only: false,
+        has_feedback: true,
+        keep_history: true,
+        supported_options: toSupportedOptions(swings, SWING_LABELS),
+      });
+    }
+  } else if (capabilities.fanCategory) {
+    const rock = rockSettingBounds(fanCapabilities);
     if (rock) {
       features.push({
         name: 'Oscillation',
@@ -242,6 +301,27 @@ export function buildDevice(gladys, unit, capabilities) {
         keep_history: true,
       });
     }
+  }
+
+  // The comfort toggles. Daikin reports some of them read-only depending on
+  // the model and the firmware ("keep dry" usually is): the feature follows
+  // what the unit says rather than offering a switch that would be refused.
+  for (const { key, feature, name } of TOGGLES) {
+    const state = unit.toggles?.[key];
+    if (!state) {
+      continue;
+    }
+    features.push({
+      name,
+      external_id: ids.feature(FEATURE[feature]),
+      category: DEVICE_FEATURE_CATEGORIES.SWITCH,
+      type: DEVICE_FEATURE_TYPES.SWITCH.BINARY,
+      min: 0,
+      max: 1,
+      read_only: !state.settable,
+      has_feedback: state.settable,
+      keep_history: true,
+    });
   }
 
   return {
@@ -264,7 +344,7 @@ export function buildDevice(gladys, unit, capabilities) {
  * rather than published wrong).
  * @param {object} gladys the SDK instance
  * @param {object} unit the normalized Daikin unit
- * @param {{ fanCategory: boolean, supportedOptions: boolean }} capabilities what the Gladys instance accepts
+ * @param {{ fanCategory: boolean, supportedOptions: boolean, acSwing: boolean }} capabilities what the Gladys instance accepts
  * @returns {Array<{ device_feature_external_id: string, state: number }>} the batch to publish
  */
 export function buildStates(gladys, unit, capabilities) {
@@ -284,12 +364,29 @@ export function buildStates(gladys, unit, capabilities) {
   push(FEATURE.ROOM_TEMPERATURE, unit.roomTemperature);
   push(FEATURE.OUTDOOR_TEMPERATURE, unit.outdoorTemperature);
 
+  // The STATE, unlike the catalog, comes from the operation mode the unit is
+  // actually running: that is the only fan block that describes what it does.
+  const current = unit.fan?.current;
+
   if (capabilities.fanCategory) {
-    push(FEATURE.FAN_MODE, fanModeToGladys(unit.fan?.speed));
+    push(FEATURE.FAN_MODE, fanModeToGladys(current?.speed));
     // Only meaningful while the unit runs on a manual level: reporting the
     // stored level while it is in auto would show a speed it is not using.
-    push(FEATURE.FAN_LEVEL, fanLevelToGladys(unit.fan?.speed));
-    push(FEATURE.FAN_ROCK, rockSettingToGladys(unit.fan?.direction));
+    push(FEATURE.FAN_LEVEL, fanLevelToGladys(current?.speed));
+  }
+
+  if (capabilities.acSwing) {
+    push(FEATURE.SWING_HORIZONTAL, swingToGladys(current?.direction?.horizontal?.value));
+    push(FEATURE.SWING_VERTICAL, swingToGladys(current?.direction?.vertical?.value));
+  } else if (capabilities.fanCategory) {
+    push(FEATURE.FAN_ROCK, rockSettingToGladys(current?.direction));
+  }
+
+  for (const { key, feature } of TOGGLES) {
+    const state = unit.toggles?.[key];
+    if (state) {
+      push(FEATURE[feature], state.on ? 1 : 0);
+    }
   }
 
   return states;
@@ -349,7 +446,9 @@ export function buildCommands(unit, featureKey, value) {
     }
 
     case FEATURE.FAN_MODE: {
-      const daikinFanMode = fanModeToDaikin(Number(value), unit.fan?.speed);
+      // A command targets the ACTIVE operation mode: Daikin refuses a manual
+      // level in Drying even though the unit offers one in Cooling.
+      const daikinFanMode = fanModeToDaikin(Number(value), unit.fan?.current?.speed);
       if (!daikinFanMode) {
         throw new Error(`This unit does not support that fan mode in its current operation mode`);
       }
@@ -363,12 +462,12 @@ export function buildCommands(unit, featureKey, value) {
         ],
         // Both MEDIUM and HIGH mean "manual" to Daikin, and it reports the
         // manual mode as MEDIUM: publish what the next read will confirm.
-        state: fanModeToGladys({ ...unit.fan.speed, currentMode: daikinFanMode }),
+        state: fanModeToGladys({ ...unit.fan.current.speed, currentMode: daikinFanMode }),
       };
     }
 
     case FEATURE.FAN_LEVEL: {
-      const level = fanLevelToDaikin(value, unit.fan?.speed);
+      const level = fanLevelToDaikin(value, unit.fan?.current?.speed);
       if (level === null) {
         throw new Error('This unit has no manual fan speed in its current mode');
       }
@@ -392,7 +491,7 @@ export function buildCommands(unit, featureKey, value) {
     }
 
     case FEATURE.FAN_ROCK: {
-      const axes = rockSettingToDaikin(Number(value), unit.fan?.direction);
+      const axes = rockSettingToDaikin(Number(value), unit.fan?.current?.direction);
       if (!axes) {
         throw new Error('This unit has no steerable louvers in its current mode');
       }
@@ -405,6 +504,56 @@ export function buildCommands(unit, featureKey, value) {
         // An axis the unit does not have stays off, so the state we publish is
         // what the unit can actually reach — not blindly what was asked.
         state: rockSettingToGladys(previewDirection(unit, axes)),
+      };
+    }
+
+    case FEATURE.SWING_HORIZONTAL:
+    case FEATURE.SWING_VERTICAL: {
+      const axis = featureKey === FEATURE.SWING_HORIZONTAL ? 'horizontal' : 'vertical';
+      const daikinDirection = swingToDaikin(Number(value));
+      const axisData = unit.fan?.current?.direction?.[axis];
+      if (!daikinDirection || !axisData) {
+        throw new Error(`This unit has no ${axis} louvers in its current mode`);
+      }
+      if (axisData.values.length > 0 && !axisData.values.includes(daikinDirection)) {
+        throw new Error(`This unit cannot set its ${axis} louvers to that position right now`);
+      }
+      return {
+        writes: [
+          {
+            characteristic: 'fanControl',
+            path: `/operationModes/${unit.operationMode}/fanDirection/${axis}/currentMode`,
+            value: daikinDirection,
+          },
+        ],
+        state: Number(value),
+      };
+    }
+
+    case FEATURE.POWERFUL:
+    case FEATURE.ECONO:
+    case FEATURE.STREAMER:
+    case FEATURE.DRY_KEEP: {
+      const toggle = TOGGLES.find(({ feature }) => FEATURE[feature] === featureKey);
+      const state = unit.toggles?.[toggle.key];
+      if (!state) {
+        throw new Error(`This unit has no ${toggle.name.toLowerCase()}`);
+      }
+      if (!state.settable) {
+        throw new Error(`${toggle.name} is read-only on this unit`);
+      }
+      const on = Number(value) === 1;
+      return {
+        writes: [
+          {
+            characteristic: toggle.characteristic,
+            value: on ? 'on' : 'off',
+            // "Keep dry" belongs to the indoor unit, not the climate control
+            // point: the write has to be addressed to its own management point.
+            ...(state.embeddedId ? { embeddedId: state.embeddedId } : {}),
+          },
+        ],
+        state: on ? 1 : 0,
       };
     }
 
@@ -421,7 +570,7 @@ export function buildCommands(unit, featureKey, value) {
  * @returns {object} the patched direction block
  */
 function previewDirection(unit, axes) {
-  const preview = { ...unit.fan.direction };
+  const preview = { ...unit.fan.current.direction };
   for (const { axis, value } of axes) {
     preview[axis] = { ...preview[axis], value };
   }

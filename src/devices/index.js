@@ -23,7 +23,7 @@ export {
  * The complete discovery payload: one Gladys device per Daikin climate unit.
  * @param {object} gladys the SDK instance
  * @param {Array<object>} units the normalized Daikin units
- * @param {{ fanCategory: boolean, supportedOptions: boolean }} capabilities what the Gladys instance accepts
+ * @param {{ fanCategory: boolean, supportedOptions: boolean, acSwing: boolean }} capabilities what the Gladys instance accepts
  * @returns {Array<object>} the devices to publish
  */
 export function buildDiscoveredDevices(gladys, units, capabilities) {
@@ -35,7 +35,7 @@ export function buildDiscoveredDevices(gladys, units, capabilities) {
  * which covers ~12 units — larger accounts are chunked by the caller).
  * @param {object} gladys the SDK instance
  * @param {Array<object>} units the normalized Daikin units
- * @param {{ fanCategory: boolean, supportedOptions: boolean }} capabilities what the Gladys instance accepts
+ * @param {{ fanCategory: boolean, supportedOptions: boolean, acSwing: boolean }} capabilities what the Gladys instance accepts
  * @returns {Array<object>} the states to publish
  */
 export function buildAllStates(gladys, units, capabilities) {

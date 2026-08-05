@@ -54,6 +54,8 @@ function parseUnit(gatewayDevice, managementPoint) {
   const operationMode = value(managementPoint.operationMode);
   const setpoints = parseSetpoints(managementPoint.temperatureControl);
   const fan = parseFanControl(managementPoint.fanControl, operationMode);
+  // "Keep dry" lives on the indoor unit, not on the climate control point.
+  const indoorUnit = findManagementPoint(gatewayDevice, 'indoorUnit');
 
   return {
     deviceId,
@@ -75,7 +77,44 @@ function parseUnit(gatewayDevice, managementPoint) {
     roomTemperature: sensor(managementPoint.sensoryData, 'roomTemperature'),
     outdoorTemperature: sensor(managementPoint.sensoryData, 'outdoorTemperature'),
     fan,
+    // The comfort toggles, each `on`/`off` and each optional on a given model.
+    toggles: {
+      powerful: toggle(managementPoint.powerfulMode),
+      econo: toggle(managementPoint.econoMode),
+      streamer: toggle(managementPoint.streamerMode),
+      // Often reported read-only by the API: the flag says so, the feature
+      // is published accordingly rather than pretending to be actionable.
+      dryKeep: toggle(indoorUnit?.dryKeepSetting, indoorUnit?.embeddedId),
+    },
   };
+}
+
+/**
+ * Find a management point of a gateway device by type.
+ * @param {Record<string, unknown>} gatewayDevice the gateway device
+ * @param {string} type the management point type
+ * @returns {Record<string, unknown>|undefined} the management point, when present
+ */
+function findManagementPoint(gatewayDevice, type) {
+  const managementPoints = Array.isArray(gatewayDevice.managementPoints)
+    ? gatewayDevice.managementPoints
+    : [];
+  return managementPoints.find((point) => point?.managementPointType === type);
+}
+
+/**
+ * Normalize an on/off characteristic.
+ * @param {Record<string, unknown>} characteristic the Daikin characteristic
+ * @param {string} [embeddedId] the management point owning it, when it is not
+ * the climate control one (the write has to be addressed there)
+ * @returns {{ on: boolean, settable: boolean, embeddedId: string|undefined }|null} the toggle, or null when absent
+ */
+function toggle(characteristic, embeddedId) {
+  const state = characteristic?.value;
+  if (state !== 'on' && state !== 'off') {
+    return null;
+  }
+  return { on: state === 'on', settable: characteristic.settable === true, embeddedId };
 }
 
 /**
@@ -113,8 +152,40 @@ function parseSetpoints(temperatureControl) {
  * @returns {object|null} the normalized fan capabilities, or null when absent
  */
 function parseFanControl(fanControl, operationMode) {
-  const modeData = operationMode ? fanControl?.value?.operationModes?.[operationMode] : null;
-  if (!modeData) {
+  const operationModes = fanControl?.value?.operationModes;
+  if (!operationModes || typeof operationModes !== 'object') {
+    return null;
+  }
+
+  // Daikin describes the fan PER operation mode, and the modes do not all
+  // offer the same things — `dry` typically has no manual level at all, and
+  // several modes carry no louver block. The catalog of Gladys features must
+  // therefore come from the UNION of every mode: otherwise a device
+  // discovered while the unit sat in Drying would permanently lose its speed
+  // control. The state, on the other hand, only makes sense for the mode the
+  // unit is actually running.
+  const parsed = Object.fromEntries(
+    Object.entries(operationModes).map(([mode, modeData]) => [mode, parseFanMode(modeData)]),
+  );
+  const blocks = Object.values(parsed).filter(Boolean);
+  if (blocks.length === 0) {
+    return null;
+  }
+
+  return {
+    byMode: parsed,
+    current: (operationMode ? parsed[operationMode] : null) ?? null,
+    capabilities: unionFanCapabilities(blocks),
+  };
+}
+
+/**
+ * Normalize the fan block of ONE operation mode.
+ * @param {Record<string, unknown>} modeData the per-mode fanControl entry
+ * @returns {object|null} the normalized block, or null when the mode has no fan
+ */
+function parseFanMode(modeData) {
+  if (!modeData || typeof modeData !== 'object') {
     return null;
   }
 
@@ -151,6 +222,41 @@ function parseFanControl(fanControl, operationMode) {
     return null;
   }
   return { speed, direction: Object.keys(direction).length > 0 ? direction : null };
+}
+
+/**
+ * Everything the unit can do with its fan, whatever the operation mode: the
+ * airflow modes it knows, the widest manual range it declares, and the louver
+ * axes it can actually swing.
+ * @param {Array<object>} blocks the per-mode fan blocks
+ * @returns {{ speedModes: Array<string>, fixed: object|null, axes: Record<string, Array<string>> }} the union
+ */
+function unionFanCapabilities(blocks) {
+  const speedModes = new Set();
+  const axes = {};
+  let fixed = null;
+
+  for (const block of blocks) {
+    for (const mode of block.speed?.modes ?? []) {
+      speedModes.add(mode);
+    }
+    if (block.speed?.fixed) {
+      // A range, never a current value: `value` belongs to the active mode.
+      const { min, max, step } = block.speed.fixed;
+      fixed = fixed
+        ? {
+            min: Math.min(fixed.min, min),
+            max: Math.max(fixed.max, max),
+            step: Math.min(fixed.step, step),
+          }
+        : { min, max, step };
+    }
+    for (const [axis, data] of Object.entries(block.direction ?? {})) {
+      axes[axis] = [...new Set([...(axes[axis] ?? []), ...data.values])];
+    }
+  }
+
+  return { speedModes: [...speedModes], fixed, axes };
 }
 
 /**
