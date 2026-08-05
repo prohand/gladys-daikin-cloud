@@ -1,69 +1,95 @@
 // -----------------------------------------------------------------------------
 // What the Gladys instance running this integration can accept.
 //
-// Publishing a feature type — or a feature field — an older core does not know
-// makes the WHOLE discovery payload fail, so the catalog is built from what the
-// connected instance actually supports. Two thresholds matter here:
+// Publishing a feature type an older core does not know makes the WHOLE
+// discovery payload fail. The obvious fix — read the Gladys version and derive
+// the catalog from it — turned out to be a trap: the probe is a single point of
+// failure, and when it fails (or returns a version string this code cannot
+// parse) it silently strips the fan and the louvers while leaving the rest, so
+// the user sees an integration that half works with nothing explaining why.
 //
-//   - the FAN category (fan mode, speed level, oscillation) exists since
-//     Gladys 4.79.0. Below that, the unit gets its climate controls only;
-//   - the per-axis airflow direction (air conditioning swing-horizontal /
-//     swing-vertical) and `supported_options`, which restricts a select to the
-//     values the hardware accepts, both landed in 4.84.3. Below that the
-//     louvers fall back to the single oscillation feature of the FAN category,
-//     and the mode lists are offered in full.
+// So the catalog is no longer guessed. The integration PUBLISHES the richest
+// catalog and lets Gladys refuse it, stepping down a level at a time until one
+// is accepted. That is self-correcting: a new Gladys gets everything, an old
+// one gets what it understands, and neither depends on a version table staying
+// up to date.
+//
+// One exception stays version-gated. `supported_options` (restricting a select
+// to the values the hardware accepts) is not validated when the devices are
+// published but when the user CREATES the device, which no retry here can
+// catch. It is therefore only sent to a Gladys known to store it — and when the
+// version cannot be read, it is left out. The cost is a dropdown offering a few
+// modes the unit does not have; the alternative would be a device the user
+// cannot create at all.
 // -----------------------------------------------------------------------------
 
 import { createLogger } from '@gladysassistant/integration-sdk';
 
 const logger = createLogger({ name: 'capabilities' });
 
-// First Gladys version shipping DEVICE_FEATURE_CATEGORIES.FAN and its types.
-const FAN_CATEGORY_MIN_VERSION = [4, 79, 0];
-// First Gladys version storing the per-feature supported_options AND knowing
-// the per-axis air conditioning swing types.
+// First Gladys version storing the per-feature supported_options.
 const SUPPORTED_OPTIONS_MIN_VERSION = [4, 84, 3];
 
-export const DEFAULT_CAPABILITIES = {
-  fanCategory: false,
-  supportedOptions: false,
-  acSwing: false,
-};
+/**
+ * The catalogs to try, richest first. Each step drops what the previous Gladys
+ * release did not have:
+ *   - `full`  : per-axis airflow direction (air conditioning), added in 4.84.3;
+ *   - `fan`   : the FAN category (mode, speed, oscillation), added in 4.79;
+ *   - `base`  : what every supported Gladys understands.
+ */
+export const CAPABILITY_LEVELS = [
+  { level: 'full', fanCategory: true, acSwing: true },
+  { level: 'fan', fanCategory: true, acSwing: false },
+  { level: 'base', fanCategory: false, acSwing: false },
+];
 
 /**
- * Ask the connected Gladys what it is, and derive the feature catalog from it.
- * A failure here is never fatal: the integration falls back to the features
- * every supported Gladys understands.
+ * Publish the discovered devices, stepping down the catalog until Gladys
+ * accepts one. The accepted capabilities are returned so the states published
+ * afterwards describe the same features.
  * @param {object} gladys the SDK instance
- * @returns {Promise<{ fanCategory: boolean, supportedOptions: boolean, acSwing: boolean }>} the capabilities of the instance
+ * @param {Function} buildDevices `(capabilities) => Array<object>` the payload builder
+ * @param {boolean} supportedOptions whether this Gladys stores supported_options
+ * @returns {Promise<object>} the capabilities Gladys accepted
+ * @throws {Error} when even the base catalog is refused — that is a real bug,
+ * not an old Gladys, and it must not be swallowed
  */
-export async function detectCapabilities(gladys) {
-  try {
-    const status = await gladys.getStatus();
-    const capabilities = capabilitiesForVersion(status?.gladys_version);
-    logger.info(
-      `Gladys ${status?.gladys_version}: fan features ${capabilities.fanCategory ? 'enabled' : 'disabled (4.79.0+ required)'}, ` +
-        `per-axis airflow and restricted mode lists ${capabilities.acSwing ? 'enabled' : 'disabled (4.84.3+ required)'}`,
-    );
-    return capabilities;
-  } catch (err) {
-    logger.warn('Could not read the Gladys version, publishing the base features only', err);
-    return { ...DEFAULT_CAPABILITIES };
+export async function publishWithBestCatalog(gladys, buildDevices, supportedOptions) {
+  let lastError;
+  for (const candidate of CAPABILITY_LEVELS) {
+    const capabilities = { ...candidate, supportedOptions };
+    try {
+      await gladys.publishDiscoveredDevices(buildDevices(capabilities));
+      logger.info(`Publishing the "${candidate.level}" catalog (Gladys accepted it)`);
+      return capabilities;
+    } catch (err) {
+      lastError = err;
+      logger.warn(
+        `Gladys refused the "${candidate.level}" catalog (${err.message}), trying a smaller one`,
+      );
+    }
   }
+  throw lastError;
 }
 
 /**
- * @param {string} version the Gladys version, e.g. '4.84.3'
- * @returns {{ fanCategory: boolean, supportedOptions: boolean, acSwing: boolean }} the capabilities of that version
+ * Whether this Gladys stores the per-feature supported_options. Unknown or
+ * unparseable version: assume it does not.
+ * @param {object} gladys the SDK instance
+ * @returns {Promise<boolean>} true when supported_options can be sent
  */
-export function capabilitiesForVersion(version) {
-  const supportedOptions = isAtLeast(version, SUPPORTED_OPTIONS_MIN_VERSION);
-  return {
-    fanCategory: isAtLeast(version, FAN_CATEGORY_MIN_VERSION),
-    supportedOptions,
-    // Same release: both are what 4.84.3 added to the air conditioning model.
-    acSwing: supportedOptions,
-  };
+export async function detectSupportedOptions(gladys) {
+  try {
+    const status = await gladys.getStatus();
+    const supported = isAtLeast(status?.gladys_version, SUPPORTED_OPTIONS_MIN_VERSION);
+    logger.info(
+      `Gladys ${status?.gladys_version}: restricted mode lists ${supported ? 'enabled' : 'disabled (4.84.3+ required)'}`,
+    );
+    return supported;
+  } catch (err) {
+    logger.warn('Could not read the Gladys version, offering the full mode lists', err);
+    return false;
+  }
 }
 
 /**

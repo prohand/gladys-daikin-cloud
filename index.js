@@ -18,7 +18,11 @@
 import { randomUUID } from 'node:crypto';
 import { GladysIntegration, logger } from '@gladysassistant/integration-sdk';
 import { hasCredentials, normalizeConfig, readTokens, tokensToConfig } from './src/config.js';
-import { DEFAULT_CAPABILITIES, detectCapabilities } from './src/capabilities.js';
+import {
+  CAPABILITY_LEVELS,
+  detectSupportedOptions,
+  publishWithBestCatalog,
+} from './src/capabilities.js';
 import { DaikinApi } from './src/daikin/api.js';
 import { buildAuthorizeUrl, exchangeCodeForTokens } from './src/daikin/oauth.js';
 import { DaikinStore } from './src/store.js';
@@ -36,8 +40,9 @@ const gladys = new GladysIntegration();
 
 // Current configuration (hot-reloaded via onConfigUpdated).
 let config = normalizeConfig();
-// What the connected Gladys can accept (see src/capabilities.js).
-let capabilities = { ...DEFAULT_CAPABILITIES };
+// What the connected Gladys accepted (see src/capabilities.js). It starts at
+// the richest catalog and is corrected by Gladys itself on the first publish.
+let capabilities = { ...CAPABILITY_LEVELS[0], supportedOptions: false };
 // Anti-CSRF state of the OAuth2 flow in progress, generated when the user
 // clicks "Connect" and verified when the provider redirects back.
 let oauthState = null;
@@ -178,9 +183,27 @@ gladys.onAction('test_connection', async () => {
   const units = await store.refresh();
   await publishEverything(units, { publishDevices: true });
   const remaining = api.rateLimits.remainingDay;
+
+  // Report WHAT was published, per unit. "A feature is missing" is otherwise
+  // impossible to tell apart from "your model does not report it": this turns
+  // the question into an answer the user can read without opening the logs.
+  const summary = units
+    .map((unit) => {
+      const names = buildDiscoveredDevices(gladys, [unit], capabilities)[0].features.map(
+        (feature) => feature.name,
+      );
+      return `${unit.name}: ${names.join(', ')}`;
+    })
+    .join(' — ');
+  const quota = remaining === null ? '' : `, ${remaining} `;
+
   return {
-    en: `Connected: ${units.length} Daikin unit(s) found${remaining === null ? '' : `, ${remaining} API calls left today`}.`,
-    fr: `Connecté : ${units.length} unité(s) Daikin trouvée(s)${remaining === null ? '' : `, ${remaining} appels API restants aujourd'hui`}.`,
+    en:
+      `${units.length} Daikin unit(s), "${capabilities.level}" catalog${quota && `${quota}API calls left today`}. ` +
+      `Published — ${summary}`,
+    fr:
+      `${units.length} unité(s) Daikin, catalogue « ${capabilities.level} »${quota && `${quota}appels API restants aujourd'hui`}. ` +
+      `Publié — ${summary}`,
   };
 });
 
@@ -203,8 +226,9 @@ gladys.onConfigUpdated(async (newConfig) => {
 // the integration's own (re)initialization.
 gladys.on('connected', async () => {
   try {
-    // 1) What this Gladys accepts, then the config filled in by the user.
-    capabilities = await detectCapabilities(gladys);
+    // 1) The one thing still worth asking the version about, then the config
+    // filled in by the user.
+    capabilities = { ...capabilities, supportedOptions: await detectSupportedOptions(gladys) };
     const rawConfig = await gladys.getConfig();
     config = normalizeConfig(rawConfig);
     api.setCredentials({ clientId: config.client_id, clientSecret: config.client_secret });
@@ -289,7 +313,13 @@ async function publishEverything(units, { publishDevices = false } = {}) {
   if (publishDevices) {
     // Idempotent (upsert by external_id): re-publishing is how a unit renamed
     // in the Onecta app, or a new unit added to the account, reaches Gladys.
-    await gladys.publishDiscoveredDevices(buildDiscoveredDevices(gladys, units, capabilities));
+    // Gladys itself decides which catalog it can take, and what it accepted
+    // drives the states published below.
+    capabilities = await publishWithBestCatalog(
+      gladys,
+      (candidate) => buildDiscoveredDevices(gladys, units, candidate),
+      capabilities.supportedOptions,
+    );
   }
   if (units.length === 0) {
     return;
