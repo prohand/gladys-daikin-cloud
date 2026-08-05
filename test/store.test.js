@@ -207,6 +207,48 @@ test('the scheduled refresh runs and can be stopped', async () => {
   assert.ok(reads.count >= 1);
 });
 
+test('ensurePolling arms the schedule once, and leaves the running timer alone', async () => {
+  const { api } = createFakeApi([SPLIT_UNIT]);
+  const store = new DaikinStore({ api });
+  assert.equal(store.isPolling, false, 'nothing is scheduled before the account is linked');
+
+  assert.equal(
+    store.ensurePolling(900, () => {}),
+    true,
+    'the first call arms the timer',
+  );
+  assert.equal(store.isPolling, true);
+  const timer = store.timer;
+
+  assert.equal(
+    store.ensurePolling(900, () => {}),
+    false,
+    'the second call is a no-op',
+  );
+  assert.equal(store.timer, timer, 'restarting would push the next read 15 minutes away again');
+
+  assert.equal(
+    store.ensurePolling(600, () => {}),
+    true,
+    'a new interval restarts the timer',
+  );
+  assert.equal(store.frequencySeconds, 600);
+  store.stopPolling();
+  assert.equal(store.isPolling, false);
+  assert.equal(store.frequencySeconds, null);
+});
+
+test('ensurePolling really refreshes, exactly like startPolling', async () => {
+  const { api, reads } = createFakeApi([SPLIT_UNIT]);
+  const store = new DaikinStore({ api });
+  const runs = [];
+  store.ensurePolling(0.02, (units) => runs.push(units.length));
+  await new Promise((resolve) => setTimeout(resolve, 70));
+  store.stopPolling();
+  assert.ok(runs.length >= 1, 'the timer fired at least once');
+  assert.ok(reads.count >= 1);
+});
+
 test('a command opens a quiet period, because Daikin serves stale reads right after a write', async () => {
   const { api } = createFakeApi([SPLIT_UNIT]);
   const store = new DaikinStore({ api });

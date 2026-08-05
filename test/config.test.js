@@ -6,6 +6,7 @@ import {
   MIN_POLL_FREQUENCY,
   clampPollFrequency,
   hasCredentials,
+  hasStoredTokens,
   normalizeConfig,
   readTokens,
   tokensToConfig,
@@ -46,6 +47,15 @@ test('the OAuth session round trips through the off-schema config keys', () => {
   const tokens = { accessToken: 'at', refreshToken: 'rt', expiresAt: 1234 };
   const stored = tokensToConfig(tokens);
   assert.deepEqual(readTokens(stored), tokens);
+});
+
+test('a payload is only read as a session when it actually carries one', () => {
+  // A form save that only sends the schema fields must never be mistaken for
+  // "the user unlinked their account": the live session has to survive it.
+  assert.equal(hasStoredTokens(tokensToConfig({ accessToken: 'at', refreshToken: 'rt' })), true);
+  assert.equal(hasStoredTokens({ refresh_token: 'rt' }), true, 'a refresh token is enough');
+  assert.equal(hasStoredTokens({ client_id: 'a', poll_frequency: 900 }), false);
+  assert.equal(hasStoredTokens(), false);
 });
 
 test('a config without a stored session reads as empty, not undefined', () => {

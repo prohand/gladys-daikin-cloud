@@ -88,6 +88,21 @@ export function readTokens(config = {}) {
 }
 
 /**
+ * Whether a configuration payload carries an OAuth2 session at all.
+ *
+ * A `config-updated` event is supposed to hand back the whole configuration
+ * store, tokens included — but a payload that only carries the schema fields
+ * must NOT be read as "the user unlinked their account": overwriting the live
+ * session with empty strings would leave the integration unable to read the
+ * Daikin cloud until the next restart.
+ * @param {Record<string, unknown>} config the raw configuration
+ * @returns {boolean} true when the payload holds a token to load
+ */
+export function hasStoredTokens(config = {}) {
+  return Boolean(config[TOKEN_KEYS.ACCESS_TOKEN] || config[TOKEN_KEYS.REFRESH_TOKEN]);
+}
+
+/**
  * Build the partial configuration to hand to `gladys.setConfig()` to persist a
  * refreshed OAuth2 session.
  * @param {{ accessToken: string, refreshToken: string, expiresAt: number }} tokens the session

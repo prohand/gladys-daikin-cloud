@@ -12,6 +12,12 @@
 //   - concurrent refreshes are collapsed into the one already in flight;
 //   - a read right after a write returns the PREVIOUS values, so the store
 //     waits out a short quiet period after each command.
+//
+// Because this timer is the ONLY thing that keeps Gladys up to date, arming it
+// must not depend on the integration starting in the right order (see
+// `ensurePolling`): on a first install the account is linked long after the
+// container connected, and a schedule that was never started is indistinguish-
+// able, from the dashboard, from a unit that stopped reporting.
 // -----------------------------------------------------------------------------
 
 import { createLogger } from '@gladysassistant/integration-sdk';
@@ -34,6 +40,13 @@ export class DaikinStore {
     this.lastCommandAt = 0;
     this.inFlight = null;
     this.timer = null;
+    /** @type {number|null} the interval the running timer was started with */
+    this.frequencySeconds = null;
+  }
+
+  /** @returns {boolean} true when the periodic refresh is armed */
+  get isPolling() {
+    return this.timer !== null;
   }
 
   /**
@@ -121,6 +134,7 @@ export class DaikinStore {
   startPolling(frequencySeconds, onRefresh) {
     this.stopPolling();
     logger.info(`Polling the Daikin cloud every ${frequencySeconds} s`);
+    this.frequencySeconds = frequencySeconds;
     this.timer = setInterval(() => {
       this.refresh()
         .then((units) => onRefresh(units))
@@ -130,12 +144,33 @@ export class DaikinStore {
     this.timer.unref?.();
   }
 
+  /**
+   * Make sure the periodic refresh runs at the requested interval, without
+   * restarting a timer that is already correct. The integration reaches this
+   * point from several places (the account was just linked, the config was
+   * saved, the user pressed "Test the connection"): each of them must be able
+   * to arm the schedule without knowing whether one of the others already did,
+   * and restarting the timer on every call would push the next read further
+   * away every time.
+   * @param {number} frequencySeconds the interval between two reads
+   * @param {Function} onRefresh called with the refreshed units after each run
+   * @returns {boolean} true when this call (re)started the timer
+   */
+  ensurePolling(frequencySeconds, onRefresh) {
+    if (this.isPolling && this.frequencySeconds === frequencySeconds) {
+      return false;
+    }
+    this.startPolling(frequencySeconds, onRefresh);
+    return true;
+  }
+
   /** Stop the periodic refresh (disconnection, shutdown, config change). */
   stopPolling() {
     if (this.timer) {
       clearInterval(this.timer);
       this.timer = null;
     }
+    this.frequencySeconds = null;
   }
 }
 
