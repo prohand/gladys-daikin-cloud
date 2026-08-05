@@ -131,6 +131,25 @@ gladys.onSetValue(async (device, feature, value) => {
   await gladys.publishState(feature.external_id, state);
 });
 
+// --- The user just created (or updated) a device -----------------------------
+// Gladys DROPS the states of a device that does not exist yet: an integration
+// publishes its discovered devices, and only the ones the user picks in the
+// Discovery screen ever get created. Everything published before that creation
+// is silently ignored, so without this handler a fresh device would sit on
+// "no recent value" until the next scheduled refresh — up to 15 minutes.
+// The snapshot is already in memory: replaying it costs no Daikin API call.
+gladys.onDeviceCreated(async (device) => {
+  logger.info(`onDeviceCreated -> publishing the current values of ${device.external_id}`);
+  await publishUnitOf(device);
+});
+
+// Same need after an update: the user may have added a feature that was never
+// created before, and it starts out empty.
+gladys.onDeviceUpdated(async (device) => {
+  logger.info(`onDeviceUpdated -> republishing the current values of ${device.external_id}`);
+  await publishUnitOf(device);
+});
+
 // --- Polling: Gladys asks to refresh a device --------------------------------
 // The devices carry no `poll_frequency` (see src/store.js: the Daikin quota
 // makes a per-device poll impossible), so this only fires on an explicit
@@ -221,6 +240,32 @@ gladys.handleShutdown((signal) => {
   logger.info(`Received ${signal} -> graceful shutdown`);
   store.stopPolling();
 });
+
+/**
+ * Publish the transport and the current states of the unit backing a device,
+ * from the snapshot already in memory. When the snapshot is empty (the
+ * integration just started and the account has not been read yet), read it
+ * first — that is the only case where this costs an API call.
+ * @param {{ external_id: string }} device the device Gladys is talking about
+ */
+async function publishUnitOf(device) {
+  try {
+    const units = store.units.length > 0 ? store.units : await store.refresh();
+    const unit = findUnitByDevice(gladys, units, device);
+    if (!unit) {
+      logger.warn(`${device.external_id} does not match any unit of the Daikin account`);
+      return;
+    }
+    await gladys.publishTransports(buildTransportEntries(gladys, [unit]));
+    if (!unit.online) {
+      logger.warn(`${unit.name} is offline: no state to publish`);
+      return;
+    }
+    await gladys.publishStates(buildStates(gladys, unit, capabilities));
+  } catch (err) {
+    logger.error(`Could not publish the values of ${device.external_id}`, err);
+  }
+}
 
 /**
  * Read the Daikin account and push what changed to Gladys.
