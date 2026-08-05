@@ -84,6 +84,31 @@ test('a unit sitting in Drying keeps every fan capability', () => {
   assert.deepEqual(unit.fan.capabilities.fixed, { min: 1, max: 5, step: 1 });
 });
 
+test('the unit records every characteristic it declares, for the diagnostics', () => {
+  // This is what lets the test action answer "your model does not report it"
+  // instead of leaving the user unable to tell that from a mapping gap.
+  const [unit] = parseUnits([SPLIT_UNIT]);
+  assert.ok(unit.characteristics.climateControl.includes('econoMode'));
+  assert.ok(unit.characteristics.climateControl.includes('isPowerfulModeActive'));
+  assert.ok(unit.characteristics.indoorUnit.includes('dryKeepSetting'));
+  assert.ok(
+    !unit.characteristics.climateControl.includes('managementPointType'),
+    'the keys describing the management point itself are noise',
+  );
+});
+
+test('a unit missing a comfort characteristic simply has no toggle for it', () => {
+  const stripped = structuredClone(SPLIT_UNIT);
+  const climate = stripped.managementPoints.find((p) => p.managementPointType === 'climateControl');
+  delete climate.econoMode;
+  delete climate.streamerMode;
+  const [unit] = parseUnits([stripped]);
+  assert.ok(unit.toggles.powerful, 'the one it still declares');
+  assert.equal(unit.toggles.econo, null);
+  assert.equal(unit.toggles.streamer, null);
+  assert.ok(!unit.characteristics.climateControl.includes('econoMode'));
+});
+
 test('an offline unit in error state is reported as such', () => {
   const [unit] = parseUnits([OFFLINE_UNIT]);
   assert.equal(unit.online, false);

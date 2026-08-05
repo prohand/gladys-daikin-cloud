@@ -18,7 +18,7 @@ actually reports:
 
 - **On/Off**, **Mode** (auto, cooling, heating, drying, fan only)
 - **Target temperature**, with the min/max/step of the active operation mode
-- **Fan mode** (auto / quiet / manual) and **fan speed level**
+- **Fan speed** level
 - **Horizontal and vertical airflow**, per axis (one folded oscillation feature
   on a Gladys older than 4.84.3)
 - **Powerful**, **Econo**, **Streamer** and **Keep dry**, each published as a
@@ -36,7 +36,7 @@ through the Gladys frontend.
 ```
 index.js                  SDK wiring: OAuth handlers, commands, lifecycle
 src/config.js             config_schema values + off-schema token storage
-src/capabilities.js       what the connected Gladys version can accept
+src/capabilities.js       the catalog Gladys accepts, found by trying
 src/store.js              the account snapshot and the refresh schedule
 src/daikin/oauth.js       authorize URL, code exchange, token refresh
 src/daikin/api.js         REST client, token lifecycle, rate-limit tracking
@@ -59,13 +59,14 @@ values for a few seconds after a `PATCH`, so a command updates the local
 snapshot and publishes the new state immediately; the store then waits out a
 short quiet period before its next read.
 
-**The feature catalog adapts to the Gladys version.** Publishing a feature type
-— or a feature field — an older core does not know makes the WHOLE discovery
-payload fail. The fan controls live in the `fan` category, which exists since
-Gladys 4.79, and `supported_options` (restricting a select to what the hardware
-accepts) since 4.84.3. `src/capabilities.js` reads the connected version and the
-catalog is built from it, so an older Gladys gets a working integration with
-fewer features rather than none.
+**The feature catalog is found by trying, not by guessing.** Publishing a feature type
+— an older core does not know makes the WHOLE discovery payload fail. Deriving
+the catalog from the Gladys version looked right and was not: the probe is a
+single point of failure, and its failure silently stripped working features.
+`src/capabilities.js` now publishes the richest catalog and steps down a level
+at a time until Gladys accepts one, so a version that cannot be read costs
+nothing. Only `supported_options` stays version-gated, because it is validated
+at device creation, which no retry here can catch.
 
 **The catalog comes from the union of every operation mode, the state from the
 active one.** Daikin describes the fan per operation mode and the modes do not
@@ -75,14 +76,15 @@ and disappear depending on what the unit happened to be doing at discovery
 time, so `parseFanControl` computes a union for the catalog and keeps
 `current` for reading and writing.
 
-**The fan is three Gladys features for two Daikin concepts.** Daikin has an
-airflow mode (`auto` / `quiet` / `fixed`) and, in `fixed`, a level on a
-model-dependent scale. That maps onto `fan.mode` (auto / quiet / manual) plus
-`fan.speed` (a slider carrying the device's own bounds, so no scaling is
-needed). The louvers get one air conditioning feature per axis, matching what
-Daikin drives and what the Onecta app shows; a Gladys older than 4.84.3 has no
-per-axis type, so they fold there into a single `fan.rock-setting` whose bitmap
-encoding — bit 0 left/right, bit 1 up/down — carries both.
+**Only what maps cleanly gets published.** Daikin has an airflow mode
+(`auto` / `quiet` / `fixed`) and, in `fixed`, a level on a model-dependent
+scale. The level becomes `fan.speed`, a slider carrying the device's own bounds
+so no scaling is needed. The airflow mode was dropped: `fan.mode` offers five
+fixed labels the UI cannot restrict, so "Medium" had to stand for "manual" —
+a control nobody could read. The louvers get one air conditioning feature per
+axis, matching what Daikin drives and what the Onecta app shows; a Gladys older
+than 4.84.3 has no per-axis type, so they fold there into a single
+`fan.rock-setting` whose bitmap encoding carries both.
 
 ## Development
 

@@ -2,14 +2,16 @@
 // Daikin vocabulary <-> Gladys vocabulary.
 //
 // Gladys stores every device feature state as a NUMBER, and each feature type
-// has its own enum in the core (`AC_MODE`, `FAN_MODE`, `FAN_ROCK_SETTING`).
+// has its own enum in the core (`AC_MODE`, `AC_SWING`, `FAN_ROCK_SETTING`).
 // Daikin uses strings ("cooling", "quiet", "swing"...) plus a numeric fan level
 // whose range depends on the model.
 //
-// The fan lives in the FAN category rather than the air conditioning one: it
-// exists since Gladys 4.79 (against 4.84.3 for the air conditioning fan speed
-// and swing), and it is what the Gladys interface shows for an air
-// conditioner — "Mode ventilateur", "Vitesse (niveau)", "Oscillation".
+// The fan speed lives in the FAN category, which exists since Gladys 4.79, and
+// the louvers in the air conditioning one, per axis, since 4.84.3. Daikin's
+// auto/quiet airflow modes have no Gladys equivalent worth showing: FAN_MODE
+// offers five fixed labels that cannot be restricted, so "Medium" would have
+// had to mean "manual" — a control that explains nothing. Setting a level
+// switches the unit to manual, which is the only part that matters.
 //
 // Everything in this file is pure: no network, no state — which is exactly why
 // the tricky parts (the louver bitmap both ways) can be unit tested.
@@ -23,14 +25,6 @@ export const AC_MODE = {
   HEATING: 2,
   DRYING: 3,
   FAN: 4,
-};
-
-export const FAN_MODE = {
-  OFF: 0,
-  LOW: 1,
-  MEDIUM: 2,
-  HIGH: 3,
-  AUTO: 4,
 };
 
 // Bitmap, same encoding as the Matter FanControl RockSetting: bit 0 is the
@@ -87,79 +81,6 @@ export function modeToGladys(daikinMode) {
  */
 export function modeToDaikin(gladysMode) {
   return MODE_TO_DAIKIN[gladysMode] ?? null;
-}
-
-// --- Fan mode: how the unit picks its airflow --------------------------------
-// Daikin offers three: `auto`, `quiet`, and `fixed` (a manual level, driven by
-// the separate speed feature). FAN_MODE has five slots and the Gladys select
-// always shows all of them, so the two extra ones are absorbed rather than
-// left to fail: HIGH behaves like MEDIUM (switch to manual), and OFF is the
-// only one refused — a Daikin fan has no "off" of its own, the unit does.
-
-/**
- * @param {object|null} speed the normalized `fan.speed` block of the unit
- * @returns {number|null} the Gladys FAN_MODE value, or null when unreadable
- */
-export function fanModeToGladys(speed) {
-  if (!speed) {
-    return null;
-  }
-  if (speed.currentMode === 'auto') {
-    return FAN_MODE.AUTO;
-  }
-  if (speed.currentMode === 'quiet') {
-    return FAN_MODE.LOW;
-  }
-  return speed.currentMode === 'fixed' ? FAN_MODE.MEDIUM : null;
-}
-
-/**
- * @param {number} gladysMode the requested Gladys FAN_MODE value
- * @param {object|null} speed the normalized `fan.speed` block of the unit
- * @returns {string|null} the Daikin fan mode to write, or null when the unit
- * cannot do it
- */
-export function fanModeToDaikin(gladysMode, speed) {
-  if (!speed) {
-    return null;
-  }
-  const supports = (mode) => speed.modes.length === 0 || speed.modes.includes(mode);
-
-  if (gladysMode === FAN_MODE.AUTO) {
-    return supports('auto') ? 'auto' : null;
-  }
-  if (gladysMode === FAN_MODE.LOW) {
-    return supports('quiet') ? 'quiet' : null;
-  }
-  if (gladysMode === FAN_MODE.MEDIUM || gladysMode === FAN_MODE.HIGH) {
-    return supports('fixed') ? 'fixed' : null;
-  }
-  // FAN_MODE.OFF: Daikin has no fan-off, turning the unit off is another
-  // feature entirely — refuse rather than silently do something else.
-  return null;
-}
-
-/**
- * The Gladys fan modes a unit can reach in AT LEAST one operation mode, used
- * to decide whether the feature is worth publishing at all.
- * @param {object|null} capabilities the union `fan.capabilities` of the unit
- * @returns {Array<number>} the reachable FAN_MODE values
- */
-export function supportedFanModes(capabilities) {
-  if (!capabilities) {
-    return [];
-  }
-  const modes = [];
-  if (capabilities.speedModes.includes('quiet')) {
-    modes.push(FAN_MODE.LOW);
-  }
-  if (capabilities.speedModes.includes('fixed')) {
-    modes.push(FAN_MODE.MEDIUM);
-  }
-  if (capabilities.speedModes.includes('auto')) {
-    modes.push(FAN_MODE.AUTO);
-  }
-  return modes;
 }
 
 // --- Fan level: the manual speed ---------------------------------------------

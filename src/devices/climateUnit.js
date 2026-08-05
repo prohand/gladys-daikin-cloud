@@ -20,15 +20,12 @@ import {
   AC_SWING,
   fanLevelToDaikin,
   fanLevelToGladys,
-  fanModeToDaikin,
-  fanModeToGladys,
   modeToDaikin,
   modeToGladys,
   rockSettingBounds,
   rockSettingToDaikin,
   rockSettingToGladys,
   roundToStep,
-  supportedFanModes,
   supportedSwings,
   swingToDaikin,
   swingToGladys,
@@ -44,7 +41,6 @@ export const FEATURE = {
   TARGET_TEMPERATURE: 'target-temperature',
   ROOM_TEMPERATURE: 'room-temperature',
   OUTDOOR_TEMPERATURE: 'outdoor-temperature',
-  FAN_MODE: 'fan-mode',
   FAN_LEVEL: 'fan-level',
   FAN_ROCK: 'fan-rock',
   SWING_HORIZONTAL: 'swing-horizontal',
@@ -60,7 +56,6 @@ export const FEATURE = {
 // (v0.9): declared as literals, published only when the connected instance is
 // recent enough (see src/capabilities.js).
 const FAN_CATEGORY = 'fan';
-const FAN_MODE_TYPE = 'mode';
 const FAN_SPEED_TYPE = 'speed';
 const FAN_ROCK_SETTING_TYPE = 'rock-setting';
 const AC_SWING_HORIZONTAL_TYPE = 'swing-horizontal';
@@ -225,22 +220,6 @@ export function buildDevice(gladys, unit, capabilities) {
   const fanCapabilities = unit.fan?.capabilities;
 
   if (capabilities.fanCategory) {
-    // Mode: how the unit picks its airflow (auto / quiet / manual). Worth a
-    // feature only when there is a real choice to make.
-    if (supportedFanModes(fanCapabilities).length > 1) {
-      features.push({
-        name: 'Fan mode',
-        external_id: ids.feature(FEATURE.FAN_MODE),
-        category: FAN_CATEGORY,
-        type: FAN_MODE_TYPE,
-        min: 0,
-        max: 4,
-        read_only: false,
-        has_feedback: true,
-        keep_history: true,
-      });
-    }
-
     // Level: the manual speed. Gladys renders a slider bounded by min/max, so
     // the Daikin range goes in as is — no scaling, no rounding.
     const fixed = fanCapabilities?.fixed;
@@ -369,7 +348,6 @@ export function buildStates(gladys, unit, capabilities) {
   const current = unit.fan?.current;
 
   if (capabilities.fanCategory) {
-    push(FEATURE.FAN_MODE, fanModeToGladys(current?.speed));
     // Only meaningful while the unit runs on a manual level: reporting the
     // stored level while it is in auto would show a speed it is not using.
     push(FEATURE.FAN_LEVEL, fanLevelToGladys(current?.speed));
@@ -442,27 +420,6 @@ export function buildCommands(unit, featureKey, value) {
           },
         ],
         state: temperature,
-      };
-    }
-
-    case FEATURE.FAN_MODE: {
-      // A command targets the ACTIVE operation mode: Daikin refuses a manual
-      // level in Drying even though the unit offers one in Cooling.
-      const daikinFanMode = fanModeToDaikin(Number(value), unit.fan?.current?.speed);
-      if (!daikinFanMode) {
-        throw new Error(`This unit does not support that fan mode in its current operation mode`);
-      }
-      return {
-        writes: [
-          {
-            characteristic: 'fanControl',
-            path: `/operationModes/${unit.operationMode}/fanSpeed/currentMode`,
-            value: daikinFanMode,
-          },
-        ],
-        // Both MEDIUM and HIGH mean "manual" to Daikin, and it reports the
-        // manual mode as MEDIUM: publish what the next read will confirm.
-        state: fanModeToGladys({ ...unit.fan.current.speed, currentMode: daikinFanMode }),
       };
     }
 

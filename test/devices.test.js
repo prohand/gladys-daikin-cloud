@@ -17,7 +17,7 @@ import {
   featureKeyOf,
   findUnitByDevice,
 } from '../src/devices/index.js';
-import { AC_MODE, AC_SWING, FAN_MODE, FAN_ROCK_SETTING } from '../src/mapping.js';
+import { AC_MODE, AC_SWING, FAN_ROCK_SETTING } from '../src/mapping.js';
 import { createFakeGladys } from './helpers/fakeGladys.js';
 import {
   ALL_DEVICES,
@@ -84,7 +84,6 @@ test('a split unit exposes the full air conditioning catalog', () => {
     [
       FEATURE.ECONO,
       FEATURE.FAN_LEVEL,
-      FEATURE.FAN_MODE,
       FEATURE.MODE,
       FEATURE.OUTDOOR_TEMPERATURE,
       FEATURE.POWER,
@@ -156,7 +155,6 @@ test('the fan controls survive a unit discovered while it dehumidifies', () => {
   const [device] = buildDiscoveredDevices(gladys, parseUnits([drying]), FULL);
   const keys = device.features.map((feature) => feature.external_id.split(':').pop());
   assert.ok(keys.includes(FEATURE.FAN_LEVEL), 'the speed control must not vanish');
-  assert.ok(keys.includes(FEATURE.FAN_MODE));
   assert.ok(keys.includes(FEATURE.SWING_HORIZONTAL));
   assert.ok(keys.includes(FEATURE.SWING_VERTICAL));
 });
@@ -267,7 +265,6 @@ test('states mirror the unit as the Daikin cloud reports it', () => {
   assert.equal(stateOf(states, FEATURE.TARGET_TEMPERATURE), 22);
   assert.equal(stateOf(states, FEATURE.ROOM_TEMPERATURE), 24.5);
   assert.equal(stateOf(states, FEATURE.OUTDOOR_TEMPERATURE), 31);
-  assert.equal(stateOf(states, FEATURE.FAN_MODE), FAN_MODE.MEDIUM);
   assert.equal(stateOf(states, FEATURE.FAN_LEVEL), 3);
   assert.equal(stateOf(states, FEATURE.SWING_HORIZONTAL), AC_SWING.OFF);
   assert.equal(stateOf(states, FEATURE.SWING_VERTICAL), AC_SWING.SWING);
@@ -298,7 +295,6 @@ test('the fan level is left out while the unit runs in auto', () => {
   const unit = splitUnit();
   unit.fan.current.speed.currentMode = 'auto';
   const states = buildStates(gladys, unit, FULL);
-  assert.equal(stateOf(states, FEATURE.FAN_MODE), FAN_MODE.AUTO);
   assert.equal(stateOf(states, FEATURE.FAN_LEVEL), undefined, 'auto is not a level');
 });
 
@@ -429,33 +425,6 @@ test('setting a manual level forces the fixed mode first, then writes the level'
     },
   ]);
   assert.equal(state, 5);
-});
-
-test('the fan mode writes the Daikin airflow mode alone', () => {
-  const unit = splitUnit();
-  const { writes, state } = buildCommands(unit, FEATURE.FAN_MODE, FAN_MODE.AUTO);
-  assert.deepEqual(writes, [
-    {
-      characteristic: 'fanControl',
-      path: '/operationModes/cooling/fanSpeed/currentMode',
-      value: 'auto',
-    },
-  ]);
-  assert.equal(state, FAN_MODE.AUTO);
-});
-
-test('the fan mode HIGH lands as manual, and says so', () => {
-  const unit = splitUnit();
-  const { writes, state } = buildCommands(unit, FEATURE.FAN_MODE, FAN_MODE.HIGH);
-  assert.equal(writes[0].value, 'fixed');
-  assert.equal(state, FAN_MODE.MEDIUM, 'Daikin reports the manual mode as MEDIUM');
-});
-
-test('the fan mode OFF is refused with a readable error', () => {
-  assert.throws(
-    () => buildCommands(splitUnit(), FEATURE.FAN_MODE, FAN_MODE.OFF),
-    /does not support that fan mode/,
-  );
 });
 
 test('the oscillation drives both louver axes in one command', () => {

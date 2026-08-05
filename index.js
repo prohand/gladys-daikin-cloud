@@ -184,26 +184,27 @@ gladys.onAction('test_connection', async () => {
   await publishEverything(units, { publishDevices: true });
   const remaining = api.rateLimits.remainingDay;
 
-  // Report WHAT was published, per unit. "A feature is missing" is otherwise
-  // impossible to tell apart from "your model does not report it": this turns
-  // the question into an answer the user can read without opening the logs.
+  // Report what was published AND what the unit declares that this
+  // integration does not use. "A feature is missing" is otherwise impossible
+  // to tell apart from "your model does not report it" — the two need
+  // completely different answers, and only the raw characteristic names
+  // separate them.
   const summary = units
     .map((unit) => {
-      const names = buildDiscoveredDevices(gladys, [unit], capabilities)[0].features.map(
-        (feature) => feature.name,
-      );
-      return `${unit.name}: ${names.join(', ')}`;
+      const count = buildDiscoveredDevices(gladys, [unit], capabilities)[0].features.length;
+      const ignored = unusedCharacteristics(unit);
+      return `${unit.name} (${count}): ${ignored.length === 0 ? 'everything mapped' : ignored.join(' ')}`;
     })
-    .join(' — ');
+    .join(' | ');
   const quota = remaining === null ? '' : `, ${remaining} `;
 
   return {
     en:
       `${units.length} Daikin unit(s), "${capabilities.level}" catalog${quota && `${quota}API calls left today`}. ` +
-      `Published — ${summary}`,
+      `Features published, then what the unit reports and this integration ignores — ${summary}`,
     fr:
       `${units.length} unité(s) Daikin, catalogue « ${capabilities.level} »${quota && `${quota}appels API restants aujourd'hui`}. ` +
-      `Publié — ${summary}`,
+      `Fonctionnalités publiées, puis ce que l'unité déclare et que l'intégration n'exploite pas — ${summary}`,
   };
 });
 
@@ -266,6 +267,41 @@ gladys.handleShutdown((signal) => {
   logger.info(`Received ${signal} -> graceful shutdown`);
   store.stopPolling();
 });
+
+// What this integration reads out of a Daikin unit. Anything else the unit
+// declares is reported by the test action, so an unsupported function can be
+// named precisely instead of described as "missing".
+const USED_CHARACTERISTICS = new Set([
+  'onOffMode',
+  'operationMode',
+  'temperatureControl',
+  'sensoryData',
+  'fanControl',
+  'powerfulMode',
+  'econoMode',
+  'streamerMode',
+  'dryKeepSetting',
+  'name',
+  'isInErrorState',
+]);
+
+/**
+ * The characteristics a unit declares that this integration does not map, on
+ * the two management points it reads.
+ * @param {object} unit the normalized Daikin unit
+ * @returns {Array<string>} the characteristic names, prefixed by their point
+ */
+function unusedCharacteristics(unit) {
+  const unused = [];
+  for (const type of ['climateControl', 'indoorUnit']) {
+    for (const name of unit.characteristics?.[type] ?? []) {
+      if (!USED_CHARACTERISTICS.has(name)) {
+        unused.push(type === 'indoorUnit' ? `indoorUnit.${name}` : name);
+      }
+    }
+  }
+  return unused;
+}
 
 /**
  * Publish the transport and the current states of the unit backing a device,

@@ -77,6 +77,11 @@ function parseUnit(gatewayDevice, managementPoint) {
     roomTemperature: sensor(managementPoint.sensoryData, 'roomTemperature'),
     outdoorTemperature: sensor(managementPoint.sensoryData, 'outdoorTemperature'),
     fan,
+    // Every characteristic name the unit declares, per management point. Not
+    // used to drive anything: it is what lets the "Test the connection" action
+    // answer "this model does not report it" instead of leaving the user to
+    // guess whether the integration simply ignores it.
+    characteristics: collectCharacteristics(gatewayDevice),
     // The comfort toggles, each `on`/`off` and each optional on a given model.
     toggles: {
       powerful: toggle(managementPoint.powerfulMode),
@@ -87,6 +92,38 @@ function parseUnit(gatewayDevice, managementPoint) {
       dryKeep: toggle(indoorUnit?.dryKeepSetting, indoorUnit?.embeddedId),
     },
   };
+}
+
+// Keys every management point carries: they describe the point itself, not
+// something the unit can do, so they only add noise to the diagnostics.
+const MANAGEMENT_POINT_KEYS = new Set([
+  'embeddedId',
+  'managementPointType',
+  'managementPointSubType',
+  'managementPointCategory',
+]);
+
+/**
+ * List the characteristic names each management point of a gateway device
+ * declares.
+ * @param {Record<string, unknown>} gatewayDevice the gateway device
+ * @returns {Record<string, Array<string>>} names, keyed by management point type
+ */
+function collectCharacteristics(gatewayDevice) {
+  const managementPoints = Array.isArray(gatewayDevice.managementPoints)
+    ? gatewayDevice.managementPoints
+    : [];
+  const byType = {};
+  for (const point of managementPoints) {
+    const type = point?.managementPointType;
+    if (!type) {
+      continue;
+    }
+    byType[type] = Object.keys(point)
+      .filter((key) => !MANAGEMENT_POINT_KEYS.has(key))
+      .sort();
+  }
+  return byType;
 }
 
 /**

@@ -15,8 +15,7 @@ with the features your model actually supports:
 | On/Off              | Turn the unit on and off                                            |
 | Mode                | Auto, Cooling, Heating, Drying, Fan only                            |
 | Target temperature  | The setpoint of the mode currently active                           |
-| Fan mode            | How the unit picks its airflow: Auto, Quiet, or a manual speed      |
-| Fan speed           | The manual speed level, on the scale your unit declares (often 1-5) |
+| Fan speed           | The fan speed, on the scale your unit declares (often 1-5)          |
 | Horizontal airflow  | The left/right airflow direction                                    |
 | Vertical airflow    | The up/down airflow direction                                       |
 | Powerful mode       | Daikin's "Powerful" mode (switch)                                   |
@@ -32,18 +31,15 @@ only what the hardware reports is published. The choices offered in the
 interface are also restricted to what the unit accepts — a unit without a
 "Drying" mode never shows one.
 
-Two details about the fan, because Gladys and Daikin do not use quite the same
-words:
+One detail about the fan: **Fan speed** only shows a value while the unit is
+actually running on a manual level. In Auto or Quiet there is no level to show,
+so the control stays empty until you set one — and setting one switches the unit
+to manual.
 
-- **Fan mode** carries Daikin's three airflow modes. _Auto_ is Daikin's auto,
-  _Low_ is its quiet mode, and _Medium_ means "run at the manual speed" — the
-  level itself is the separate Fan speed control. Gladys always shows the five
-  values of its list: picking _High_ also switches to manual, and _Off_ is
-  refused, because a Daikin fan has no off of its own (turn the unit off
-  instead).
-- **Fan speed** only shows a value while the unit is actually running on a
-  manual level. In auto or quiet there is no level to show, so the control stays
-  empty until you set one — and setting one switches the unit to manual.
+Daikin's Auto and Quiet airflow modes are not exposed: the Gladys fan mode list
+offers five fixed labels that cannot be restricted, where "Medium" would have
+had to mean "manual" — a control that explains nothing. Set the fan back to Auto
+from the Onecta app if you need it.
 
 The features describe what your unit can do across **all** its operation
 modes, not what it can do at this instant. Daikin declares no manual fan level
@@ -128,9 +124,14 @@ of Gladys (which is one minute at the slowest): it runs its own schedule.
 
 ## Actions
 
-**Test the connection** reads your Daikin account right away and reports how
-many units it found and how many API calls are left for today. Use it after
-connecting your account, or whenever you want to force a refresh.
+**Test the connection** reads your Daikin account right away and reports, for
+every unit, how many features were published **and which characteristics your
+unit declares that this integration does not use**. That is what tells "the
+integration ignores this function" apart from "your model does not report it to
+the API" — two problems with completely different answers. If a function you see
+in Onecta is missing, run this action: when its name appears neither in the
+published features nor in the ignored characteristics, the Daikin API does not
+expose it for your model.
 
 ## Device status badge
 

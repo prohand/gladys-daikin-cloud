@@ -11,21 +11,20 @@ télécommande de plus.
 Pour chaque climatiseur de votre compte Daikin, Gladys crée un appareil avec les
 fonctionnalités que votre modèle prend réellement en charge :
 
-| Fonctionnalité          | Rôle                                                                        |
-| ----------------------- | --------------------------------------------------------------------------- |
-| Marche/Arrêt            | Allumer et éteindre l'unité                                                 |
-| Mode                    | Auto, Froid, Chaud, Déshumidification, Ventilation seule                    |
-| Température de consigne | La consigne du mode actuellement actif                                      |
-| Mode ventilateur        | Comment l'unité choisit son souffle : Auto, Silencieux, ou vitesse manuelle |
-| Vitesse (niveau)        | Le niveau manuel, sur l'échelle déclarée par votre unité (souvent 1-5)      |
-| Balayage horizontal     | Le sens du flux d'air gauche/droite                                         |
-| Balayage vertical       | Le sens du flux d'air haut/bas                                              |
-| Mode puissant           | Le mode « Puissant » de Daikin (interrupteur)                               |
-| Mode Econo              | Le mode « Econo » de Daikin (interrupteur)                                  |
-| Mode Streamer           | Le mode « Streamer » de purification d'air (interrupteur)                   |
-| Garder au sec           | La fonction avancée « Garder au sec » de l'unité intérieure                 |
-| Température intérieure  | La température mesurée par l'unité (capteur, historisé)                     |
-| Température extérieure  | La température mesurée par le groupe extérieur (capteur, historisé)         |
+| Fonctionnalité          | Rôle                                                                            |
+| ----------------------- | ------------------------------------------------------------------------------- |
+| Marche/Arrêt            | Allumer et éteindre l'unité                                                     |
+| Mode                    | Auto, Froid, Chaud, Déshumidification, Ventilation seule                        |
+| Température de consigne | La consigne du mode actuellement actif                                          |
+| Vitesse (niveau)        | La vitesse de ventilation, sur l'échelle déclarée par votre unité (souvent 1-5) |
+| Balayage horizontal     | Le sens du flux d'air gauche/droite                                             |
+| Balayage vertical       | Le sens du flux d'air haut/bas                                                  |
+| Mode puissant           | Le mode « Puissant » de Daikin (interrupteur)                                   |
+| Mode Econo              | Le mode « Econo » de Daikin (interrupteur)                                      |
+| Mode Streamer           | Le mode « Streamer » de purification d'air (interrupteur)                       |
+| Garder au sec           | La fonction avancée « Garder au sec » de l'unité intérieure                     |
+| Température intérieure  | La température mesurée par l'unité (capteur, historisé)                         |
+| Température extérieure  | La température mesurée par le groupe extérieur (capteur, historisé)             |
 
 Un modèle sans volets n'obtient pas de sens du flux d'air, un modèle sans
 ventilateur n'obtient pas de vitesse, un modèle sans fonction Streamer n'obtient
@@ -33,19 +32,16 @@ pas l'interrupteur correspondant : seul ce que le matériel déclare est publié
 Les choix proposés dans l'interface sont également limités à ce que l'unité
 accepte — une unité sans mode « Déshumidification » ne l'affiche jamais.
 
-Deux précisions sur la ventilation, parce que Gladys et Daikin n'emploient pas
-tout à fait les mêmes mots :
+Une précision sur la ventilation : **Vitesse (niveau)** n'affiche une valeur que
+lorsque l'unité tourne effectivement sur un niveau manuel. En Auto ou en
+Silencieux il n'y a pas de niveau à montrer, le contrôle reste donc vide jusqu'à
+ce que vous en régliez un — et en régler un bascule l'unité en manuel.
 
-- **Mode ventilateur** porte les trois modes de souffle de Daikin. _Auto_ est
-  l'auto de Daikin, _Faible_ correspond à son mode silencieux, et _Moyen_
-  signifie « tourner à la vitesse manuelle » — le niveau lui-même est le contrôle
-  Vitesse (niveau), à part. Gladys affiche toujours les cinq valeurs de sa
-  liste : choisir _Élevé_ bascule aussi en manuel, et _Arrêt_ est refusé, car un
-  ventilateur Daikin n'a pas d'arrêt propre (éteignez plutôt l'unité).
-- **Vitesse (niveau)** n'affiche une valeur que lorsque l'unité tourne
-  effectivement sur un niveau manuel. En auto ou en silencieux il n'y a pas de
-  niveau à montrer : le contrôle reste vide jusqu'à ce que vous en régliez un —
-  et en régler un bascule l'unité en manuel.
+Les modes de souffle Auto et Silencieux de Daikin ne sont pas exposés : la liste
+de modes de ventilateur de Gladys propose cinq libellés fixes, impossibles à
+restreindre, où « Moyen » aurait dû signifier « manuel » — un contrôle qui
+n'explique rien. Réglez la vitesse depuis l'application Onecta si vous voulez
+repasser en Auto.
 
 Les fonctionnalités publiées décrivent ce que votre unité sait faire **tous
 modes confondus**, pas ce qu'elle peut faire à l'instant présent. Daikin ne
@@ -140,10 +136,15 @@ appareil de Gladys (une minute au plus lent) : elle gère son propre calendrier.
 
 ## Actions
 
-**Tester la connexion** lit votre compte Daikin immédiatement et indique combien
-d'unités ont été trouvées et combien d'appels d'API restent pour aujourd'hui.
-Utilisez-la après avoir connecté votre compte, ou pour forcer un
-rafraîchissement.
+**Tester la connexion** lit votre compte Daikin immédiatement et affiche, pour
+chaque unité, le nombre de fonctionnalités publiées **et la liste des
+caractéristiques que votre unité déclare sans que l'intégration les exploite**.
+C'est ce qui permet de distinguer « l'intégration ignore cette fonction » de
+« votre modèle ne la remonte pas à l'API » — deux problèmes qui n'ont pas du tout
+la même réponse. Si une fonction visible dans Onecta vous manque, lancez cette
+action : si son nom n'apparaît ni dans les fonctionnalités publiées ni dans les
+caractéristiques ignorées, c'est que l'API Daikin ne l'expose pas pour votre
+modèle.
 
 ## Badge d'état des appareils
 
