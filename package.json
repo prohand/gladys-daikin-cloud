@@ -1,6 +1,6 @@
 {
   "name": "gladys-daikin-cloud",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "private": true,
   "description": "Gladys Assistant external integration for Daikin air conditioners, through the official Daikin Onecta cloud API.",
   "type": "module",
