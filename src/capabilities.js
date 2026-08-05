@@ -1,38 +1,42 @@
 // -----------------------------------------------------------------------------
 // What the Gladys instance running this integration can accept.
 //
-// The air conditioning fan speed and swing feature types — and the
-// `supported_options` that restrict their choices to what the hardware offers —
-// landed in Gladys 4.84.3. Publishing a feature type an older core does not
-// know makes the whole discovery payload fail, so the catalog is built from
-// what the connected instance actually supports: everyone gets on/off, mode,
-// target temperature and the sensors; recent instances also get the fan and
-// the louvers.
+// Publishing a feature type — or a feature field — an older core does not know
+// makes the WHOLE discovery payload fail, so the catalog is built from what the
+// connected instance actually supports. Two thresholds matter here:
+//
+//   - the FAN category (fan mode, speed level, oscillation) exists since
+//     Gladys 4.79.0. Below that, the unit gets its climate controls only;
+//   - `supported_options`, which restricts a select to the values the hardware
+//     accepts, was added in 4.84.3. Below that the modes are still published,
+//     the interface simply offers the full list.
 // -----------------------------------------------------------------------------
 
 import { createLogger } from '@gladysassistant/integration-sdk';
 
 const logger = createLogger({ name: 'capabilities' });
 
-// First Gladys version shipping AIR_CONDITIONING.FAN_SPEED / SWING_* and the
-// per-feature supported_options.
-const FAN_AND_SWING_MIN_VERSION = [4, 84, 3];
+// First Gladys version shipping DEVICE_FEATURE_CATEGORIES.FAN and its types.
+const FAN_CATEGORY_MIN_VERSION = [4, 79, 0];
+// First Gladys version storing the per-feature supported_options.
+const SUPPORTED_OPTIONS_MIN_VERSION = [4, 84, 3];
 
-export const DEFAULT_CAPABILITIES = { fanAndSwing: false };
+export const DEFAULT_CAPABILITIES = { fanCategory: false, supportedOptions: false };
 
 /**
  * Ask the connected Gladys what it is, and derive the feature catalog from it.
  * A failure here is never fatal: the integration falls back to the features
  * every supported Gladys understands.
  * @param {object} gladys the SDK instance
- * @returns {Promise<{ fanAndSwing: boolean }>} the capabilities of the instance
+ * @returns {Promise<{ fanCategory: boolean, supportedOptions: boolean }>} the capabilities of the instance
  */
 export async function detectCapabilities(gladys) {
   try {
     const status = await gladys.getStatus();
     const capabilities = capabilitiesForVersion(status?.gladys_version);
     logger.info(
-      `Gladys ${status?.gladys_version}: fan speed and swing features ${capabilities.fanAndSwing ? 'enabled' : 'disabled (Gladys 4.84.3+ required)'}`,
+      `Gladys ${status?.gladys_version}: fan features ${capabilities.fanCategory ? 'enabled' : 'disabled (4.79.0+ required)'}, ` +
+        `restricted mode lists ${capabilities.supportedOptions ? 'enabled' : 'disabled (4.84.3+ required)'}`,
     );
     return capabilities;
   } catch (err) {
@@ -43,10 +47,13 @@ export async function detectCapabilities(gladys) {
 
 /**
  * @param {string} version the Gladys version, e.g. '4.84.3'
- * @returns {{ fanAndSwing: boolean }} the capabilities of that version
+ * @returns {{ fanCategory: boolean, supportedOptions: boolean }} the capabilities of that version
  */
 export function capabilitiesForVersion(version) {
-  return { fanAndSwing: isAtLeast(version, FAN_AND_SWING_MIN_VERSION) };
+  return {
+    fanCategory: isAtLeast(version, FAN_CATEGORY_MIN_VERSION),
+    supportedOptions: isAtLeast(version, SUPPORTED_OPTIONS_MIN_VERSION),
+  };
 }
 
 /**

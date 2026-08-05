@@ -11,27 +11,41 @@ télécommande de plus.
 Pour chaque climatiseur de votre compte Daikin, Gladys crée un appareil avec les
 fonctionnalités que votre modèle prend réellement en charge :
 
-| Fonctionnalité          | Rôle                                                                |
-| ----------------------- | ------------------------------------------------------------------- |
-| Marche/Arrêt            | Allumer et éteindre l'unité                                         |
-| Mode                    | Auto, Froid, Chaud, Déshumidification, Ventilation seule            |
-| Température de consigne | La consigne du mode actuellement actif                              |
-| Vitesse de ventilation  | Auto, Silencieux, et les vitesses fixes de votre unité              |
-| Volets horizontaux      | Orienter les volets gauche/droite                                   |
-| Volets verticaux        | Orienter les volets haut/bas                                        |
-| Température intérieure  | La température mesurée par l'unité (capteur, historisé)             |
-| Température extérieure  | La température mesurée par le groupe extérieur (capteur, historisé) |
+| Fonctionnalité          | Rôle                                                                        |
+| ----------------------- | --------------------------------------------------------------------------- |
+| Marche/Arrêt            | Allumer et éteindre l'unité                                                 |
+| Mode                    | Auto, Froid, Chaud, Déshumidification, Ventilation seule                    |
+| Température de consigne | La consigne du mode actuellement actif                                      |
+| Mode ventilateur        | Comment l'unité choisit son souffle : Auto, Silencieux, ou vitesse manuelle |
+| Vitesse (niveau)        | Le niveau manuel, sur l'échelle déclarée par votre unité (souvent 1-5)      |
+| Oscillation             | Orienter les volets : arrêt, gauche/droite, haut/bas, ou les deux           |
+| Température intérieure  | La température mesurée par l'unité (capteur, historisé)                     |
+| Température extérieure  | La température mesurée par le groupe extérieur (capteur, historisé)         |
 
-Un modèle sans volets n'obtient pas de fonctionnalité d'orientation, un modèle
-sans ventilateur n'obtient pas de vitesse de ventilation, etc. : seul ce que le
-matériel déclare est publié. Les choix proposés dans l'interface sont également
-limités à ce que l'unité accepte — une unité sans mode « Déshumidification » ne
-l'affiche jamais.
+Un modèle sans volets n'obtient pas d'oscillation, un modèle sans ventilateur
+n'obtient pas de vitesse, etc. : seul ce que le matériel déclare est publié. Les
+choix proposés dans l'interface sont également limités à ce que l'unité accepte
+— une unité sans mode « Déshumidification » ne l'affiche jamais, et l'oscillation
+ne propose que les axes dont vos volets disposent réellement.
 
-> **La vitesse de ventilation et les volets nécessitent Gladys 4.84.3 ou plus
-> récent.** Sur une version antérieure l'intégration fonctionne quand même :
-> elle publie marche/arrêt, mode, température de consigne et les deux capteurs,
-> et omet les fonctionnalités que cette version ne sait pas stocker.
+Deux précisions sur la ventilation, parce que Gladys et Daikin n'emploient pas
+tout à fait les mêmes mots :
+
+- **Mode ventilateur** porte les trois modes de souffle de Daikin. _Auto_ est
+  l'auto de Daikin, _Faible_ correspond à son mode silencieux, et _Moyen_
+  signifie « tourner à la vitesse manuelle » — le niveau lui-même est le contrôle
+  Vitesse (niveau), à part. Gladys affiche toujours les cinq valeurs de sa
+  liste : choisir _Élevé_ bascule aussi en manuel, et _Arrêt_ est refusé, car un
+  ventilateur Daikin n'a pas d'arrêt propre (éteignez plutôt l'unité).
+- **Vitesse (niveau)** n'affiche une valeur que lorsque l'unité tourne
+  effectivement sur un niveau manuel. En auto ou en silencieux il n'y a pas de
+  niveau à montrer : le contrôle reste vide jusqu'à ce que vous en régliez un —
+  et en régler un bascule l'unité en manuel.
+
+> **Les contrôles de ventilation nécessitent Gladys 4.79 ou plus récent**, et
+> limiter la liste des modes à ce que votre unité gère nécessite la 4.84.3. Sur
+> une version antérieure l'intégration fonctionne quand même, elle publie
+> simplement moins de choses.
 
 Les pompes à chaleur (Altherma…) sont partiellement prises en charge : leur
 marche/arrêt, leur mode et leur température extérieure fonctionnent, mais leur

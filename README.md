@@ -18,7 +18,7 @@ actually reports:
 
 - **On/Off**, **Mode** (auto, cooling, heating, drying, fan only)
 - **Target temperature**, with the min/max/step of the active operation mode
-- **Fan speed** (auto, quiet, fixed levels) and **horizontal / vertical swing**
+- **Fan mode** (auto / quiet / manual), **fan speed level**, and **oscillation**
 - **Room temperature** and **outdoor temperature** sensors, kept in history
 - A per-device transport badge: `cloud`, `cloud + degraded` when the unit
   reports a fault, `unreachable` when Daikin cannot reach it
@@ -55,11 +55,21 @@ values for a few seconds after a `PATCH`, so a command updates the local
 snapshot and publishes the new state immediately; the store then waits out a
 short quiet period before its next read.
 
-**The feature catalog adapts to the Gladys version.** The air conditioning fan
-speed and swing feature types landed in Gladys 4.84.3; publishing them to an
-older core would make the whole discovery payload fail. `src/capabilities.js`
-reads the connected version and the catalog is built from it, so an older Gladys
-gets a working integration with fewer features rather than none.
+**The feature catalog adapts to the Gladys version.** Publishing a feature type
+— or a feature field — an older core does not know makes the WHOLE discovery
+payload fail. The fan controls live in the `fan` category, which exists since
+Gladys 4.79, and `supported_options` (restricting a select to what the hardware
+accepts) since 4.84.3. `src/capabilities.js` reads the connected version and the
+catalog is built from it, so an older Gladys gets a working integration with
+fewer features rather than none.
+
+**The fan is three Gladys features for two Daikin concepts.** Daikin has an
+airflow mode (`auto` / `quiet` / `fixed`) and, in `fixed`, a level on a
+model-dependent scale. That maps onto `fan.mode` (auto / quiet / manual) plus
+`fan.speed` (a slider carrying the device's own bounds, so no scaling is
+needed). The two louver axes fold into a single `fan.rock-setting`, whose
+bitmap encoding — bit 0 left/right, bit 1 up/down — expresses exactly what
+Daikin drives separately.
 
 ## Development
 

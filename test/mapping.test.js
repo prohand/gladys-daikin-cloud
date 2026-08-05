@@ -1,18 +1,34 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  AC_FAN_SPEED,
   AC_MODE,
-  AC_SWING,
-  fanSpeedToDaikin,
-  fanSpeedToGladys,
+  FAN_MODE,
+  FAN_ROCK_SETTING,
+  fanLevelToDaikin,
+  fanLevelToGladys,
+  fanModeToDaikin,
+  fanModeToGladys,
   modeToDaikin,
   modeToGladys,
+  rockSettingBounds,
+  rockSettingToDaikin,
+  rockSettingToGladys,
   roundToStep,
-  supportedFanSpeeds,
-  swingToDaikin,
-  swingToGladys,
+  supportedFanModes,
 } from '../src/mapping.js';
+
+const speedBlock = (overrides = {}) => ({
+  currentMode: 'fixed',
+  modes: ['quiet', 'auto', 'fixed'],
+  fixed: { value: 3, min: 1, max: 5, step: 1 },
+  ...overrides,
+});
+
+const directionBlock = (overrides = {}) => ({
+  horizontal: { value: 'stop', values: ['stop', 'swing'] },
+  vertical: { value: 'stop', values: ['stop', 'swing'] },
+  ...overrides,
+});
 
 test('the five Daikin operation modes map to the Gladys ones, both ways', () => {
   const pairs = [
@@ -34,145 +50,173 @@ test('a Daikin mode Gladys has no word for is not invented', () => {
   assert.equal(modeToDaikin(42), null);
 });
 
-test('swing maps stop/swing and leaves the Daikin comfort airflows alone', () => {
-  assert.equal(swingToGladys('stop'), AC_SWING.OFF);
-  assert.equal(swingToGladys('swing'), AC_SWING.SWING);
-  assert.equal(swingToGladys('windNice'), null);
-  assert.equal(swingToDaikin(AC_SWING.SWING), 'swing');
-  assert.equal(swingToDaikin(7), null);
+// --- Fan mode ----------------------------------------------------------------
+
+test('the Daikin airflow modes read as Gladys fan modes', () => {
+  assert.equal(fanModeToGladys(speedBlock({ currentMode: 'auto' })), FAN_MODE.AUTO);
+  assert.equal(fanModeToGladys(speedBlock({ currentMode: 'quiet' })), FAN_MODE.LOW);
+  assert.equal(fanModeToGladys(speedBlock({ currentMode: 'fixed' })), FAN_MODE.MEDIUM);
+  assert.equal(fanModeToGladys(speedBlock({ currentMode: 'unknown' })), null);
+  assert.equal(fanModeToGladys(null), null);
 });
 
-test('the auto and quiet fan modes map directly', () => {
-  assert.equal(
-    fanSpeedToGladys({ currentMode: 'auto', modes: [], fixed: null }),
-    AC_FAN_SPEED.AUTO,
-  );
-  assert.equal(
-    fanSpeedToGladys({ currentMode: 'quiet', modes: [], fixed: null }),
-    AC_FAN_SPEED.QUIET,
-  );
-  assert.equal(fanSpeedToGladys(null), null);
+test('setting a fan mode writes the matching Daikin mode', () => {
+  const speed = speedBlock();
+  assert.equal(fanModeToDaikin(FAN_MODE.AUTO, speed), 'auto');
+  assert.equal(fanModeToDaikin(FAN_MODE.LOW, speed), 'quiet');
+  assert.equal(fanModeToDaikin(FAN_MODE.MEDIUM, speed), 'fixed');
 });
 
-test('a 1-5 fixed fan level maps one to one on the Gladys speeds', () => {
-  const speed = (value) => ({
-    currentMode: 'fixed',
-    modes: ['fixed'],
-    fixed: { value, min: 1, max: 5, step: 1 },
-  });
-  assert.equal(fanSpeedToGladys(speed(1)), AC_FAN_SPEED.LOW);
-  assert.equal(fanSpeedToGladys(speed(2)), AC_FAN_SPEED.LOW_MID);
-  assert.equal(fanSpeedToGladys(speed(3)), AC_FAN_SPEED.MID);
-  assert.equal(fanSpeedToGladys(speed(4)), AC_FAN_SPEED.MID_HIGH);
-  assert.equal(fanSpeedToGladys(speed(5)), AC_FAN_SPEED.HIGH);
+test('HIGH is absorbed as manual rather than left to fail', () => {
+  // The Gladys fan mode select always offers all five values, so the two
+  // Daikin has no word for must still do something sensible.
+  assert.equal(fanModeToDaikin(FAN_MODE.HIGH, speedBlock()), 'fixed');
 });
 
-test('a narrower fixed range is spread over the Gladys speeds', () => {
-  const speed = (value) => ({
-    currentMode: 'fixed',
-    modes: ['fixed'],
-    fixed: { value, min: 1, max: 3, step: 1 },
-  });
-  assert.equal(fanSpeedToGladys(speed(1)), AC_FAN_SPEED.LOW);
-  assert.equal(fanSpeedToGladys(speed(2)), AC_FAN_SPEED.MID);
-  assert.equal(fanSpeedToGladys(speed(3)), AC_FAN_SPEED.HIGH);
+test('OFF is refused: a Daikin fan has no off of its own', () => {
+  assert.equal(fanModeToDaikin(FAN_MODE.OFF, speedBlock()), null);
 });
 
-test('a single-step fan reads as MID instead of dividing by zero', () => {
-  const speed = {
-    currentMode: 'fixed',
-    modes: ['fixed'],
-    fixed: { value: 1, min: 1, max: 1, step: 1 },
-  };
-  assert.equal(fanSpeedToGladys(speed), AC_FAN_SPEED.MID);
+test('a fan mode the unit does not offer is refused instead of guessed', () => {
+  const autoOnly = speedBlock({ modes: ['auto'], fixed: null });
+  assert.equal(fanModeToDaikin(FAN_MODE.LOW, autoOnly), null, 'no quiet mode');
+  assert.equal(fanModeToDaikin(FAN_MODE.MEDIUM, autoOnly), null, 'no manual mode');
+  assert.equal(fanModeToDaikin(FAN_MODE.AUTO, autoOnly), 'auto');
+  assert.equal(fanModeToDaikin(FAN_MODE.AUTO, null), null);
 });
 
-test('setting a fan speed picks the mode and, for fixed, the hardware level', () => {
-  const speed = {
-    currentMode: 'auto',
-    modes: ['quiet', 'auto', 'fixed'],
-    fixed: { value: 3, min: 1, max: 5, step: 1 },
-  };
-  assert.deepEqual(fanSpeedToDaikin(AC_FAN_SPEED.AUTO, speed), {
-    currentMode: 'auto',
-    fixedValue: null,
-  });
-  assert.deepEqual(fanSpeedToDaikin(AC_FAN_SPEED.QUIET, speed), {
-    currentMode: 'quiet',
-    fixedValue: null,
-  });
-  assert.deepEqual(fanSpeedToDaikin(AC_FAN_SPEED.LOW, speed), {
-    currentMode: 'fixed',
-    fixedValue: 1,
-  });
-  assert.deepEqual(fanSpeedToDaikin(AC_FAN_SPEED.MID, speed), {
-    currentMode: 'fixed',
-    fixedValue: 3,
-  });
-  assert.deepEqual(fanSpeedToDaikin(AC_FAN_SPEED.HIGH, speed), {
-    currentMode: 'fixed',
-    fixedValue: 5,
-  });
-});
-
-test('a fan speed round trips through the Daikin vocabulary', () => {
-  const speed = {
-    currentMode: 'auto',
-    modes: ['quiet', 'auto', 'fixed'],
-    fixed: { value: 3, min: 1, max: 9, step: 2 },
-  };
-  for (const requested of [AC_FAN_SPEED.LOW, AC_FAN_SPEED.MID, AC_FAN_SPEED.HIGH]) {
-    const target = fanSpeedToDaikin(requested, speed);
-    const readBack = fanSpeedToGladys({
-      ...speed,
-      currentMode: 'fixed',
-      fixed: { ...speed.fixed, value: target.fixedValue },
-    });
-    assert.equal(readBack, requested, `speed ${requested} must survive the round trip`);
+test('a fan mode round trips through the Daikin vocabulary', () => {
+  const speed = speedBlock();
+  for (const mode of [FAN_MODE.AUTO, FAN_MODE.LOW, FAN_MODE.MEDIUM]) {
+    const daikin = fanModeToDaikin(mode, speed);
+    assert.equal(fanModeToGladys({ ...speed, currentMode: daikin }), mode);
   }
 });
 
-test('TURBO falls back to the fastest fixed speed Daikin offers', () => {
-  const speed = {
-    currentMode: 'auto',
-    modes: ['auto', 'fixed'],
-    fixed: { value: 1, min: 1, max: 5, step: 1 },
+test('supportedFanModes lists only what the unit can reach', () => {
+  assert.deepEqual(supportedFanModes(speedBlock()), [FAN_MODE.LOW, FAN_MODE.MEDIUM, FAN_MODE.AUTO]);
+  assert.deepEqual(supportedFanModes(speedBlock({ modes: ['auto'] })), [FAN_MODE.AUTO]);
+  assert.deepEqual(supportedFanModes(null), []);
+});
+
+// --- Fan level ---------------------------------------------------------------
+
+test('the manual level is reported only while the unit runs on it', () => {
+  assert.equal(fanLevelToGladys(speedBlock({ currentMode: 'fixed' })), 3);
+  assert.equal(fanLevelToGladys(speedBlock({ currentMode: 'auto' })), null, 'auto is not a level');
+  assert.equal(fanLevelToGladys(speedBlock({ fixed: null })), null);
+  assert.equal(fanLevelToGladys(null), null);
+});
+
+test('the level needs no scaling: the feature carries the device bounds', () => {
+  const speed = speedBlock();
+  assert.equal(fanLevelToDaikin(1, speed), 1);
+  assert.equal(fanLevelToDaikin(4, speed), 4);
+  assert.equal(fanLevelToDaikin(5, speed), 5);
+});
+
+test('a level outside the device range is snapped back into it', () => {
+  const speed = speedBlock({ fixed: { value: 1, min: 1, max: 3, step: 1 } });
+  assert.equal(fanLevelToDaikin(9, speed), 3);
+  assert.equal(fanLevelToDaikin(0, speed), 1);
+  assert.equal(fanLevelToDaikin('2', speed), 2, 'the UI can send a string');
+});
+
+test('a unit without a manual level refuses one', () => {
+  assert.equal(fanLevelToDaikin(3, speedBlock({ fixed: null })), null);
+  assert.equal(fanLevelToDaikin(3, null), null);
+});
+
+// --- Louvers -----------------------------------------------------------------
+
+test('the two Daikin louver axes read as one oscillation bitmap', () => {
+  assert.equal(rockSettingToGladys(directionBlock()), FAN_ROCK_SETTING.OFF);
+  assert.equal(
+    rockSettingToGladys(
+      directionBlock({ horizontal: { value: 'swing', values: ['stop', 'swing'] } }),
+    ),
+    FAN_ROCK_SETTING.LEFT_RIGHT,
+  );
+  assert.equal(
+    rockSettingToGladys(
+      directionBlock({ vertical: { value: 'swing', values: ['stop', 'swing'] } }),
+    ),
+    FAN_ROCK_SETTING.UP_DOWN,
+  );
+  assert.equal(
+    rockSettingToGladys({
+      horizontal: { value: 'swing', values: ['stop', 'swing'] },
+      vertical: { value: 'swing', values: ['stop', 'swing'] },
+    }),
+    FAN_ROCK_SETTING.LEFT_RIGHT_AND_UP_DOWN,
+  );
+  assert.equal(rockSettingToGladys(null), null);
+});
+
+test('a Daikin comfort airflow does not count as oscillating', () => {
+  const direction = directionBlock({
+    vertical: { value: 'windNice', values: ['stop', 'swing', 'windNice'] },
+  });
+  assert.equal(rockSettingToGladys(direction), FAN_ROCK_SETTING.OFF);
+});
+
+test('setting the oscillation drives each axis separately', () => {
+  assert.deepEqual(rockSettingToDaikin(FAN_ROCK_SETTING.LEFT_RIGHT_AND_UP_DOWN, directionBlock()), [
+    { axis: 'horizontal', value: 'swing' },
+    { axis: 'vertical', value: 'swing' },
+  ]);
+  assert.deepEqual(rockSettingToDaikin(FAN_ROCK_SETTING.UP_DOWN, directionBlock()), [
+    { axis: 'horizontal', value: 'stop' },
+    { axis: 'vertical', value: 'swing' },
+  ]);
+  assert.deepEqual(rockSettingToDaikin(FAN_ROCK_SETTING.OFF, directionBlock()), [
+    { axis: 'horizontal', value: 'stop' },
+    { axis: 'vertical', value: 'stop' },
+  ]);
+});
+
+test('an axis the unit does not have is simply left alone', () => {
+  const verticalOnly = { vertical: { value: 'stop', values: ['stop', 'swing'] } };
+  assert.deepEqual(rockSettingToDaikin(FAN_ROCK_SETTING.LEFT_RIGHT_AND_UP_DOWN, verticalOnly), [
+    { axis: 'vertical', value: 'swing' },
+  ]);
+  assert.equal(rockSettingToDaikin(FAN_ROCK_SETTING.OFF, null), null);
+});
+
+test('an axis that cannot swing at all is not written to', () => {
+  const fixedVertical = {
+    horizontal: { value: 'stop', values: ['stop', 'swing'] },
+    vertical: { value: 'stop', values: ['stop'] },
   };
-  assert.deepEqual(fanSpeedToDaikin(AC_FAN_SPEED.TURBO, speed), {
-    currentMode: 'fixed',
-    fixedValue: 5,
+  assert.deepEqual(rockSettingToDaikin(FAN_ROCK_SETTING.LEFT_RIGHT_AND_UP_DOWN, fixedVertical), [
+    { axis: 'horizontal', value: 'swing' },
+  ]);
+});
+
+test('the oscillation bounds tell Gladys which axes exist', () => {
+  assert.deepEqual(rockSettingBounds(directionBlock()), {
+    min: FAN_ROCK_SETTING.OFF,
+    max: FAN_ROCK_SETTING.LEFT_RIGHT_AND_UP_DOWN,
+  });
+  assert.deepEqual(
+    rockSettingBounds({ horizontal: { value: 'stop', values: ['stop', 'swing'] } }),
+    {
+      min: FAN_ROCK_SETTING.OFF,
+      max: FAN_ROCK_SETTING.LEFT_RIGHT,
+    },
+  );
+  assert.deepEqual(rockSettingBounds({ vertical: { value: 'stop', values: ['stop', 'swing'] } }), {
+    min: FAN_ROCK_SETTING.OFF,
+    max: FAN_ROCK_SETTING.UP_DOWN,
   });
 });
 
-test('a mode the unit does not offer is refused instead of guessed', () => {
-  const autoOnly = { currentMode: 'auto', modes: ['auto'], fixed: null };
-  assert.equal(fanSpeedToDaikin(AC_FAN_SPEED.QUIET, autoOnly), null);
-  assert.equal(fanSpeedToDaikin(AC_FAN_SPEED.MID, autoOnly), null);
-  assert.equal(fanSpeedToDaikin(AC_FAN_SPEED.AUTO, null), null);
+test('a unit whose louvers cannot swing gets no oscillation feature', () => {
+  assert.equal(rockSettingBounds({ vertical: { value: 'stop', values: ['stop'] } }), null);
+  assert.equal(rockSettingBounds(null), null);
 });
 
-test('supportedFanSpeeds lists only what the unit can reach', () => {
-  assert.deepEqual(supportedFanSpeeds({ currentMode: 'auto', modes: ['auto'], fixed: null }), [
-    AC_FAN_SPEED.AUTO,
-  ]);
-  assert.deepEqual(
-    supportedFanSpeeds({
-      currentMode: 'fixed',
-      modes: ['quiet', 'auto', 'fixed'],
-      fixed: { value: 1, min: 1, max: 5, step: 1 },
-    }),
-    [
-      AC_FAN_SPEED.AUTO,
-      AC_FAN_SPEED.LOW,
-      AC_FAN_SPEED.LOW_MID,
-      AC_FAN_SPEED.MID,
-      AC_FAN_SPEED.MID_HIGH,
-      AC_FAN_SPEED.HIGH,
-      AC_FAN_SPEED.QUIET,
-    ],
-  );
-  assert.deepEqual(supportedFanSpeeds(null), []);
-});
+// --- Setpoint grid -----------------------------------------------------------
 
 test('a setpoint is snapped on the grid the unit accepts', () => {
   assert.equal(roundToStep(21.3, 18, 32, 0.5), 21.5);

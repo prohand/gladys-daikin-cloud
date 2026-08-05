@@ -15,20 +15,34 @@ with the features your model actually supports:
 | On/Off              | Turn the unit on and off                                            |
 | Mode                | Auto, Cooling, Heating, Drying, Fan only                            |
 | Target temperature  | The setpoint of the mode currently active                           |
-| Fan speed           | Auto, Quiet, and the fixed speeds of your unit                      |
-| Horizontal swing    | Move the left/right louvers                                         |
-| Vertical swing      | Move the up/down louvers                                            |
+| Fan mode            | How the unit picks its airflow: Auto, Quiet, or a manual speed      |
+| Fan speed           | The manual speed level, on the scale your unit declares (often 1-5) |
+| Oscillation         | Move the louvers: off, left/right, up/down, or both                 |
 | Room temperature    | The temperature the unit measures (sensor, kept in history)         |
 | Outdoor temperature | The temperature the outdoor unit measures (sensor, kept in history) |
 
-A model without louvers gets no swing feature, a model without a fan gets no
-fan speed, and so on: only what the hardware reports is published. The choices
+A model without louvers gets no oscillation, a model without a fan gets no fan
+speed, and so on: only what the hardware reports is published. The choices
 offered in the interface are also restricted to what the unit accepts — a unit
-without a "Drying" mode never shows one.
+without a "Drying" mode never shows one, and the oscillation only offers the
+axes your louvers actually have.
 
-> **Fan speed and swing need Gladys 4.84.3 or newer.** On an older Gladys the
-> integration still works: it publishes on/off, mode, target temperature and
-> the two sensors, and skips the features that version cannot store.
+Two details about the fan, because Gladys and Daikin do not use quite the same
+words:
+
+- **Fan mode** carries Daikin's three airflow modes. _Auto_ is Daikin's auto,
+  _Low_ is its quiet mode, and _Medium_ means "run at the manual speed" — the
+  level itself is the separate Fan speed control. Gladys always shows the five
+  values of its list: picking _High_ also switches to manual, and _Off_ is
+  refused, because a Daikin fan has no off of its own (turn the unit off
+  instead).
+- **Fan speed** only shows a value while the unit is actually running on a
+  manual level. In auto or quiet there is no level to show, so the control stays
+  empty until you set one — and setting one switches the unit to manual.
+
+> **The fan controls need Gladys 4.79 or newer**, and restricting the mode list
+> to what your unit supports needs 4.84.3. On an older Gladys the integration
+> still works and simply publishes less.
 
 Heat pumps (Altherma…) are partially supported: their on/off, mode and outdoor
 temperature work, but their water temperature setpoint is not exposed — this

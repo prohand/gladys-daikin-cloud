@@ -17,7 +17,7 @@ import {
   featureKeyOf,
   findUnitByDevice,
 } from '../src/devices/index.js';
-import { AC_FAN_SPEED, AC_MODE, AC_SWING } from '../src/mapping.js';
+import { AC_MODE, FAN_MODE, FAN_ROCK_SETTING } from '../src/mapping.js';
 import { createFakeGladys } from './helpers/fakeGladys.js';
 import {
   ALL_DEVICES,
@@ -27,8 +27,8 @@ import {
 } from './fixtures/gatewayDevices.js';
 
 const gladys = createFakeGladys();
-const FULL = { fanAndSwing: true };
-const BASE = { fanAndSwing: false };
+const FULL = { fanCategory: true, supportedOptions: true };
+const BASE = { fanCategory: false, supportedOptions: false };
 
 const splitUnit = () => parseUnits([SPLIT_UNIT])[0];
 const featureOf = (device, key) =>
@@ -82,13 +82,13 @@ test('a split unit exposes the full air conditioning catalog', () => {
   assert.deepEqual(
     keys.sort(),
     [
-      FEATURE.FAN_SPEED,
+      FEATURE.FAN_LEVEL,
+      FEATURE.FAN_MODE,
+      FEATURE.FAN_ROCK,
       FEATURE.MODE,
       FEATURE.OUTDOOR_TEMPERATURE,
       FEATURE.POWER,
       FEATURE.ROOM_TEMPERATURE,
-      FEATURE.SWING_HORIZONTAL,
-      FEATURE.SWING_VERTICAL,
       FEATURE.TARGET_TEMPERATURE,
     ].sort(),
   );
@@ -137,8 +137,8 @@ test('a unit without a room setpoint or a fan only exposes what it has', () => {
 test('an older Gladys gets the catalog it understands', () => {
   const [device] = buildDiscoveredDevices(gladys, [splitUnit()], BASE);
   const keys = device.features.map((feature) => feature.external_id.split(':').pop());
-  assert.ok(!keys.includes(FEATURE.FAN_SPEED), 'fan speed needs Gladys 4.84.3+');
-  assert.ok(!keys.includes(FEATURE.SWING_VERTICAL), 'swing needs Gladys 4.84.3+');
+  assert.ok(!keys.includes(FEATURE.FAN_LEVEL), 'the fan category needs Gladys 4.79+');
+  assert.ok(!keys.includes(FEATURE.FAN_ROCK), 'the fan category needs Gladys 4.79+');
   assert.ok(keys.includes(FEATURE.POWER) && keys.includes(FEATURE.TARGET_TEMPERATURE));
 });
 
@@ -157,21 +157,24 @@ test('states mirror the unit as the Daikin cloud reports it', () => {
   assert.equal(stateOf(states, FEATURE.TARGET_TEMPERATURE), 22);
   assert.equal(stateOf(states, FEATURE.ROOM_TEMPERATURE), 24.5);
   assert.equal(stateOf(states, FEATURE.OUTDOOR_TEMPERATURE), 31);
-  assert.equal(stateOf(states, FEATURE.FAN_SPEED), AC_FAN_SPEED.MID);
-  assert.equal(stateOf(states, FEATURE.SWING_HORIZONTAL), AC_SWING.OFF);
-  assert.equal(stateOf(states, FEATURE.SWING_VERTICAL), AC_SWING.SWING);
+  assert.equal(stateOf(states, FEATURE.FAN_MODE), FAN_MODE.MEDIUM);
+  assert.equal(stateOf(states, FEATURE.FAN_LEVEL), 3);
+  assert.equal(stateOf(states, FEATURE.FAN_ROCK), FAN_ROCK_SETTING.UP_DOWN);
 });
 
-test('a value Gladys has no word for is left out rather than published wrong', () => {
+test('a Daikin comfort airflow reads as not oscillating, not as an error', () => {
   const unit = splitUnit();
   unit.fan.direction.vertical.value = 'windNice';
   const states = buildStates(gladys, unit, FULL);
-  assert.equal(stateOf(states, FEATURE.SWING_VERTICAL), undefined);
-  assert.equal(
-    stateOf(states, FEATURE.SWING_HORIZONTAL),
-    AC_SWING.OFF,
-    'the other axis is unaffected',
-  );
+  assert.equal(stateOf(states, FEATURE.FAN_ROCK), FAN_ROCK_SETTING.OFF);
+});
+
+test('the fan level is left out while the unit runs in auto', () => {
+  const unit = splitUnit();
+  unit.fan.speed.currentMode = 'auto';
+  const states = buildStates(gladys, unit, FULL);
+  assert.equal(stateOf(states, FEATURE.FAN_MODE), FAN_MODE.AUTO);
+  assert.equal(stateOf(states, FEATURE.FAN_LEVEL), undefined, 'auto is not a level');
 });
 
 test('buildAllStates batches every unit', () => {
@@ -285,9 +288,9 @@ test('a unit without a room setpoint refuses the command', () => {
   );
 });
 
-test('a fixed fan speed writes the mode then the level, in that order', () => {
+test('setting a manual level forces the fixed mode first, then writes the level', () => {
   const unit = splitUnit();
-  const { writes, state } = buildCommands(unit, FEATURE.FAN_SPEED, AC_FAN_SPEED.HIGH);
+  const { writes, state } = buildCommands(unit, FEATURE.FAN_LEVEL, 5);
   assert.deepEqual(writes, [
     {
       characteristic: 'fanControl',
@@ -300,37 +303,66 @@ test('a fixed fan speed writes the mode then the level, in that order', () => {
       value: 5,
     },
   ]);
-  assert.equal(state, AC_FAN_SPEED.HIGH);
+  assert.equal(state, 5);
 });
 
-test('the auto fan speed writes the mode alone', () => {
+test('the fan mode writes the Daikin airflow mode alone', () => {
   const unit = splitUnit();
-  const { writes, state } = buildCommands(unit, FEATURE.FAN_SPEED, AC_FAN_SPEED.AUTO);
-  assert.equal(writes.length, 1);
-  assert.equal(writes[0].value, 'auto');
-  assert.equal(state, AC_FAN_SPEED.AUTO);
+  const { writes, state } = buildCommands(unit, FEATURE.FAN_MODE, FAN_MODE.AUTO);
+  assert.deepEqual(writes, [
+    {
+      characteristic: 'fanControl',
+      path: '/operationModes/cooling/fanSpeed/currentMode',
+      value: 'auto',
+    },
+  ]);
+  assert.equal(state, FAN_MODE.AUTO);
 });
 
-test('moving the louvers writes the right axis', () => {
+test('the fan mode HIGH lands as manual, and says so', () => {
   const unit = splitUnit();
-  assert.deepEqual(buildCommands(unit, FEATURE.SWING_HORIZONTAL, AC_SWING.SWING), {
+  const { writes, state } = buildCommands(unit, FEATURE.FAN_MODE, FAN_MODE.HIGH);
+  assert.equal(writes[0].value, 'fixed');
+  assert.equal(state, FAN_MODE.MEDIUM, 'Daikin reports the manual mode as MEDIUM');
+});
+
+test('the fan mode OFF is refused with a readable error', () => {
+  assert.throws(
+    () => buildCommands(splitUnit(), FEATURE.FAN_MODE, FAN_MODE.OFF),
+    /does not support that fan mode/,
+  );
+});
+
+test('the oscillation drives both louver axes in one command', () => {
+  const unit = splitUnit();
+  assert.deepEqual(buildCommands(unit, FEATURE.FAN_ROCK, FAN_ROCK_SETTING.LEFT_RIGHT), {
     writes: [
       {
         characteristic: 'fanControl',
         path: '/operationModes/cooling/fanDirection/horizontal/currentMode',
         value: 'swing',
       },
+      {
+        characteristic: 'fanControl',
+        path: '/operationModes/cooling/fanDirection/vertical/currentMode',
+        value: 'stop',
+      },
     ],
-    state: AC_SWING.SWING,
+    state: FAN_ROCK_SETTING.LEFT_RIGHT,
   });
 });
 
-test('a unit without louvers refuses the swing command', () => {
+test('a unit without louvers refuses the oscillation command', () => {
   const unit = parseUnits([HEAT_PUMP_UNIT])[0];
   assert.throws(
-    () => buildCommands(unit, FEATURE.SWING_VERTICAL, AC_SWING.SWING),
-    /no vertical louvers/,
+    () => buildCommands(unit, FEATURE.FAN_ROCK, FAN_ROCK_SETTING.UP_DOWN),
+    /no steerable louvers/,
   );
+});
+
+test('a unit without a manual level refuses one', () => {
+  const unit = parseUnits([HEAT_PUMP_UNIT])[0];
+  assert.throws(() => buildCommands(unit, FEATURE.FAN_LEVEL, 3), /no manual fan speed/);
 });
 
 test('an unknown feature is a clear error, not a silent no-op', () => {

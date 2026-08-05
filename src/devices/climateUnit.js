@@ -16,18 +16,18 @@ import {
   DEVICE_FEATURE_UNITS,
 } from '@gladysassistant/integration-sdk';
 import {
-  AC_FAN_SPEED,
   AC_MODE,
-  AC_SWING,
-  clamp,
-  fanSpeedToDaikin,
-  fanSpeedToGladys,
+  fanLevelToDaikin,
+  fanLevelToGladys,
+  fanModeToDaikin,
+  fanModeToGladys,
   modeToDaikin,
   modeToGladys,
+  rockSettingBounds,
+  rockSettingToDaikin,
+  rockSettingToGladys,
   roundToStep,
-  supportedFanSpeeds,
-  swingToDaikin,
-  swingToGladys,
+  supportedFanModes,
 } from '../mapping.js';
 
 // Gladys device type prefix, part of every external_id.
@@ -40,16 +40,18 @@ export const FEATURE = {
   TARGET_TEMPERATURE: 'target-temperature',
   ROOM_TEMPERATURE: 'room-temperature',
   OUTDOOR_TEMPERATURE: 'outdoor-temperature',
-  FAN_SPEED: 'fan-speed',
-  SWING_HORIZONTAL: 'swing-horizontal',
-  SWING_VERTICAL: 'swing-vertical',
+  FAN_MODE: 'fan-mode',
+  FAN_LEVEL: 'fan-level',
+  FAN_ROCK: 'fan-rock',
 };
 
-// Feature types added in Gladys 4.84.3, absent from the SDK constants (see
-// src/capabilities.js): declared as literals, published only when supported.
-const AC_FAN_SPEED_TYPE = 'fan-speed';
-const AC_SWING_HORIZONTAL_TYPE = 'swing-horizontal';
-const AC_SWING_VERTICAL_TYPE = 'swing-vertical';
+// The FAN category and its types exist since Gladys 4.79 but are absent from
+// the SDK constants (v0.9): declared as literals, published only when the
+// connected instance is recent enough (see src/capabilities.js).
+const FAN_CATEGORY = 'fan';
+const FAN_MODE_TYPE = 'mode';
+const FAN_SPEED_TYPE = 'speed';
+const FAN_ROCK_SETTING_TYPE = 'rock-setting';
 
 // Labels of the `supported_options`, stored by Gladys as the fallback text of
 // an option it cannot translate.
@@ -59,21 +61,6 @@ const MODE_LABELS = {
   [AC_MODE.HEATING]: 'Heating',
   [AC_MODE.DRYING]: 'Drying',
   [AC_MODE.FAN]: 'Fan only',
-};
-
-const FAN_SPEED_LABELS = {
-  [AC_FAN_SPEED.AUTO]: 'Auto',
-  [AC_FAN_SPEED.LOW]: 'Low',
-  [AC_FAN_SPEED.LOW_MID]: 'Low-mid',
-  [AC_FAN_SPEED.MID]: 'Mid',
-  [AC_FAN_SPEED.MID_HIGH]: 'Mid-high',
-  [AC_FAN_SPEED.HIGH]: 'High',
-  [AC_FAN_SPEED.QUIET]: 'Quiet',
-};
-
-const SWING_LABELS = {
-  [AC_SWING.OFF]: 'Off',
-  [AC_SWING.SWING]: 'Swing',
 };
 
 /**
@@ -115,7 +102,7 @@ export function featureKeyOf(gladys, unit, externalId) {
  * temperature gets no room setpoint...).
  * @param {object} gladys the SDK instance
  * @param {object} unit the normalized Daikin unit
- * @param {{ fanAndSwing: boolean }} capabilities what the Gladys instance accepts
+ * @param {{ fanCategory: boolean, supportedOptions: boolean }} capabilities what the Gladys instance accepts
  * @returns {object} the device to publish
  */
 export function buildDevice(gladys, unit, capabilities) {
@@ -149,7 +136,11 @@ export function buildDevice(gladys, unit, capabilities) {
       read_only: false,
       has_feedback: true,
       keep_history: true,
-      supported_options: toSupportedOptions(modes, MODE_LABELS),
+      // Restricting the list to the modes this unit has needs Gladys 4.84.3;
+      // below that the interface simply offers all five.
+      ...(capabilities.supportedOptions
+        ? { supported_options: toSupportedOptions(modes, MODE_LABELS) }
+        : {}),
     });
   }
 
@@ -199,42 +190,56 @@ export function buildDevice(gladys, unit, capabilities) {
     });
   }
 
-  if (capabilities.fanAndSwing) {
-    const fanSpeeds = supportedFanSpeeds(unit.fan?.speed);
-    if (fanSpeeds.length > 0) {
+  if (capabilities.fanCategory) {
+    // Mode: how the unit picks its airflow (auto / quiet / manual). Worth a
+    // feature only when there is a real choice to make.
+    if (supportedFanModes(unit.fan?.speed).length > 1) {
       features.push({
-        name: 'Fan speed',
-        external_id: ids.feature(FEATURE.FAN_SPEED),
-        category: DEVICE_FEATURE_CATEGORIES.AIR_CONDITIONING,
-        type: AC_FAN_SPEED_TYPE,
-        min: Math.min(...fanSpeeds),
-        max: Math.max(...fanSpeeds),
+        name: 'Fan mode',
+        external_id: ids.feature(FEATURE.FAN_MODE),
+        category: FAN_CATEGORY,
+        type: FAN_MODE_TYPE,
+        min: 0,
+        max: 4,
         read_only: false,
         has_feedback: true,
         keep_history: true,
-        supported_options: toSupportedOptions(fanSpeeds, FAN_SPEED_LABELS),
       });
     }
 
-    for (const [axis, featureKey, featureType, name] of [
-      ['horizontal', FEATURE.SWING_HORIZONTAL, AC_SWING_HORIZONTAL_TYPE, 'Horizontal swing'],
-      ['vertical', FEATURE.SWING_VERTICAL, AC_SWING_VERTICAL_TYPE, 'Vertical swing'],
-    ]) {
-      const swings = supportedSwings(unit, axis);
-      if (swings.length === 0) {
-        continue;
-      }
+    // Level: the manual speed. Gladys renders a slider bounded by min/max, so
+    // the Daikin range goes in as is — no scaling, no rounding.
+    const fixed = unit.fan?.speed?.fixed;
+    if (fixed && fixed.max > fixed.min) {
       features.push({
-        name,
-        external_id: ids.feature(featureKey),
-        category: DEVICE_FEATURE_CATEGORIES.AIR_CONDITIONING,
-        type: featureType,
-        min: Math.min(...swings),
-        max: Math.max(...swings),
+        name: 'Fan speed',
+        external_id: ids.feature(FEATURE.FAN_LEVEL),
+        category: FAN_CATEGORY,
+        type: FAN_SPEED_TYPE,
+        min: fixed.min,
+        max: fixed.max,
         read_only: false,
         has_feedback: true,
         keep_history: true,
-        supported_options: toSupportedOptions(swings, SWING_LABELS),
+      });
+    }
+
+    // Oscillation: ONE feature for the two Daikin louver axes, thanks to the
+    // bitmap encoding of rock-setting (bit 0 = left/right, bit 1 = up/down).
+    const rock = rockSettingBounds(unit.fan?.direction);
+    if (rock) {
+      features.push({
+        name: 'Oscillation',
+        external_id: ids.feature(FEATURE.FAN_ROCK),
+        category: FAN_CATEGORY,
+        type: FAN_ROCK_SETTING_TYPE,
+        // The Gladys select offers every enum value between min and max: the
+        // maximum is what tells it which axes this unit has.
+        min: rock.min,
+        max: rock.max,
+        read_only: false,
+        has_feedback: true,
+        keep_history: true,
       });
     }
   }
@@ -259,7 +264,7 @@ export function buildDevice(gladys, unit, capabilities) {
  * rather than published wrong).
  * @param {object} gladys the SDK instance
  * @param {object} unit the normalized Daikin unit
- * @param {{ fanAndSwing: boolean }} capabilities what the Gladys instance accepts
+ * @param {{ fanCategory: boolean, supportedOptions: boolean }} capabilities what the Gladys instance accepts
  * @returns {Array<{ device_feature_external_id: string, state: number }>} the batch to publish
  */
 export function buildStates(gladys, unit, capabilities) {
@@ -279,10 +284,12 @@ export function buildStates(gladys, unit, capabilities) {
   push(FEATURE.ROOM_TEMPERATURE, unit.roomTemperature);
   push(FEATURE.OUTDOOR_TEMPERATURE, unit.outdoorTemperature);
 
-  if (capabilities.fanAndSwing) {
-    push(FEATURE.FAN_SPEED, fanSpeedToGladys(unit.fan?.speed));
-    push(FEATURE.SWING_HORIZONTAL, swingToGladys(unit.fan?.direction?.horizontal?.value));
-    push(FEATURE.SWING_VERTICAL, swingToGladys(unit.fan?.direction?.vertical?.value));
+  if (capabilities.fanCategory) {
+    push(FEATURE.FAN_MODE, fanModeToGladys(unit.fan?.speed));
+    // Only meaningful while the unit runs on a manual level: reporting the
+    // stored level while it is in auto would show a speed it is not using.
+    push(FEATURE.FAN_LEVEL, fanLevelToGladys(unit.fan?.speed));
+    push(FEATURE.FAN_ROCK, rockSettingToGladys(unit.fan?.direction));
   }
 
   return states;
@@ -341,50 +348,63 @@ export function buildCommands(unit, featureKey, value) {
       };
     }
 
-    case FEATURE.FAN_SPEED: {
-      const requested = clamp(Number(value), AC_FAN_SPEED.AUTO, AC_FAN_SPEED.TURBO);
-      const target = fanSpeedToDaikin(requested, unit.fan?.speed);
-      if (!target) {
-        throw new Error(`This unit does not support the fan speed ${value} in its current mode`);
-      }
-      const writes = [
-        {
-          characteristic: 'fanControl',
-          path: `/operationModes/${unit.operationMode}/fanSpeed/currentMode`,
-          value: target.currentMode,
-        },
-      ];
-      if (target.fixedValue !== null) {
-        // Order matters: the level is only accepted once the mode is `fixed`.
-        writes.push({
-          characteristic: 'fanControl',
-          path: `/operationModes/${unit.operationMode}/fanSpeed/modes/fixed`,
-          value: target.fixedValue,
-        });
-      }
-      return {
-        writes,
-        state:
-          fanSpeedToGladys({ ...unit.fan.speed, ...toSpeedPreview(target, unit) }) ?? requested,
-      };
-    }
-
-    case FEATURE.SWING_HORIZONTAL:
-    case FEATURE.SWING_VERTICAL: {
-      const axis = featureKey === FEATURE.SWING_HORIZONTAL ? 'horizontal' : 'vertical';
-      const daikinDirection = swingToDaikin(Number(value));
-      if (!daikinDirection || !unit.fan?.direction?.[axis]) {
-        throw new Error(`This unit has no ${axis} louvers in its current mode`);
+    case FEATURE.FAN_MODE: {
+      const daikinFanMode = fanModeToDaikin(Number(value), unit.fan?.speed);
+      if (!daikinFanMode) {
+        throw new Error(`This unit does not support that fan mode in its current operation mode`);
       }
       return {
         writes: [
           {
             characteristic: 'fanControl',
-            path: `/operationModes/${unit.operationMode}/fanDirection/${axis}/currentMode`,
-            value: daikinDirection,
+            path: `/operationModes/${unit.operationMode}/fanSpeed/currentMode`,
+            value: daikinFanMode,
           },
         ],
-        state: Number(value),
+        // Both MEDIUM and HIGH mean "manual" to Daikin, and it reports the
+        // manual mode as MEDIUM: publish what the next read will confirm.
+        state: fanModeToGladys({ ...unit.fan.speed, currentMode: daikinFanMode }),
+      };
+    }
+
+    case FEATURE.FAN_LEVEL: {
+      const level = fanLevelToDaikin(value, unit.fan?.speed);
+      if (level === null) {
+        throw new Error('This unit has no manual fan speed in its current mode');
+      }
+      // Setting a level means "run at this speed": the unit has to leave auto
+      // or quiet for it to have any effect, and the mode must land first.
+      return {
+        writes: [
+          {
+            characteristic: 'fanControl',
+            path: `/operationModes/${unit.operationMode}/fanSpeed/currentMode`,
+            value: 'fixed',
+          },
+          {
+            characteristic: 'fanControl',
+            path: `/operationModes/${unit.operationMode}/fanSpeed/modes/fixed`,
+            value: level,
+          },
+        ],
+        state: level,
+      };
+    }
+
+    case FEATURE.FAN_ROCK: {
+      const axes = rockSettingToDaikin(Number(value), unit.fan?.direction);
+      if (!axes) {
+        throw new Error('This unit has no steerable louvers in its current mode');
+      }
+      return {
+        writes: axes.map(({ axis, value: axisValue }) => ({
+          characteristic: 'fanControl',
+          path: `/operationModes/${unit.operationMode}/fanDirection/${axis}/currentMode`,
+          value: axisValue,
+        })),
+        // An axis the unit does not have stays off, so the state we publish is
+        // what the unit can actually reach — not blindly what was asked.
+        state: rockSettingToGladys(previewDirection(unit, axes)),
       };
     }
 
@@ -394,20 +414,18 @@ export function buildCommands(unit, featureKey, value) {
 }
 
 /**
- * The fan speed block as it will look once the write lands, so the optimistic
- * state matches what the next poll will report.
- * @param {{ currentMode: string, fixedValue: number|null }} target the write about to be sent
+ * The louver block as it will look once the writes land, so the optimistic
+ * state matches what the next read will report.
  * @param {object} unit the normalized Daikin unit
- * @returns {object} the patched fan speed block
+ * @param {Array<{ axis: string, value: string }>} axes the writes about to be sent
+ * @returns {object} the patched direction block
  */
-function toSpeedPreview(target, unit) {
-  return {
-    currentMode: target.currentMode,
-    fixed:
-      target.fixedValue === null
-        ? unit.fan.speed.fixed
-        : { ...unit.fan.speed.fixed, value: target.fixedValue },
-  };
+function previewDirection(unit, axes) {
+  const preview = { ...unit.fan.direction };
+  for (const { axis, value } of axes) {
+    preview[axis] = { ...preview[axis], value };
+  }
+  return preview;
 }
 
 /**
@@ -420,25 +438,6 @@ function supportedModes(unit) {
     .map((mode) => modeToGladys(mode))
     .filter((mode) => mode !== null)
     .sort((a, b) => a - b);
-}
-
-/**
- * The Gladys swing values one axis of a unit accepts.
- * @param {object} unit the normalized Daikin unit
- * @param {string} axis 'horizontal' or 'vertical'
- * @returns {Array<number>} the supported AC_SWING values
- */
-function supportedSwings(unit, axis) {
-  const direction = unit.fan?.direction?.[axis];
-  if (!direction) {
-    return [];
-  }
-  const swings = direction.values
-    .map((value) => swingToGladys(value))
-    .filter((value) => value !== null);
-  // A single choice is not a control: only offer the feature when the louvers
-  // can actually be moved.
-  return swings.length > 1 ? [...new Set(swings)].sort((a, b) => a - b) : [];
 }
 
 /**

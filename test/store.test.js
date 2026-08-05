@@ -1,13 +1,13 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { DaikinStore } from '../src/store.js';
-import { AC_FAN_SPEED, AC_MODE } from '../src/mapping.js';
+import { AC_MODE } from '../src/mapping.js';
 import { buildStates, FEATURE } from '../src/devices/index.js';
 import { createFakeGladys } from './helpers/fakeGladys.js';
 import { ALL_DEVICES, SPLIT_UNIT } from './fixtures/gatewayDevices.js';
 
 const gladys = createFakeGladys();
-const CAPABILITIES = { fanAndSwing: true };
+const CAPABILITIES = { fanCategory: true, supportedOptions: true };
 
 /**
  * @param {Array<object>} payload what the fake Daikin cloud answers
@@ -129,8 +129,8 @@ test('a fan write updates the mode and the level', async () => {
   ]);
   const states = buildStates(gladys, unit, CAPABILITIES);
   assert.equal(
-    states.find((s) => s.device_feature_external_id.endsWith(FEATURE.FAN_SPEED)).state,
-    AC_FAN_SPEED.HIGH,
+    states.find((s) => s.device_feature_external_id.endsWith(FEATURE.FAN_LEVEL)).state,
+    5,
   );
 });
 

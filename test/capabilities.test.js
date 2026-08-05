@@ -8,36 +8,47 @@ import {
 } from '../src/capabilities.js';
 import { createFakeGladys } from './helpers/fakeGladys.js';
 
-test('the fan and swing features need Gladys 4.84.3', () => {
-  assert.equal(capabilitiesForVersion('4.84.3').fanAndSwing, true);
-  assert.equal(capabilitiesForVersion('4.84.4').fanAndSwing, true);
-  assert.equal(capabilitiesForVersion('4.85.0').fanAndSwing, true);
-  assert.equal(capabilitiesForVersion('5.0.0').fanAndSwing, true);
-  assert.equal(capabilitiesForVersion('4.84.2').fanAndSwing, false);
-  assert.equal(capabilitiesForVersion('4.62.0').fanAndSwing, false);
+test('the fan features need the FAN category, added in Gladys 4.79.0', () => {
+  assert.equal(capabilitiesForVersion('4.79.0').fanCategory, true);
+  assert.equal(capabilitiesForVersion('4.84.3').fanCategory, true);
+  assert.equal(capabilitiesForVersion('5.0.0').fanCategory, true);
+  assert.equal(capabilitiesForVersion('4.78.2').fanCategory, false);
+  assert.equal(capabilitiesForVersion('4.62.0').fanCategory, false);
   assert.equal(
-    capabilitiesForVersion('4.9.0').fanAndSwing,
+    capabilitiesForVersion('4.9.0').fanCategory,
     false,
-    '4.9 < 4.84, not a string comparison',
+    '4.9 < 4.79, not a string compare',
   );
 });
 
+test('restricting a mode list needs supported_options, added in Gladys 4.84.3', () => {
+  assert.equal(capabilitiesForVersion('4.84.3').supportedOptions, true);
+  assert.equal(capabilitiesForVersion('4.84.2').supportedOptions, false);
+  assert.equal(capabilitiesForVersion('4.79.0').supportedOptions, false);
+});
+
 test('an unreadable version falls back to the base catalog', () => {
-  assert.equal(capabilitiesForVersion(undefined).fanAndSwing, false);
-  assert.equal(capabilitiesForVersion('unknown').fanAndSwing, false);
-  assert.equal(isAtLeast('4.84', [4, 84, 3]), false, 'a truncated version is not trusted');
+  assert.deepEqual(capabilitiesForVersion(undefined), DEFAULT_CAPABILITIES);
+  assert.deepEqual(capabilitiesForVersion('unknown'), DEFAULT_CAPABILITIES);
+  assert.equal(isAtLeast('4.84', [4, 79, 0]), false, 'a truncated version is not trusted');
 });
 
 test('a pre-release counts as its base version', () => {
-  assert.equal(isAtLeast('4.85.0-beta.1', [4, 84, 3]), true);
+  assert.equal(isAtLeast('4.85.0-beta.1', [4, 79, 0]), true);
 });
 
 test('the capabilities are read from the connected Gladys', async () => {
   assert.deepEqual(await detectCapabilities(createFakeGladys({ gladysVersion: '4.84.3' })), {
-    fanAndSwing: true,
+    fanCategory: true,
+    supportedOptions: true,
+  });
+  assert.deepEqual(await detectCapabilities(createFakeGladys({ gladysVersion: '4.80.0' })), {
+    fanCategory: true,
+    supportedOptions: false,
   });
   assert.deepEqual(await detectCapabilities(createFakeGladys({ gladysVersion: '4.70.0' })), {
-    fanAndSwing: false,
+    fanCategory: false,
+    supportedOptions: false,
   });
 });
 
