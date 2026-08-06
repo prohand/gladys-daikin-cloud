@@ -62,6 +62,18 @@ qui attend un index. Daikin ventile ces compteurs par mode (chaud, froid…) :
 l'intégration les additionne, parce que ce qui intéresse un tableau de bord
 c'est ce que l'unité a consommé, pas comment ça se répartit.
 
+Leur finesse est celle de Daikin, pas celle de l'intervalle de rafraîchissement :
+le compteur du jour est construit sur des **tranches de deux heures, par pas de
+0,1 kWh**. « Énergie aujourd'hui » reste donc plate un moment, puis fait un
+bond — rafraîchir plus souvent ne lisse rien, ça ne fait que consommer votre
+quota d'appels plus vite. Ce compteur du jour reste malgré tout le plus fin que
+l'API fournit, et c'est ce qui en fait le bon candidat pour alimenter le suivi de
+l'énergie de Gladys : sa remise à zéro de minuit ne coûte quasiment rien (la
+première valeur après minuit vaut 0, et Gladys ignore le pas négatif d'un
+compteur qui repart à zéro). Une **consommation 30 minutes** qui en dérive sort
+donc en escalier — quelques zéros, puis un bloc — tandis que les totaux
+journaliers et mensuels, eux, restent justes.
+
 Certaines fonctions sont signalées en lecture seule par Daikin selon le modèle
 et le firmware — c'est presque toujours le cas de « Garder au sec ». Elles sont
 alors publiées comme capteurs, sans interrupteur qui serait de toute façon

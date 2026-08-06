@@ -59,6 +59,17 @@ index. Daikin splits those counters per mode (heating, cooling…); the
 integration sums them, because what a dashboard wants is what the unit consumed,
 not how it was split.
 
+Their resolution is Daikin's, not the refresh interval's: the daily counter is
+built from **two-hour slots, in steps of 0.1 kWh**. So "Energy today" stays flat
+for a while, then jumps — refreshing more often does not make it smoother, it
+only spends your API quota faster. That daily counter is still the finest thing
+the API gives, which is what makes it the right one to feed Gladys' energy
+monitoring: its midnight reset costs almost nothing (the first value after
+midnight is 0, and Gladys ignores the negative step of a counter going back to
+zero). A **30-minute consumption** derived from it therefore comes out in a
+staircase — a few zeros, then a block — while the daily and monthly totals stay
+correct.
+
 Daikin reports some functions read-only depending on the model and firmware —
 "Keep dry" almost always is. Those are published as sensors, without a switch
 the API would refuse anyway.
