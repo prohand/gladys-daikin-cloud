@@ -11,23 +11,25 @@ télécommande de plus.
 Pour chaque climatiseur de votre compte Daikin, Gladys crée un appareil avec les
 fonctionnalités que votre modèle prend réellement en charge :
 
-| Fonctionnalité          | Rôle                                                                            |
-| ----------------------- | ------------------------------------------------------------------------------- |
-| Marche/Arrêt            | Allumer et éteindre l'unité                                                     |
-| Mode                    | Auto, Froid, Chaud, Déshumidification, Ventilation seule                        |
-| Température de consigne | La consigne du mode actuellement actif                                          |
-| Vitesse (niveau)        | La vitesse de ventilation, sur l'échelle déclarée par votre unité (souvent 1-5) |
-| Balayage horizontal     | Le sens du flux d'air gauche/droite                                             |
-| Balayage vertical       | Le sens du flux d'air haut/bas                                                  |
-| Mode puissant           | Le mode « Puissant » de Daikin (interrupteur)                                   |
-| Mode Econo              | Le mode « Econo » de Daikin (interrupteur)                                      |
-| Mode Streamer           | Le mode « Streamer » de purification d'air (interrupteur)                       |
-| Garder au sec           | La fonction avancée « Garder au sec » de l'unité intérieure                     |
-| Température intérieure  | La température mesurée par l'unité (capteur, historisé)                         |
-| Température extérieure  | La température mesurée par le groupe extérieur (capteur, historisé)             |
-| Énergie aujourd'hui     | Consommation électrique du jour, en kWh (capteur, historisé)                    |
-| Énergie ce mois-ci      | Consommation électrique du mois en cours, en kWh                                |
-| Énergie cette année     | Consommation électrique de l'année en cours, en kWh                             |
+| Fonctionnalité                     | Rôle                                                                            |
+| ---------------------------------- | ------------------------------------------------------------------------------- |
+| Marche/Arrêt                       | Allumer et éteindre l'unité                                                     |
+| Mode                               | Auto, Froid, Chaud, Déshumidification, Ventilation seule                        |
+| Température de consigne            | La consigne du mode actuellement actif                                          |
+| Vitesse (niveau)                   | La vitesse de ventilation, sur l'échelle déclarée par votre unité (souvent 1-5) |
+| Balayage horizontal                | Le sens du flux d'air gauche/droite                                             |
+| Balayage vertical                  | Le sens du flux d'air haut/bas                                                  |
+| Mode puissant                      | Le mode « Puissant » de Daikin (interrupteur)                                   |
+| Mode Econo                         | Le mode « Econo » de Daikin (interrupteur)                                      |
+| Mode Streamer                      | Le mode « Streamer » de purification d'air (interrupteur)                       |
+| Garder au sec                      | La fonction avancée « Garder au sec » de l'unité intérieure                     |
+| Température intérieure             | La température mesurée par l'unité (capteur, historisé)                         |
+| Température extérieure             | La température mesurée par le groupe extérieur (capteur, historisé)             |
+| Énergie aujourd'hui                | Consommation électrique du jour, en kWh (capteur, historisé)                    |
+| Énergie ce mois-ci                 | Consommation électrique du mois en cours, en kWh                                |
+| Énergie cette année                | Consommation électrique de l'année en cours, en kWh                             |
+| Énergie aujourd'hui (consommation) | Ce que l'unité a consommé sur les 30 dernières minutes, rempli par Gladys       |
+| Énergie aujourd'hui (coût)         | Ce que ces 30 minutes ont coûté, selon votre contrat d'énergie                  |
 
 Un modèle sans volets n'obtient pas de sens du flux d'air, un modèle sans
 ventilateur n'obtient pas de vitesse, un modèle sans fonction Streamer n'obtient
@@ -89,6 +91,32 @@ Les pompes à chaleur (Altherma…) sont partiellement prises en charge : leur
 marche/arrêt, leur mode et leur température extérieure fonctionnent, mais leur
 consigne de température d'eau n'est pas exposée — cette intégration vise les
 climatiseurs.
+
+## Suivi de l'énergie
+
+Votre climatiseur peut prendre sa place dans le
+[suivi de l'énergie](https://gladysassistant.com/fr/docs/integrations/energy-monitoring/)
+de Gladys, aux côtés de votre compteur électrique et de vos prises connectées.
+L'intégration publie les deux fonctionnalités qui le permettent — **Énergie
+aujourd'hui (consommation)** et **Énergie aujourd'hui (coût)** — déjà rattachées
+au compteur du jour. C'est Gladys qui les remplit, toutes les trente minutes :
+rien n'est écrit ici.
+
+Il reste une étape, une seule fois, dans **Réglages → Énergie** : choisir le
+parent d'**Énergie aujourd'hui**, qui doit être la fonctionnalité de votre
+compteur principal (un index Linky, une pince sur l'arrivée générale…). C'est ce
+qui indique à Gladys que le climatiseur est une _part_ de ce que le compteur
+mesure déjà, et non une consommation qui s'ajouterait par-dessus. Laissez
+« Énergie ce mois-ci » et « Énergie cette année » où elles sont : elles sont là
+pour être lues, elles n'alimentent rien.
+
+Seul le compteur du jour porte ce couple. En accrocher un aussi au compteur
+mensuel et au compteur annuel compterait les mêmes kWh deux fois de plus dans
+votre tableau de bord.
+
+> **Le suivi de l'énergie nécessite Gladys 4.66 ou plus récent.** Sur une version
+> antérieure, les deux fonctionnalités ne sont simplement pas publiées et le
+> reste de l'intégration n'est pas affecté.
 
 ## Avant de commencer : créez votre application Daikin
 

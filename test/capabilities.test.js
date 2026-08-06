@@ -52,11 +52,22 @@ test('a Gladys without the per-axis airflow falls back one level', async () => {
   assert.equal(capabilities.acSwing, false);
 });
 
-test('a Gladys without the fan category falls back to the base catalog', async () => {
+test('a Gladys without the fan category keeps the energy monitoring', async () => {
+  // The 30-minute consumption pair landed BEFORE the fan category: dropping it
+  // along with the fan would cost an instance something it does support.
+  const { gladys, attempts } = createPickyGladys('energy');
+  const capabilities = await publishWithBestCatalog(gladys, buildDevices, false);
+  assert.deepEqual(attempts, ['full', 'fan', 'energy']);
+  assert.equal(capabilities.fanCategory, false);
+  assert.equal(capabilities.energyMonitoring, true);
+});
+
+test('a Gladys older than the energy monitoring falls back to the base catalog', async () => {
   const { gladys, attempts } = createPickyGladys('base');
   const capabilities = await publishWithBestCatalog(gladys, buildDevices, false);
-  assert.deepEqual(attempts, ['full', 'fan', 'base']);
+  assert.deepEqual(attempts, ['full', 'fan', 'energy', 'base']);
   assert.equal(capabilities.fanCategory, false);
+  assert.equal(capabilities.energyMonitoring, false);
 });
 
 test('a Gladys refusing even the base catalog surfaces the error', async () => {

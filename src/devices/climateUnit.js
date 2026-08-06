@@ -15,6 +15,7 @@ import {
   DEVICE_FEATURE_TYPES,
   DEVICE_FEATURE_UNITS,
 } from '@gladysassistant/integration-sdk';
+import { featureUuid } from './featureUuid.js';
 import {
   AC_MODE,
   AC_SWING,
@@ -48,6 +49,8 @@ export const FEATURE = {
   ENERGY_TODAY: 'energy-today',
   ENERGY_MONTH: 'energy-month',
   ENERGY_YEAR: 'energy-year',
+  ENERGY_TODAY_CONSUMPTION: 'energy-today-consumption',
+  ENERGY_TODAY_COST: 'energy-today-cost',
   POWERFUL: 'powerful',
   ECONO: 'econo',
   STREAMER: 'streamer',
@@ -134,10 +137,11 @@ export function featureKeyOf(gladys, unit, externalId) {
  * temperature gets no room setpoint...).
  * @param {object} gladys the SDK instance
  * @param {object} unit the normalized Daikin unit
- * @param {{ fanCategory: boolean, supportedOptions: boolean, acSwing: boolean }} capabilities what the Gladys instance accepts
+ * @param {{ fanCategory: boolean, supportedOptions: boolean, acSwing: boolean, energyMonitoring: boolean }} capabilities what the Gladys instance accepts
+ * @param {Map<string, string>|null} [knownFeatureIds] the ids Gladys already stores, by feature external_id, or null when they could not be read
  * @returns {object} the device to publish
  */
-export function buildDevice(gladys, unit, capabilities) {
+export function buildDevice(gladys, unit, capabilities, knownFeatureIds = null) {
   const ids = gladys.externalIds(DEVICE_TYPE, unit.platformId);
   const features = [];
 
@@ -313,6 +317,66 @@ export function buildDevice(gladys, unit, capabilities) {
     });
   }
 
+  // The Gladys energy monitoring hangs off the counter of the DAY, and off
+  // that one only: the core derives nothing by itself, an integration
+  // publishes the "30 minutes consumption"/"30 minutes cost" pair and links it
+  // with `energy_parent_id`, then a scheduled job fills the consumption from
+  // the difference between two readings of the parent. Attaching the pair to
+  // the monthly or the yearly counter too would count the same kWh twice in
+  // the dashboard — see CLAUDE.md for why "today" is the one that carries it.
+  const indexFeature = features.find(
+    (feature) => feature.external_id === ids.feature(FEATURE.ENERGY_TODAY),
+  );
+  // `knownFeatureIds` being null means the ids Gladys holds could not be read.
+  // The pair is then left out entirely rather than published against ids that
+  // may already belong to something: it comes back on the next publish.
+  if (capabilities.energyMonitoring && indexFeature && knownFeatureIds) {
+    const consumptionExternalId = ids.feature(FEATURE.ENERGY_TODAY_CONSUMPTION);
+    // A feature Gladys already stores keeps the id Gladys gave it: publishing
+    // another one would rewrite the primary key its states hang on. Only a
+    // feature Gladys has never seen carries the derived id — and the index has
+    // to carry one, because its children point at it by id and nothing else.
+    if (!knownFeatureIds.has(indexFeature.external_id)) {
+      indexFeature.id = featureUuid(indexFeature.external_id);
+    }
+    // `energy_parent_id` is deliberately absent from the index feature: it is
+    // the user who parents it to their main meter in Settings -> Energy, and
+    // sending the key on every publish — even as null — would undo that.
+    features.push({
+      name: 'Energy today (consumption)',
+      external_id: consumptionExternalId,
+      ...(knownFeatureIds.has(consumptionExternalId)
+        ? {}
+        : { id: featureUuid(consumptionExternalId) }),
+      energy_parent_id: featureIdOf(indexFeature.external_id, knownFeatureIds),
+      category: DEVICE_FEATURE_CATEGORIES.ENERGY_SENSOR,
+      type: DEVICE_FEATURE_TYPES.ENERGY_SENSOR.THIRTY_MINUTES_CONSUMPTION,
+      unit: DEVICE_FEATURE_UNITS.KILOWATT_HOUR,
+      min: 0,
+      // The bounds of the core's own derived features. These are written by
+      // Gladys, not by this integration: narrowing them is not our call.
+      max: 100000000000,
+      read_only: true,
+      has_feedback: false,
+      keep_history: true,
+    });
+    features.push({
+      name: 'Energy today (cost)',
+      external_id: ids.feature(FEATURE.ENERGY_TODAY_COST),
+      // The cost hangs off the consumption, not off the index: that is the
+      // chain the core walks to price a 30-minute window.
+      energy_parent_id: featureIdOf(consumptionExternalId, knownFeatureIds),
+      category: DEVICE_FEATURE_CATEGORIES.ENERGY_SENSOR,
+      type: DEVICE_FEATURE_TYPES.ENERGY_SENSOR.THIRTY_MINUTES_CONSUMPTION_COST,
+      unit: DEVICE_FEATURE_UNITS.EURO,
+      min: 0,
+      max: 100000000000,
+      read_only: true,
+      has_feedback: false,
+      keep_history: true,
+    });
+  }
+
   // The comfort toggles. Daikin reports some of them read-only depending on
   // the model and the firmware ("keep dry" usually is): the feature follows
   // what the unit says rather than offering a switch that would be refused.
@@ -346,6 +410,17 @@ export function buildDevice(gladys, unit, capabilities) {
       { name: 'daikin_model', value: String(unit.model ?? '') },
     ],
   };
+}
+
+/**
+ * The id a feature has (or will have) in Gladys: the one Gladys already stores
+ * for it, the derived one when Gladys has never seen it.
+ * @param {string} externalId the feature external_id
+ * @param {Map<string, string>} knownFeatureIds the ids Gladys already stores
+ * @returns {string} the feature id to point `energy_parent_id` at
+ */
+function featureIdOf(externalId, knownFeatureIds) {
+  return knownFeatureIds.get(externalId) ?? featureUuid(externalId);
 }
 
 /**

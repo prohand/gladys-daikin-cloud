@@ -25,6 +25,8 @@ actually reports:
   switch or, when Daikin reports it read-only, as a sensor
 - **Room temperature** and **outdoor temperature** sensors, kept in history
 - **Energy consumed** today, this month and this year, in kWh
+- The **30-minute consumption and cost** of the Gladys energy monitoring, hung
+  off the daily counter (Gladys 4.66+)
 - The remaining Daikin API quota, shown live in the Configuration screen
 - A per-device transport badge: `cloud`, `cloud + degraded` when the unit
   reports a fault, `unreachable` when Daikin cannot reach it

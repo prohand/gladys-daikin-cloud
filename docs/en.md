@@ -10,23 +10,25 @@ today, Gladys just becomes another remote control.
 For every air conditioner of your Daikin account, Gladys creates one device
 with the features your model actually supports:
 
-| Feature             | What it does                                                         |
-| ------------------- | -------------------------------------------------------------------- |
-| On/Off              | Turn the unit on and off                                             |
-| Mode                | Auto, Cooling, Heating, Drying, Fan only                             |
-| Target temperature  | The setpoint of the mode currently active                            |
-| Fan speed           | The fan speed, on the scale your unit declares (often 1-5)           |
-| Horizontal airflow  | The left/right airflow direction                                     |
-| Vertical airflow    | The up/down airflow direction                                        |
-| Powerful mode       | Daikin's "Powerful" mode (switch)                                    |
-| Econo mode          | Daikin's "Econo" mode (switch)                                       |
-| Streamer mode       | The "Streamer" air purification mode (switch)                        |
-| Keep dry            | The indoor unit's "Keep dry" advanced function                       |
-| Room temperature    | The temperature the unit measures (sensor, kept in history)          |
-| Outdoor temperature | The temperature the outdoor unit measures (sensor, kept in history)  |
-| Energy today        | Electrical consumption for the day, in kWh (sensor, kept in history) |
-| Energy this month   | Electrical consumption for the current month, in kWh                 |
-| Energy this year    | Electrical consumption for the current year, in kWh                  |
+| Feature                    | What it does                                                         |
+| -------------------------- | -------------------------------------------------------------------- |
+| On/Off                     | Turn the unit on and off                                             |
+| Mode                       | Auto, Cooling, Heating, Drying, Fan only                             |
+| Target temperature         | The setpoint of the mode currently active                            |
+| Fan speed                  | The fan speed, on the scale your unit declares (often 1-5)           |
+| Horizontal airflow         | The left/right airflow direction                                     |
+| Vertical airflow           | The up/down airflow direction                                        |
+| Powerful mode              | Daikin's "Powerful" mode (switch)                                    |
+| Econo mode                 | Daikin's "Econo" mode (switch)                                       |
+| Streamer mode              | The "Streamer" air purification mode (switch)                        |
+| Keep dry                   | The indoor unit's "Keep dry" advanced function                       |
+| Room temperature           | The temperature the unit measures (sensor, kept in history)          |
+| Outdoor temperature        | The temperature the outdoor unit measures (sensor, kept in history)  |
+| Energy today               | Electrical consumption for the day, in kWh (sensor, kept in history) |
+| Energy this month          | Electrical consumption for the current month, in kWh                 |
+| Energy this year           | Electrical consumption for the current year, in kWh                  |
+| Energy today (consumption) | What the unit used over the last 30 minutes, filled in by Gladys     |
+| Energy today (cost)        | What those 30 minutes cost, from your energy contract                |
 
 A model without louvers gets no airflow direction, a model without a fan gets
 no fan speed, a model without the Streamer function gets no Streamer switch:
@@ -82,6 +84,31 @@ the API would refuse anyway.
 Heat pumps (Altherma…) are partially supported: their on/off, mode and outdoor
 temperature work, but their water temperature setpoint is not exposed — this
 integration targets air conditioners.
+
+## Energy monitoring
+
+Your air conditioner can take its place in the
+[energy monitoring](https://gladysassistant.com/docs/integrations/energy-monitoring/)
+of Gladys, next to your electricity meter and your smart plugs. The integration
+publishes the two features that make it possible — **Energy today
+(consumption)** and **Energy today (cost)** — already wired to the daily
+counter. Gladys fills them in itself, every thirty minutes; nothing writes them
+here.
+
+One step is left to you, and only once, in **Settings → Energy**: pick the
+parent of **Energy today**, which should be the feature of your main meter (a
+Linky index, a whole-house clamp…). That is what tells Gladys the air
+conditioner is a _part_ of what the meter already counts, rather than an extra
+consumption on top of it. Leave "Energy this month" and "Energy this year" where
+they are: they are there to be read, they feed nothing.
+
+Only the daily counter carries the pair. Hanging one on the monthly and the
+yearly counters as well would count the same kWh two more times in your
+dashboard.
+
+> **The energy monitoring needs Gladys 4.66 or newer.** On an older instance the
+> two features are simply not published, and the rest of the integration is
+> unaffected.
 
 ## Before you start: create your Daikin application
 

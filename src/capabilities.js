@@ -35,12 +35,18 @@ const SUPPORTED_OPTIONS_MIN_VERSION = [4, 84, 3];
  * release did not have:
  *   - `full`  : per-axis airflow direction (air conditioning), added in 4.84.3;
  *   - `fan`   : the FAN category (mode, speed, oscillation), added in 4.79;
+ *   - `energy`: the 30-minute consumption/cost pair, added in 4.66;
  *   - `base`  : what every supported Gladys understands.
+ *
+ * The energy monitoring landed BEFORE the fan category and the per-axis swing,
+ * so an instance taking either of those takes the pair too: the ladder stays a
+ * chain of subsets, and no combination is unreachable.
  */
 export const CAPABILITY_LEVELS = [
-  { level: 'full', fanCategory: true, acSwing: true },
-  { level: 'fan', fanCategory: true, acSwing: false },
-  { level: 'base', fanCategory: false, acSwing: false },
+  { level: 'full', fanCategory: true, acSwing: true, energyMonitoring: true },
+  { level: 'fan', fanCategory: true, acSwing: false, energyMonitoring: true },
+  { level: 'energy', fanCategory: false, acSwing: false, energyMonitoring: true },
+  { level: 'base', fanCategory: false, acSwing: false, energyMonitoring: false },
 ];
 
 /**
