@@ -164,6 +164,32 @@ application. Cela prend deux minutes :
 Gladys conserve les jetons obtenus et les renouvelle automatiquement. Vous ne
 devriez pas avoir à refaire cette manipulation.
 
+## Langue du nom des fonctionnalités
+
+Gladys traduit lui-même le nom d'une fonctionnalité **uniquement si son type
+n'apparaît qu'une seule fois dans l'appareil**. Un climatiseur en publie
+plusieurs du même type — trois compteurs d'énergie, deux sondes de température,
+plusieurs interrupteurs — qui gardent donc le nom donné par l'intégration. Et
+l'écran **Réglages → Énergie** ne montre jamais autre chose que ce nom : c'est
+ce qui donne un tableau de bord moitié français, moitié anglais.
+
+Le champ **Langue du nom des fonctionnalités** décide de la langue de ces noms :
+
+- **Automatique** (par défaut) suit le fuseau horaire de votre Gladys quand il
+  ne laisse aucun doute — `Europe/Paris`, La Réunion, les Antilles, la
+  Nouvelle-Calédonie, la Polynésie… — et retombe sur l'anglais partout ailleurs.
+  Un pays multilingue (Belgique, Suisse, Luxembourg) reste sur l'anglais :
+  son fuseau ne dit pas quelle langue on parle dans la maison.
+- **Français** et **Anglais** forcent la langue, quel que soit le fuseau.
+
+> **Gladys mémorise le nom donné à la création d'une fonctionnalité.** Changer
+> ce réglage n'affecte donc que les appareils ajoutés ensuite : ceux qui
+> existent déjà gardent leurs noms. Ils changeront à la prochaine mise à jour
+> structurelle de l'appareil — quand l'onglet **Découverte** propose le bouton
+> **Mettre à jour** parce que l'intégration a ajouté ou modifié une
+> fonctionnalité —, ou immédiatement si vous supprimez l'appareil et le
+> recréez, au prix de son historique.
+
 ## Intervalle de rafraîchissement et quota d'API
 
 Daikin limite un compte développeur à **200 appels d'API par jour et 20 par

@@ -107,6 +107,55 @@
       "default": 900,
       "min": 600,
       "max": 21600
+    },
+    {
+      "key": "naming",
+      "type": "section",
+      "label": {
+        "en": "Name of the features",
+        "fr": "Nom des fonctionnalités"
+      },
+      "description": {
+        "en": "Gladys translates a feature by itself only when its type appears once in the device: an air conditioner has three energy counters, two temperature sensors and several switches, so those keep the name this integration gives them — and the energy monitoring screen always shows that name. Pick the language you read Gladys in. Gladys stores the name a feature is created with, so this applies to the devices you add afterwards, not to the ones already created.",
+        "fr": "Gladys ne traduit une fonctionnalité elle-même que si son type n'apparaît qu'une fois dans l'appareil : un climatiseur a trois compteurs d'énergie, deux sondes de température et plusieurs interrupteurs, qui gardent donc le nom que leur donne cette intégration — et l'écran de suivi de l'énergie affiche toujours ce nom. Choisissez la langue dans laquelle vous lisez Gladys. Gladys mémorise le nom donné à la création d'une fonctionnalité : ce réglage s'applique donc aux appareils ajoutés ensuite, pas à ceux déjà créés."
+      }
+    },
+    {
+      "key": "device_language",
+      "type": "select",
+      "label": {
+        "en": "Language of the feature names",
+        "fr": "Langue du nom des fonctionnalités"
+      },
+      "description": {
+        "en": "Automatic follows the timezone of your Gladys when it leaves no doubt, and falls back to English.",
+        "fr": "Automatique suit le fuseau horaire de votre Gladys lorsqu'il ne laisse aucun doute, et retombe sur l'anglais."
+      },
+      "required": false,
+      "default": "auto",
+      "options": [
+        {
+          "value": "auto",
+          "label": {
+            "en": "Automatic",
+            "fr": "Automatique"
+          }
+        },
+        {
+          "value": "fr",
+          "label": {
+            "en": "French",
+            "fr": "Français"
+          }
+        },
+        {
+          "value": "en",
+          "label": {
+            "en": "English",
+            "fr": "Anglais"
+          }
+        }
+      ]
     }
   ],
   "actions": [

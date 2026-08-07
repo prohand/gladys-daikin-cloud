@@ -151,6 +151,32 @@ minutes:
 Gladys stores the resulting tokens itself and renews them automatically. You
 should not have to go through this flow again.
 
+## Language of the feature names
+
+Gladys translates a feature name by itself **only when its type appears once in
+the device**. An air conditioner publishes several features of the same type —
+three energy counters, two temperature sensors, several switches — and those
+keep the name the integration gave them. **Settings → Energy** goes further: it
+never shows anything but that stored name. This is what makes a dashboard read
+half in one language, half in the other.
+
+The **Language of the feature names** field decides which language those names
+are published in:
+
+- **Automatic** (the default) follows the timezone of your Gladys when it leaves
+  no doubt — `Europe/Paris`, Réunion, the French Antilles, New Caledonia, French
+  Polynesia… — and falls back to English everywhere else. A multilingual country
+  (Belgium, Switzerland, Luxembourg) stays on English: its timezone says nothing
+  about the language spoken in the house.
+- **French** and **English** force the language, whatever the timezone.
+
+> **Gladys stores the name a feature is created with.** Changing this setting
+> therefore only affects the devices you add afterwards; the ones already
+> created keep their names. They pick up the new ones at the next structural
+> update of the device — when the **Discovery** tab offers the **Update** button
+> because the integration added or changed a feature — or right away if you
+> delete the device and add it again, at the cost of its history.
+
 ## Refresh interval and API quota
 
 Daikin limits a developer account to **200 API calls per day and 20 per

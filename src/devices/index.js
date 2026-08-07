@@ -25,10 +25,11 @@ export {
  * @param {Array<object>} units the normalized Daikin units
  * @param {{ fanCategory: boolean, supportedOptions: boolean, acSwing: boolean, energyMonitoring: boolean }} capabilities what the Gladys instance accepts
  * @param {Map<string, string>|null} [knownFeatureIds] the ids Gladys already stores, by feature external_id, or null when they could not be read
+ * @param {string} [language] the language of the published names (see src/i18n.js)
  * @returns {Array<object>} the devices to publish
  */
-export function buildDiscoveredDevices(gladys, units, capabilities, knownFeatureIds) {
-  return units.map((unit) => buildDevice(gladys, unit, capabilities, knownFeatureIds));
+export function buildDiscoveredDevices(gladys, units, capabilities, knownFeatureIds, language) {
+  return units.map((unit) => buildDevice(gladys, unit, capabilities, knownFeatureIds, language));
 }
 
 /**

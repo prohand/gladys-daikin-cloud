@@ -59,6 +59,7 @@ there is nothing to be done about it.
 ```
 index.js                  SDK wiring: OAuth handlers, commands, lifecycle
 src/config.js             config_schema values + off-schema token storage
+src/i18n.js               the published feature names, in English and French
 src/capabilities.js       the catalog Gladys accepts, found by trying
 src/store.js              the account snapshot and the refresh schedule
 src/daikin/oauth.js       authorize URL, code exchange, token refresh
@@ -69,7 +70,7 @@ src/devices/climateUnit.js  one unit -> discovery payload, states, commands
 src/devices/index.js      the catalog: discovery, transports, routing
 ```
 
-Five design points are worth knowing before touching the code.
+Six design points are worth knowing before touching the code.
 
 **The polling is ours, not Gladys'.** A developer account is limited to 200 API
 calls a day, and `poll_frequency` on a discovered device tops out at one minute
@@ -108,6 +109,16 @@ a control nobody could read. The louvers get one air conditioning feature per
 axis, matching what Daikin drives and what the Onecta app shows; a Gladys older
 than 4.84.3 has no per-axis type, so they fold there into a single
 `fan.rock-setting` whose bitmap encoding carries both.
+
+**The feature names are translated here, because Gladys cannot.** Gladys renders
+a feature with the label of its own dictionary only when the feature TYPE is
+unique inside the device; a Daikin unit publishes three `energy-sensor/energy`
+features, two `temperature-sensor/decimal` ones and several `binary` ones, which
+therefore fall back to the raw published name — and the energy monitoring screen
+shows nothing but that name. The host API exposes no user language, so
+`src/i18n.js` holds the names in English and French and the manifest offers the
+choice, `auto` reading the `TZ` the supervisor injects. Gladys stores the name a
+feature is CREATED with: the setting reaches the devices created afterwards.
 
 ## Development
 

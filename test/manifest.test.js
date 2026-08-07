@@ -9,6 +9,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { DEFAULT_CONFIG, MAX_POLL_FREQUENCY, MIN_POLL_FREQUENCY } from '../src/config.js';
+import { AUTO_LANGUAGE, LANGUAGES } from '../src/i18n.js';
 
 const manifest = JSON.parse(
   await readFile(new URL('../gladys-assistant-integration.json', import.meta.url), 'utf8'),
@@ -81,6 +82,21 @@ test('the refresh interval bounds match what the code enforces', () => {
   const field = manifest.config_schema.find((entry) => entry.key === 'poll_frequency');
   assert.equal(field.min, MIN_POLL_FREQUENCY);
   assert.equal(field.max, MAX_POLL_FREQUENCY);
+});
+
+test('the language select offers exactly what the code can publish', () => {
+  const field = manifest.config_schema.find((entry) => entry.key === 'device_language');
+  assert.equal(field.type, 'select');
+  // A value offered here that resolveLanguage() does not know would silently
+  // fall back to `auto`, and the user would never understand why.
+  assert.deepEqual(
+    field.options.map((option) => option.value).sort(),
+    [AUTO_LANGUAGE, ...LANGUAGES].sort(),
+  );
+  for (const option of field.options) {
+    assert.ok(option.label.en, `option "${option.value}" needs an English label`);
+    assert.ok(option.label.fr, `option "${option.value}" needs a French label`);
+  }
 });
 
 test('the OAuth2 flow is declared, and the credentials it needs come first', () => {

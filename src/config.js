@@ -12,6 +12,8 @@
 // OAuth callback through `gladys.setConfig()`.
 // -----------------------------------------------------------------------------
 
+import { AUTO_LANGUAGE, LANGUAGES } from './i18n.js';
+
 // Keys used to persist the Daikin OAuth2 session. NOT part of config_schema.
 export const TOKEN_KEYS = {
   ACCESS_TOKEN: 'access_token',
@@ -32,6 +34,7 @@ export const MAX_POLL_FREQUENCY = 21600;
 // the `config_schema` of the manifest (a test enforces it).
 export const DEFAULT_CONFIG = {
   poll_frequency: 900, // seconds between two reads of the Daikin cloud
+  device_language: AUTO_LANGUAGE, // language of the published feature names
 };
 
 /**
@@ -49,7 +52,19 @@ export function normalizeConfig(raw = {}) {
     client_id: typeof raw.client_id === 'string' ? raw.client_id.trim() : '',
     client_secret: typeof raw.client_secret === 'string' ? raw.client_secret.trim() : '',
     poll_frequency: clampPollFrequency(pollFrequency),
+    device_language: normalizeLanguageChoice(raw.device_language),
   };
+}
+
+/**
+ * Keep the language choice inside what `src/i18n.js` knows. Anything else —
+ * an empty select, a language added to the manifest and not to the code — falls
+ * back to `auto` rather than to a language nobody chose.
+ * @param {unknown} value the stored `device_language`
+ * @returns {string} 'auto', or one of the supported languages
+ */
+export function normalizeLanguageChoice(value) {
+  return LANGUAGES.includes(value) ? value : AUTO_LANGUAGE;
 }
 
 /**

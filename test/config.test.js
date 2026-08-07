@@ -30,6 +30,15 @@ test('values coming from the form as strings are coerced and trimmed', () => {
   assert.equal(config.client_secret, 'shh');
 });
 
+test('the language of the names falls back to auto unless one is picked', () => {
+  assert.equal(normalizeConfig().device_language, 'auto');
+  assert.equal(normalizeConfig({ device_language: 'fr' }).device_language, 'fr');
+  assert.equal(normalizeConfig({ device_language: 'en' }).device_language, 'en');
+  // A value the code does not know must not silently become a language.
+  assert.equal(normalizeConfig({ device_language: 'de' }).device_language, 'auto');
+  assert.equal(normalizeConfig({ device_language: '' }).device_language, 'auto');
+});
+
 test('the refresh interval stays inside what the Daikin quota allows', () => {
   assert.equal(clampPollFrequency(30), MIN_POLL_FREQUENCY);
   assert.equal(clampPollFrequency(99999), MAX_POLL_FREQUENCY);

@@ -278,6 +278,47 @@ test('the consumption is published as kWh energy sensors', () => {
   assert.equal(stateOf(states, FEATURE.ENERGY_YEAR), 84);
 });
 
+test('the names are published in the configured language', () => {
+  // Gladys only translates a feature whose TYPE is unique in the device: the
+  // three energy counters, the two temperature sensors and the switches all
+  // fall back to the name published here, and the energy monitoring screen
+  // shows nothing else. Publishing them in English is what made a French
+  // dashboard read half in English.
+  const [french] = buildDiscoveredDevices(gladys, [splitUnit()], ENERGY, new Map(), 'fr');
+  assert.equal(featureOf(french, FEATURE.POWER).name, 'Marche/Arrêt');
+  assert.equal(featureOf(french, FEATURE.ROOM_TEMPERATURE).name, 'Température intérieure');
+  assert.equal(featureOf(french, FEATURE.ENERGY_TODAY).name, "Énergie aujourd'hui");
+  assert.equal(featureOf(french, FEATURE.ENERGY_MONTH).name, 'Énergie ce mois-ci');
+  assert.equal(
+    featureOf(french, FEATURE.ENERGY_TODAY_CONSUMPTION).name,
+    "Énergie aujourd'hui (consommation)",
+  );
+  assert.equal(featureOf(french, FEATURE.SWING_VERTICAL).name, 'Balayage vertical');
+  assert.equal(featureOf(french, FEATURE.POWERFUL).name, 'Mode puissant');
+
+  // Nothing else moves with the language: the external_ids the states and the
+  // commands travel on are built from the feature keys, never from the names.
+  const [english] = buildDiscoveredDevices(gladys, [splitUnit()], ENERGY, new Map(), 'en');
+  assert.equal(featureOf(english, FEATURE.ENERGY_TODAY).name, 'Energy today');
+  assert.deepEqual(
+    french.features.map((feature) => feature.external_id),
+    english.features.map((feature) => feature.external_id),
+  );
+
+  // English stays the default: an integration that cannot tell keeps the
+  // names every install had before this setting existed.
+  const [fallback] = buildDiscoveredDevices(gladys, [splitUnit()], ENERGY, new Map());
+  assert.equal(featureOf(fallback, FEATURE.ENERGY_TODAY).name, 'Energy today');
+});
+
+test('the folded oscillation feature is named too', () => {
+  // The FAN fallback of a Gladys without the per-axis swing goes through
+  // another branch of buildDevice: it must not come out unnamed.
+  const capabilities = { fanCategory: true, supportedOptions: false, acSwing: false };
+  const [device] = buildDiscoveredDevices(gladys, [splitUnit()], capabilities, null, 'fr');
+  assert.equal(featureOf(device, FEATURE.FAN_ROCK).name, 'Oscillation');
+});
+
 test('the energy monitoring pair hangs off the counter of the day, and off it alone', () => {
   const [device] = buildDiscoveredDevices(gladys, [splitUnit()], ENERGY, new Map());
   const index = featureOf(device, FEATURE.ENERGY_TODAY);

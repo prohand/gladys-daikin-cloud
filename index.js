@@ -29,6 +29,7 @@ import {
   detectSupportedOptions,
   publishWithBestCatalog,
 } from './src/capabilities.js';
+import { resolveLanguage } from './src/i18n.js';
 import { DaikinApi } from './src/daikin/api.js';
 import { buildAuthorizeUrl, exchangeCodeForTokens } from './src/daikin/oauth.js';
 import { DaikinStore } from './src/store.js';
@@ -265,6 +266,10 @@ gladys.on('connected', async () => {
     config = normalizeConfig(rawConfig);
     api.setCredentials({ clientId: config.client_id, clientSecret: config.client_secret });
     api.setTokens(readTokens(rawConfig));
+    logger.info(
+      `Device names published in "${resolveLanguage(config.device_language)}" ` +
+        `(setting: ${config.device_language}, TZ: ${process.env.TZ ?? 'unset'})`,
+    );
 
     // 2) Nothing to read until the user linked their Daikin account: say so in
     // the Configuration screen instead of failing silently.
@@ -389,9 +394,14 @@ async function publishEverything(units, { publishDevices = false } = {}) {
     // in the Onecta app, or a new unit added to the account, reaches Gladys.
     // Gladys itself decides which catalog it can take, and what it accepted
     // drives the states published below.
+    //
+    // The names go out in the configured language. Gladys stores the ones a
+    // feature was CREATED with, so a language changed later only reaches the
+    // devices created afterwards (see src/i18n.js and the documentation).
+    const language = resolveLanguage(config.device_language);
     capabilities = await publishWithBestCatalog(
       gladys,
-      (candidate) => buildDiscoveredDevices(gladys, units, candidate, knownFeatureIds),
+      (candidate) => buildDiscoveredDevices(gladys, units, candidate, knownFeatureIds, language),
       capabilities.supportedOptions,
     );
   }

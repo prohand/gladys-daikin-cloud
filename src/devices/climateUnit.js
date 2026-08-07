@@ -16,6 +16,7 @@ import {
   DEVICE_FEATURE_UNITS,
 } from '@gladysassistant/integration-sdk';
 import { featureUuid } from './featureUuid.js';
+import { DEFAULT_LANGUAGE, featureName } from '../i18n.js';
 import {
   AC_MODE,
   AC_SWING,
@@ -70,17 +71,17 @@ const AC_SWING_VERTICAL_TYPE = 'swing-vertical';
 // The Daikin comfort toggles, each an on/off characteristic of the climate
 // control point — except "keep dry", which the indoor unit owns.
 const TOGGLES = [
-  { key: 'powerful', feature: 'POWERFUL', name: 'Powerful mode', characteristic: 'powerfulMode' },
-  { key: 'econo', feature: 'ECONO', name: 'Econo mode', characteristic: 'econoMode' },
-  { key: 'streamer', feature: 'STREAMER', name: 'Streamer mode', characteristic: 'streamerMode' },
-  { key: 'dryKeep', feature: 'DRY_KEEP', name: 'Keep dry', characteristic: 'dryKeepSetting' },
+  { key: 'powerful', feature: 'POWERFUL', characteristic: 'powerfulMode' },
+  { key: 'econo', feature: 'ECONO', characteristic: 'econoMode' },
+  { key: 'streamer', feature: 'STREAMER', characteristic: 'streamerMode' },
+  { key: 'dryKeep', feature: 'DRY_KEEP', characteristic: 'dryKeepSetting' },
 ];
 
 // The consumption periods Daikin reports, and the features they feed.
 const ENERGY_PERIODS = [
-  { key: 'today', feature: 'ENERGY_TODAY', name: 'Energy today' },
-  { key: 'thisMonth', feature: 'ENERGY_MONTH', name: 'Energy this month' },
-  { key: 'thisYear', feature: 'ENERGY_YEAR', name: 'Energy this year' },
+  { key: 'today', feature: 'ENERGY_TODAY' },
+  { key: 'thisMonth', feature: 'ENERGY_MONTH' },
+  { key: 'thisYear', feature: 'ENERGY_YEAR' },
 ];
 
 // Labels of the `supported_options`, stored by Gladys as the fallback text of
@@ -139,14 +140,24 @@ export function featureKeyOf(gladys, unit, externalId) {
  * @param {object} unit the normalized Daikin unit
  * @param {{ fanCategory: boolean, supportedOptions: boolean, acSwing: boolean, energyMonitoring: boolean }} capabilities what the Gladys instance accepts
  * @param {Map<string, string>|null} [knownFeatureIds] the ids Gladys already stores, by feature external_id, or null when they could not be read
+ * @param {string} [language] the language of the published names (see src/i18n.js)
  * @returns {object} the device to publish
  */
-export function buildDevice(gladys, unit, capabilities, knownFeatureIds = null) {
+export function buildDevice(
+  gladys,
+  unit,
+  capabilities,
+  knownFeatureIds = null,
+  language = DEFAULT_LANGUAGE,
+) {
   const ids = gladys.externalIds(DEVICE_TYPE, unit.platformId);
   const features = [];
+  // Gladys stores the name a feature is CREATED with: it only ever displays
+  // this one for a feature type the device carries more than once.
+  const name = (featureKey) => featureName(featureKey, language);
 
   features.push({
-    name: 'On/Off',
+    name: name(FEATURE.POWER),
     external_id: ids.feature(FEATURE.POWER),
     category: DEVICE_FEATURE_CATEGORIES.AIR_CONDITIONING,
     type: DEVICE_FEATURE_TYPES.AIR_CONDITIONING.BINARY,
@@ -163,7 +174,7 @@ export function buildDevice(gladys, unit, capabilities, knownFeatureIds = null) 
   const modes = supportedModes(unit);
   if (modes.length > 0) {
     features.push({
-      name: 'Mode',
+      name: name(FEATURE.MODE),
       external_id: ids.feature(FEATURE.MODE),
       category: DEVICE_FEATURE_CATEGORIES.AIR_CONDITIONING,
       type: DEVICE_FEATURE_TYPES.AIR_CONDITIONING.MODE,
@@ -183,7 +194,7 @@ export function buildDevice(gladys, unit, capabilities, knownFeatureIds = null) 
   const bounds = temperatureBounds(unit);
   if (bounds) {
     features.push({
-      name: 'Target temperature',
+      name: name(FEATURE.TARGET_TEMPERATURE),
       external_id: ids.feature(FEATURE.TARGET_TEMPERATURE),
       category: DEVICE_FEATURE_CATEGORIES.AIR_CONDITIONING,
       type: DEVICE_FEATURE_TYPES.AIR_CONDITIONING.TARGET_TEMPERATURE,
@@ -198,7 +209,7 @@ export function buildDevice(gladys, unit, capabilities, knownFeatureIds = null) 
 
   if (unit.roomTemperature !== null) {
     features.push({
-      name: 'Room temperature',
+      name: name(FEATURE.ROOM_TEMPERATURE),
       external_id: ids.feature(FEATURE.ROOM_TEMPERATURE),
       category: DEVICE_FEATURE_CATEGORIES.TEMPERATURE_SENSOR,
       type: DEVICE_FEATURE_TYPES.SENSOR.DECIMAL,
@@ -213,7 +224,7 @@ export function buildDevice(gladys, unit, capabilities, knownFeatureIds = null) 
 
   if (unit.outdoorTemperature !== null) {
     features.push({
-      name: 'Outdoor temperature',
+      name: name(FEATURE.OUTDOOR_TEMPERATURE),
       external_id: ids.feature(FEATURE.OUTDOOR_TEMPERATURE),
       category: DEVICE_FEATURE_CATEGORIES.TEMPERATURE_SENSOR,
       type: DEVICE_FEATURE_TYPES.SENSOR.DECIMAL,
@@ -239,7 +250,7 @@ export function buildDevice(gladys, unit, capabilities, knownFeatureIds = null) 
     const fixed = fanCapabilities?.fixed;
     if (fixed && fixed.max > fixed.min) {
       features.push({
-        name: 'Fan speed',
+        name: name(FEATURE.FAN_LEVEL),
         external_id: ids.feature(FEATURE.FAN_LEVEL),
         category: FAN_CATEGORY,
         type: FAN_SPEED_TYPE,
@@ -256,16 +267,16 @@ export function buildDevice(gladys, unit, capabilities, knownFeatureIds = null) 
   // Onecta app presents them, and how a scene can steer one axis alone. Older
   // instances fall back to the single oscillation bitmap of the FAN category.
   if (capabilities.acSwing) {
-    for (const [axis, featureKey, featureType, name] of [
-      ['horizontal', FEATURE.SWING_HORIZONTAL, AC_SWING_HORIZONTAL_TYPE, 'Horizontal airflow'],
-      ['vertical', FEATURE.SWING_VERTICAL, AC_SWING_VERTICAL_TYPE, 'Vertical airflow'],
+    for (const [axis, featureKey, featureType] of [
+      ['horizontal', FEATURE.SWING_HORIZONTAL, AC_SWING_HORIZONTAL_TYPE],
+      ['vertical', FEATURE.SWING_VERTICAL, AC_SWING_VERTICAL_TYPE],
     ]) {
       const swings = supportedSwings(fanCapabilities, axis);
       if (swings.length < 2) {
         continue;
       }
       features.push({
-        name,
+        name: name(featureKey),
         external_id: ids.feature(featureKey),
         category: DEVICE_FEATURE_CATEGORIES.AIR_CONDITIONING,
         type: featureType,
@@ -281,7 +292,7 @@ export function buildDevice(gladys, unit, capabilities, knownFeatureIds = null) 
     const rock = rockSettingBounds(fanCapabilities);
     if (rock) {
       features.push({
-        name: 'Oscillation',
+        name: name(FEATURE.FAN_ROCK),
         external_id: ids.feature(FEATURE.FAN_ROCK),
         category: FAN_CATEGORY,
         type: FAN_ROCK_SETTING_TYPE,
@@ -299,12 +310,12 @@ export function buildDevice(gladys, unit, capabilities, knownFeatureIds = null) 
   // Electrical consumption. Daikin reports it as period totals that RESET —
   // today's counter goes back to zero at midnight — so these are plain
   // sensors, not the ever-growing index of an electricity meter.
-  for (const { key, feature, name } of ENERGY_PERIODS) {
+  for (const { key, feature } of ENERGY_PERIODS) {
     if (unit.energy?.[key] === undefined || unit.energy?.[key] === null) {
       continue;
     }
     features.push({
-      name,
+      name: name(FEATURE[feature]),
       external_id: ids.feature(FEATURE[feature]),
       category: DEVICE_FEATURE_CATEGORIES.ENERGY_SENSOR,
       type: DEVICE_FEATURE_TYPES.ENERGY_SENSOR.ENERGY,
@@ -343,7 +354,7 @@ export function buildDevice(gladys, unit, capabilities, knownFeatureIds = null) 
     // the user who parents it to their main meter in Settings -> Energy, and
     // sending the key on every publish — even as null — would undo that.
     features.push({
-      name: 'Energy today (consumption)',
+      name: name(FEATURE.ENERGY_TODAY_CONSUMPTION),
       external_id: consumptionExternalId,
       ...(knownFeatureIds.has(consumptionExternalId)
         ? {}
@@ -361,7 +372,7 @@ export function buildDevice(gladys, unit, capabilities, knownFeatureIds = null) 
       keep_history: true,
     });
     features.push({
-      name: 'Energy today (cost)',
+      name: name(FEATURE.ENERGY_TODAY_COST),
       external_id: ids.feature(FEATURE.ENERGY_TODAY_COST),
       // The cost hangs off the consumption, not off the index: that is the
       // chain the core walks to price a 30-minute window.
@@ -380,13 +391,13 @@ export function buildDevice(gladys, unit, capabilities, knownFeatureIds = null) 
   // The comfort toggles. Daikin reports some of them read-only depending on
   // the model and the firmware ("keep dry" usually is): the feature follows
   // what the unit says rather than offering a switch that would be refused.
-  for (const { key, feature, name } of TOGGLES) {
+  for (const { key, feature } of TOGGLES) {
     const state = unit.toggles?.[key];
     if (!state) {
       continue;
     }
     features.push({
-      name,
+      name: name(FEATURE[feature]),
       external_id: ids.feature(FEATURE[feature]),
       category: DEVICE_FEATURE_CATEGORIES.SWITCH,
       type: DEVICE_FEATURE_TYPES.SWITCH.BINARY,
@@ -603,11 +614,14 @@ export function buildCommands(unit, featureKey, value) {
     case FEATURE.DRY_KEEP: {
       const toggle = TOGGLES.find(({ feature }) => FEATURE[feature] === featureKey);
       const state = unit.toggles?.[toggle.key];
+      // The errors thrown here stay in English, like every other message of
+      // this file: they are logged as much as they are shown.
+      const label = featureName(featureKey);
       if (!state) {
-        throw new Error(`This unit has no ${toggle.name.toLowerCase()}`);
+        throw new Error(`This unit has no ${label.toLowerCase()}`);
       }
       if (!state.settable) {
-        throw new Error(`${toggle.name} is read-only on this unit`);
+        throw new Error(`${label} is read-only on this unit`);
       }
       const on = Number(value) === 1;
       return {
