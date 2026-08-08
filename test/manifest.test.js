@@ -45,6 +45,18 @@ test('the manifest version follows package.json', () => {
   assert.ok(manifest.docker_image.endsWith(`:${packageJson.version}`));
 });
 
+test('the cover image is pinned to the released tag, never to a branch', () => {
+  // A URL that never changes is a URL nobody re-fetches: pinned to `main`, a
+  // redrawn cover stayed invisible in the store and on the docs site behind
+  // whatever the caches had kept. Pinning it to the tag makes every release
+  // publish an address no cache has seen.
+  assert.match(
+    manifest.cover_image,
+    new RegExp(`/v${packageJson.version.replace(/\./g, '\\.')}/cover\\.png$`),
+    'cover_image must point at the tag of this very version',
+  );
+});
+
 test('the integration declares itself as cloud only', () => {
   // Daikin exposes no documented local API for these units: there is no local
   // channel to prefer, and declaring one would show a misleading toggle.

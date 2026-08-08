@@ -29,7 +29,7 @@ GLADYS_INTEGRATION_SELECTOR=<selector> \
 npm start
 ```
 
-Releases are cut from the GitHub UI (Actions → Release) or by pushing a `vX.Y.Z` tag — never bump `package.json` or the manifest by hand, `release.yml` writes both (including the `docker_image` tag) and re-runs Prettier over the manifest.
+Releases are cut from the GitHub UI (Actions → Release) or by pushing a `vX.Y.Z` tag — never bump `package.json` or the manifest by hand, `release.yml` writes both (including the `docker_image` tag and the `cover_image` ref) and re-runs Prettier over the manifest.
 
 ## Architecture
 
@@ -80,7 +80,7 @@ That timer is the only thing keeping Gladys up to date, and on a first install i
 
 ## Manifest and tests
 
-`gladys-assistant-integration.json` is the contract with the Gladys store: `config_schema` fields, the `test_connection` action, version and `docker_image` tag. `test/manifest.test.js` enforces its consistency with the code (defaults, poll bounds, registered action handlers, version match with `package.json`) — when adding an action or a config field, update both sides or that test fails.
+`gladys-assistant-integration.json` is the contract with the Gladys store: `config_schema` fields, the `test_connection` action, version, `docker_image` tag and `cover_image` URL. That cover URL is pinned to the release tag, not to `main`: served from a stable address, a redrawn cover stayed invisible behind the store's, the docs site's and the browsers' caches. `test/manifest.test.js` enforces its consistency with the code (defaults, poll bounds, registered action handlers, version match with `package.json`) — when adding an action or a config field, update both sides or that test fails.
 
 Tests stub `fetch` and use `test/helpers/fakeGladys.js` (an in-memory stand-in for the SDK surface) plus realistic payloads in `test/fixtures/gatewayDevices.js` (split unit, heat pump, offline unit). No network in the suite. New Daikin payload shapes belong in the fixtures.
 
