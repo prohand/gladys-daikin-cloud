@@ -6,8 +6,9 @@
 # What it does, in one run:
 #   1. computes the next semver from `package.json` (npm version rules);
 #   2. writes it into `package.json`, `package-lock.json` AND the manifest
-#      (`gladys-assistant-integration.json`: both `version` and the
-#      `docker_image` tag, so the indexer and the image stay in lockstep);
+#      (`gladys-assistant-integration.json`: `version`, the `docker_image` tag
+#      and the `cover_image` ref, so the indexer, the image and the artwork
+#      stay in lockstep);
 #   3. commits the bump and pushes the `vX.Y.Z` tag;
 #   4. calls build.yml to publish the multi-arch image (`:X.Y.Z` + `:latest`).
 #
@@ -63,11 +64,20 @@ jobs:
 
           image="ghcr.io/${GITHUB_REPOSITORY,,}:${new_version}"
 
-          # Keep the manifest in lockstep: the version the indexer reads AND the
-          # image tag Gladys pulls must both point at this release.
+          # The cover is served straight from the repository, so its URL must
+          # change whenever the artwork does — pinned to `main` it never did,
+          # and the store, the docs site and every browser in between kept
+          # serving whatever they had cached the first time. The tag pushed a
+          # few lines below is this very commit, so the URL resolves as soon as
+          # the release exists.
+          cover="https://raw.githubusercontent.com/${GITHUB_REPOSITORY}/v${new_version}/cover.png"
+
+          # Keep the manifest in lockstep: the version the indexer reads, the
+          # image tag Gladys pulls and the cover it displays must all point at
+          # this release.
           tmp="$(mktemp)"
-          jq --arg version "$new_version" --arg image "$image" \
-            '.version = $version | .docker_image = $image' \
+          jq --arg version "$new_version" --arg image "$image" --arg cover "$cover" \
+            '.version = $version | .docker_image = $image | .cover_image = $cover' \
             gladys-assistant-integration.json > "$tmp"
           mv "$tmp" gladys-assistant-integration.json
 
