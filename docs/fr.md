@@ -65,16 +65,23 @@ l'intégration les additionne, parce que ce qui intéresse un tableau de bord
 c'est ce que l'unité a consommé, pas comment ça se répartit.
 
 Leur finesse est celle de Daikin, pas celle de l'intervalle de rafraîchissement :
-le compteur du jour est construit sur des **tranches de deux heures, par pas de
-0,1 kWh**. « Énergie aujourd'hui » reste donc plate un moment, puis fait un
-bond — rafraîchir plus souvent ne lisse rien, ça ne fait que consommer votre
-quota d'appels plus vite. Ce compteur du jour reste malgré tout le plus fin que
-l'API fournit, et c'est ce qui en fait le bon candidat pour alimenter le suivi de
+Daikin ventile la journée en tranches de deux heures, et le compteur du jour —
+leur total — avance **par pas de 0,1 kWh**, dès que ce dixième de kWh de plus a
+été consommé. « Énergie aujourd'hui » reste donc plate un moment, puis fait un
+bond : rafraîchir plus souvent ne lisse rien, ça ne fait que consommer votre
+quota d'appels plus vite. Ce compteur du jour est le plus fin que l'API
+fournit, et c'est ce qui en fait le bon candidat pour alimenter le suivi de
 l'énergie de Gladys : sa remise à zéro de minuit ne coûte quasiment rien (la
 première valeur après minuit vaut 0, et Gladys ignore le pas négatif d'un
-compteur qui repart à zéro). Une **consommation 30 minutes** qui en dérive sort
-donc en escalier — quelques zéros, puis un bloc — tandis que les totaux
-journaliers et mensuels, eux, restent justes.
+compteur qui repart à zéro).
+
+En fonctionnement, un climatiseur franchit ces 0,1 kWh toutes les quelques
+dizaines de minutes : chaque fenêtre de 30 minutes reçoit alors sa valeur, et la
+vue **Jour** du suivi de l'énergie ressemble à une vraie courbe de consommation,
+qui recoupe l'application Onecta. Le pas ne se voit qu'à très faible puissance :
+quelques fenêtres restent à zéro, puis une autre rattrape le tout. C'est un
+décalage de quelques dizaines de minutes au pire, et les totaux du jour, du mois
+et de l'année restent justes.
 
 Certaines fonctions sont signalées en lecture seule par Daikin selon le modèle
 et le firmware — c'est presque toujours le cas de « Garder au sec ». Elles sont
@@ -96,23 +103,73 @@ climatiseurs.
 
 Votre climatiseur peut prendre sa place dans le
 [suivi de l'énergie](https://gladysassistant.com/fr/docs/integrations/energy-monitoring/)
-de Gladys, aux côtés de votre compteur électrique et de vos prises connectées.
-L'intégration publie les deux fonctionnalités qui le permettent — **Énergie
-aujourd'hui (consommation)** et **Énergie aujourd'hui (coût)** — déjà rattachées
-au compteur du jour. C'est Gladys qui les remplit, toutes les trente minutes :
-rien n'est écrit ici.
+de Gladys, aux côtés de votre compteur électrique et de vos prises connectées :
+le tableau de bord Énergie montre alors, par tranches de trente minutes, ce que
+le climatiseur a consommé et ce que ça vous a coûté.
 
-Il reste une étape, une seule fois, dans **Réglages → Énergie** : choisir le
-parent d'**Énergie aujourd'hui**, qui doit être la fonctionnalité de votre
-compteur principal (un index Linky, une pince sur l'arrivée générale…). C'est ce
-qui indique à Gladys que le climatiseur est une _part_ de ce que le compteur
-mesure déjà, et non une consommation qui s'ajouterait par-dessus. Laissez
-« Énergie ce mois-ci » et « Énergie cette année » où elles sont : elles sont là
-pour être lues, elles n'alimentent rien.
+### Ce que l'intégration branche toute seule
 
-Seul le compteur du jour porte ce couple. En accrocher un aussi au compteur
-mensuel et au compteur annuel compterait les mêmes kWh deux fois de plus dans
-votre tableau de bord.
+L'intégration publie les deux fonctionnalités qui rendent ce calcul possible —
+**Énergie aujourd'hui (consommation)** et **Énergie aujourd'hui (coût)** — et
+les enchaîne elle-même : le coût pointe sur la consommation, qui pointe sur
+« Énergie aujourd'hui ». C'est Gladys qui les remplit, toutes les trente
+minutes, à partir de l'écart entre deux lectures du compteur du jour et du prix
+du kWh de votre contrat : rien n'est écrit ici, et il n'y a rien à régler sur
+ces deux lignes. Si vous leur choisissez un autre parent dans l'écran Énergie,
+l'intégration remettra le sien à la publication suivante.
+
+### La seule étape à votre charge
+
+Dans **Réglages → Énergie**, choisissez le parent d'**Énergie aujourd'hui** : la
+fonctionnalité de votre compteur principal (la consommation quotidienne remontée
+par Enedis, une pince sur l'arrivée générale…). C'est ce qui indique à Gladys que
+le climatiseur est une _part_ de ce que le compteur mesure déjà, et non une
+consommation qui s'ajouterait par-dessus.
+
+L'écran ressemble alors à ceci :
+
+```
+Enedis — Consommation quotidienne                          niveau 0
+└── Climatiseur — Énergie aujourd'hui                      niveau 1   ← la seule ligne à régler
+    └── Climatiseur — Énergie aujourd'hui (consommation)   niveau 2   ← posé par l'intégration
+        └── Climatiseur — Énergie aujourd'hui (coût)       niveau 3   ← posé par l'intégration
+
+Climatiseur — Énergie ce mois-ci                           niveau 0   ← normal, rien à faire
+Climatiseur — Énergie cette année                          niveau 0   ← normal, rien à faire
+```
+
+Le niveau affiché devant chaque ligne n'est rien d'autre que sa profondeur dans
+cet arbre : niveau 0 = racine, c'est-à-dire une fonctionnalité qui n'est la part
+de rien d'autre. Votre compteur principal y est parce que rien ne le contient ;
+le climatiseur est en dessous parce que ses kWh font partie de ceux du compteur.
+
+Ce choix est le vôtre et il le reste : l'intégration n'envoie jamais le parent
+d'« Énergie aujourd'hui », pas même à vide, précisément pour ne pas défaire votre
+réglage à chaque publication.
+
+### Pourquoi « Énergie ce mois-ci » et « Énergie cette année » restent au niveau 0
+
+C'est voulu : ces deux lignes n'ont pas de parent, et il n'y a rien à corriger.
+
+- **Ce sont les mêmes kWh.** L'arbre est une décomposition, pas une liste :
+  chaque enfant déclare « ma consommation fait partie de celle de mon parent ».
+  Les compteurs du mois et de l'année mesurent exactement la même électricité que
+  celui du jour, sur une fenêtre plus large. Les accrocher au compteur principal
+  ferait apparaître les mêmes kWh deux fois de plus dans la répartition.
+- **Elles n'alimenteraient rien de plus.** Seul le compteur du jour porte le
+  couple 30 minutes, parce que c'est le plus fin que l'API Daikin fournit. Un
+  couple accroché au compteur mensuel ferait doublon, et le compteur annuel ne
+  bougeant qu'une fois par jour, il ne délivrerait qu'un bloc quotidien : le
+  tableau de bord n'y gagnerait rien.
+- **Elles ne sont pas non plus des enfants d'« Énergie aujourd'hui ».** Un parent
+  est un tout, un enfant en est une part : le mois n'est pas une part de la
+  journée.
+- **Elles restent utiles ailleurs** : tuile de tableau de bord, graphique
+  d'historique, condition de scénario. Elles sont là pour être lues, elles
+  n'entrent pas dans le calcul du suivi de l'énergie.
+
+Autrement dit, un suivi correctement configuré laisse bien deux fonctionnalités
+du climatiseur au niveau 0, à côté du compteur principal.
 
 > **Le suivi de l'énergie nécessite Gladys 4.66 ou plus récent.** Sur une version
 > antérieure, les deux fonctionnalités ne sont simplement pas publiées et le
@@ -260,6 +317,14 @@ dépend du modèle et du firmware, donc vérifiez plutôt que de supposer : lanc
 **Tester la connexion**. Un nom qui n'apparaît ni dans les fonctionnalités
 publiées ni dans les caractéristiques ignorées est un nom que l'API n'expose pas
 pour votre unité.
+
+**Les lignes « Énergie aujourd'hui (consommation) » et « (coût) » n'apparaissent
+pas dans Réglages → Énergie.**
+Elles nécessitent Gladys 4.66 ou plus récent. Si votre version convient, c'est
+que l'appareil a été créé avant leur ajout : lancez _Tester la connexion_, qui
+republie la découverte et complète les appareils déjà existants. Elles arrivent
+déjà rattachées l'une à l'autre ; il ne vous reste qu'à donner un parent à
+« Énergie aujourd'hui ».
 
 **Rien n'apparaît dans l'onglet Découverte.**
 Vérifiez que les unités sont bien visibles dans l'application Onecta avec le même

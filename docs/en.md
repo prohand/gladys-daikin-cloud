@@ -61,16 +61,22 @@ index. Daikin splits those counters per mode (heating, cooling…); the
 integration sums them, because what a dashboard wants is what the unit consumed,
 not how it was split.
 
-Their resolution is Daikin's, not the refresh interval's: the daily counter is
-built from **two-hour slots, in steps of 0.1 kWh**. So "Energy today" stays flat
-for a while, then jumps — refreshing more often does not make it smoother, it
-only spends your API quota faster. That daily counter is still the finest thing
-the API gives, which is what makes it the right one to feed Gladys' energy
+Their resolution is Daikin's, not the refresh interval's: Daikin splits the day
+into two-hour slots, and the daily counter — their total — moves in **steps of
+0.1 kWh**, as soon as that extra tenth of a kWh has been used. So "Energy today"
+stays flat for a while, then jumps: refreshing more often does not make it
+smoother, it only spends your API quota faster. That daily counter is the finest
+thing the API gives, which is what makes it the right one to feed Gladys' energy
 monitoring: its midnight reset costs almost nothing (the first value after
 midnight is 0, and Gladys ignores the negative step of a counter going back to
-zero). A **30-minute consumption** derived from it therefore comes out in a
-staircase — a few zeros, then a block — while the daily and monthly totals stay
-correct.
+zero).
+
+While the unit runs, it crosses those 0.1 kWh every few tens of minutes: each
+30-minute window then gets its value, and the **Day** view of the energy
+monitoring looks like a real consumption curve, matching what the Onecta app
+shows. The step only becomes visible at very low draw: a few windows stay at
+zero, then a later one catches up. That is a shift of a few tens of minutes at
+worst, and the daily, monthly and yearly totals stay correct.
 
 Daikin reports some functions read-only depending on the model and firmware —
 "Keep dry" almost always is. Those are published as sensors, without a switch
@@ -89,22 +95,71 @@ integration targets air conditioners.
 
 Your air conditioner can take its place in the
 [energy monitoring](https://gladysassistant.com/docs/integrations/energy-monitoring/)
-of Gladys, next to your electricity meter and your smart plugs. The integration
-publishes the two features that make it possible — **Energy today
-(consumption)** and **Energy today (cost)** — already wired to the daily
-counter. Gladys fills them in itself, every thirty minutes; nothing writes them
-here.
+of Gladys, next to your electricity meter and your smart plugs: the Energy
+dashboard then shows, in thirty-minute steps, what the air conditioner used and
+what it cost you.
 
-One step is left to you, and only once, in **Settings → Energy**: pick the
-parent of **Energy today**, which should be the feature of your main meter (a
-Linky index, a whole-house clamp…). That is what tells Gladys the air
-conditioner is a _part_ of what the meter already counts, rather than an extra
-consumption on top of it. Leave "Energy this month" and "Energy this year" where
-they are: they are there to be read, they feed nothing.
+### What the integration wires up on its own
 
-Only the daily counter carries the pair. Hanging one on the monthly and the
-yearly counters as well would count the same kWh two more times in your
-dashboard.
+The integration publishes the two features that make that computation possible —
+**Energy today (consumption)** and **Energy today (cost)** — and chains them
+itself: the cost points at the consumption, which points at **Energy today**.
+Gladys fills them in every thirty minutes, from the difference between two
+readings of the daily counter and the price of a kWh in your contract; nothing
+writes them here, and there is nothing to set on those two rows. If you pick a
+different parent for them in the Energy screen, the integration will put its own
+back on the next publish.
+
+### The one step left to you
+
+In **Settings → Energy**, pick the parent of **Energy today**: the feature of
+your main meter (the daily consumption reported by your utility, a whole-house
+clamp…). That is what tells Gladys the air conditioner is a _part_ of what the
+meter already counts, rather than an extra consumption on top of it.
+
+The screen then looks like this:
+
+```
+Main meter — Daily consumption                         level 0
+└── Air conditioner — Energy today                     level 1   ← the only row to set
+    └── Air conditioner — Energy today (consumption)   level 2   ← set by the integration
+        └── Air conditioner — Energy today (cost)      level 3   ← set by the integration
+
+Air conditioner — Energy this month                    level 0   ← normal, nothing to do
+Air conditioner — Energy this year                     level 0   ← normal, nothing to do
+```
+
+The level shown in front of each row is nothing more than its depth in that
+tree: level 0 = root, that is, a feature that is not a part of anything else.
+Your main meter sits there because nothing contains it; the air conditioner sits
+below it because its kWh are part of the meter's.
+
+That choice is yours and it stays yours: the integration never sends the parent
+of **Energy today**, not even empty, precisely so that it cannot undo your
+setting on every publish.
+
+### Why "Energy this month" and "Energy this year" stay at level 0
+
+That is intended: those two rows have no parent, and there is nothing to fix.
+
+- **They are the same kWh.** The tree is a breakdown, not a list: every child
+  states "my consumption is a part of my parent's". The monthly and yearly
+  counters measure exactly the same electricity as the daily one, over a wider
+  window. Hanging them under the main meter would make the same kWh show up two
+  more times in the breakdown.
+- **They would feed nothing more.** Only the daily counter carries the 30-minute
+  pair, because it is the finest thing the Daikin API gives. A pair hung on the
+  monthly counter would be a duplicate, and the yearly counter — which only
+  moves once a day — would deliver a single block a day: the dashboard would
+  gain nothing.
+- **They are not children of "Energy today" either.** A parent is a whole and a
+  child is a part of it: a month is not a part of a day.
+- **They stay useful elsewhere**: a dashboard tile, a history chart, a scene
+  condition. They are there to be read, they do not enter the energy monitoring
+  computation.
+
+In other words, a correctly configured setup does leave two features of the air
+conditioner at level 0, next to the main meter.
 
 > **The energy monitoring needs Gladys 4.66 or newer.** On an older instance the
 > two features are simply not published, and the rest of the integration is
@@ -240,6 +295,13 @@ and that is not a limitation of this one. It depends on the model and the
 firmware, so check rather than assume: run **Test the connection**. A name that
 appears neither in the published features nor in the ignored characteristics is
 one the API does not expose for your unit.
+
+**The "Energy today (consumption)" and "(cost)" rows do not show up in
+Settings → Energy.**
+They need Gladys 4.66 or newer. If your version is recent enough, the device was
+created before they existed: run _Test the connection_, which re-publishes the
+discovery and completes the devices already created. They arrive already chained
+to one another; all that is left is to give **Energy today** a parent.
 
 **Nothing appears in the Discovery tab.**
 Make sure the units are visible in the Onecta app with the same account, then
