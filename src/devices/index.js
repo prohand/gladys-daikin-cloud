@@ -23,11 +23,32 @@ export {
  * The complete discovery payload: one Gladys device per Daikin climate unit.
  * @param {object} gladys the SDK instance
  * @param {Array<object>} units the normalized Daikin units
- * @param {{ fanCategory: boolean, supportedOptions: boolean, acSwing: boolean }} capabilities what the Gladys instance accepts
+ * @param {{ fanCategory: boolean, supportedOptions: boolean, acSwing: boolean, energyMonitoring: boolean }} capabilities what the Gladys instance accepts
+ * @param {Map<string, string>|null} [knownFeatureIds] the ids Gladys already stores, by feature external_id, or null when they could not be read
  * @returns {Array<object>} the devices to publish
  */
-export function buildDiscoveredDevices(gladys, units, capabilities) {
-  return units.map((unit) => buildDevice(gladys, unit, capabilities));
+export function buildDiscoveredDevices(gladys, units, capabilities, knownFeatureIds) {
+  return units.map((unit) => buildDevice(gladys, unit, capabilities, knownFeatureIds));
+}
+
+/**
+ * Index the features of the devices Gladys already created by their
+ * external_id. The energy monitoring pair points at its parent by row id, so
+ * the payload has to know which ids Gladys is already holding — the ones it
+ * does not know are the only ones this integration may name itself.
+ * @param {Array<object>} devices the devices returned by `gladys.getDevices()`
+ * @returns {Map<string, string>} the feature ids, by feature external_id
+ */
+export function featureIdsByExternalId(devices) {
+  const ids = new Map();
+  for (const device of devices ?? []) {
+    for (const feature of device?.features ?? []) {
+      if (feature?.external_id && feature?.id) {
+        ids.set(feature.external_id, feature.id);
+      }
+    }
+  }
+  return ids;
 }
 
 /**

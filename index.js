@@ -38,6 +38,7 @@ import {
   buildDiscoveredDevices,
   buildStates,
   buildTransportEntries,
+  featureIdsByExternalId,
   featureKeyOf,
   findUnitByDevice,
 } from './src/devices/index.js';
@@ -49,6 +50,14 @@ let config = normalizeConfig();
 // What the connected Gladys accepted (see src/capabilities.js). It starts at
 // the richest catalog and is corrected by Gladys itself on the first publish.
 let capabilities = { ...CAPABILITY_LEVELS[0], supportedOptions: false };
+// The ids Gladys already holds for our features, by external_id, refreshed
+// before every discovery publish. The energy monitoring pair points at the
+// feature it derives from by ROW ID, so the payload has to carry the id of a
+// feature Gladys already created rather than one of its own making — which
+// would rewrite the primary key its history hangs on. Null until they have
+// been read once: publishing the pair against ids we could not check is the
+// one thing worse than publishing it a refresh later.
+let knownFeatureIds = null;
 // Anti-CSRF state of the OAuth2 flow in progress, generated when the user
 // clicks "Connect" and verified when the provider redirects back.
 let oauthState = null;
@@ -208,7 +217,8 @@ gladys.onAction('test_connection', async () => {
   // separate them.
   const summary = units
     .map((unit) => {
-      const count = buildDiscoveredDevices(gladys, [unit], capabilities)[0].features.length;
+      const count = buildDiscoveredDevices(gladys, [unit], capabilities, knownFeatureIds)[0]
+        .features.length;
       const ignored = unusedCharacteristics(unit);
       return `${unit.name} (${count}): ${ignored.length === 0 ? 'everything mapped' : ignored.join(' ')}`;
     })
@@ -374,13 +384,14 @@ async function refreshAndPublish({ publishDevices = false } = {}) {
  */
 async function publishEverything(units, { publishDevices = false } = {}) {
   if (publishDevices) {
+    await refreshKnownFeatureIds();
     // Idempotent (upsert by external_id): re-publishing is how a unit renamed
     // in the Onecta app, or a new unit added to the account, reaches Gladys.
     // Gladys itself decides which catalog it can take, and what it accepted
     // drives the states published below.
     capabilities = await publishWithBestCatalog(
       gladys,
-      (candidate) => buildDiscoveredDevices(gladys, units, candidate),
+      (candidate) => buildDiscoveredDevices(gladys, units, candidate, knownFeatureIds),
       capabilities.supportedOptions,
     );
   }
@@ -393,6 +404,20 @@ async function publishEverything(units, { publishDevices = false } = {}) {
   const onlineUnits = units.filter((unit) => unit.online);
   for (const batch of chunk(buildAllStates(gladys, onlineUnits, capabilities), 100)) {
     await gladys.publishStates(batch);
+  }
+}
+
+/**
+ * Read back the ids Gladys stores for the features of the devices the user
+ * created. A failure only costs the energy monitoring pair of this publish
+ * (see buildDevice): the last known map is kept, and a map that was never
+ * read stays null.
+ */
+async function refreshKnownFeatureIds() {
+  try {
+    knownFeatureIds = featureIdsByExternalId(await gladys.getDevices());
+  } catch (err) {
+    logger.warn('Could not read the devices already created in Gladys', err);
   }
 }
 

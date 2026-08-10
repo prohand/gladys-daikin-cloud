@@ -14,6 +14,7 @@ import {
   buildStates,
   buildTransportEntries,
   deviceExternalId,
+  featureIdsByExternalId,
   featureKeyOf,
   findUnitByDevice,
 } from '../src/devices/index.js';
@@ -29,6 +30,8 @@ import {
 const gladys = createFakeGladys();
 const FULL = { fanCategory: true, supportedOptions: true, acSwing: true };
 const BASE = { fanCategory: false, supportedOptions: false, acSwing: false };
+// The richest catalog: what a Gladys 4.66+ takes, energy monitoring included.
+const ENERGY = { ...FULL, energyMonitoring: true };
 
 const splitUnit = () => parseUnits([SPLIT_UNIT])[0];
 const featureOf = (device, key) =>
@@ -53,8 +56,13 @@ test('every published feature carries the fields Gladys requires', () => {
   // These columns are NOT NULL in the Gladys schema — for EVERY feature, a
   // binary one included. A feature missing one of them makes the device
   // creation fail with a 422 the user cannot do anything about.
-  for (const capabilities of [FULL, BASE]) {
-    for (const device of buildDiscoveredDevices(gladys, parseUnits(ALL_DEVICES), capabilities)) {
+  for (const capabilities of [ENERGY, FULL, BASE]) {
+    for (const device of buildDiscoveredDevices(
+      gladys,
+      parseUnits(ALL_DEVICES),
+      capabilities,
+      new Map(),
+    )) {
       for (const feature of device.features) {
         const where = `${device.name} / ${feature.name}`;
         assert.equal(typeof feature.name, 'string', `${where}: name`);
@@ -268,6 +276,84 @@ test('the consumption is published as kWh energy sensors', () => {
   const states = buildStates(gladys, splitUnit(), FULL);
   assert.equal(stateOf(states, FEATURE.ENERGY_TODAY), 1.8);
   assert.equal(stateOf(states, FEATURE.ENERGY_YEAR), 84);
+});
+
+test('the energy monitoring pair hangs off the counter of the day, and off it alone', () => {
+  const [device] = buildDiscoveredDevices(gladys, [splitUnit()], ENERGY, new Map());
+  const index = featureOf(device, FEATURE.ENERGY_TODAY);
+  const consumption = featureOf(device, FEATURE.ENERGY_TODAY_CONSUMPTION);
+  const cost = featureOf(device, FEATURE.ENERGY_TODAY_COST);
+
+  assert.equal(consumption.type, DEVICE_FEATURE_TYPES.ENERGY_SENSOR.THIRTY_MINUTES_CONSUMPTION);
+  assert.equal(consumption.unit, 'kilowatt-hour');
+  assert.equal(cost.type, DEVICE_FEATURE_TYPES.ENERGY_SENSOR.THIRTY_MINUTES_CONSUMPTION_COST);
+  assert.equal(cost.unit, 'euro');
+
+  // The chain the core walks: cost -> consumption -> index.
+  assert.equal(consumption.energy_parent_id, index.id);
+  assert.equal(cost.energy_parent_id, consumption.id);
+
+  // The monthly and the yearly counters get no pair of their own: the same
+  // kWh would be counted twice in the energy dashboard.
+  const keys = device.features.map((feature) => feature.external_id.split(':').pop());
+  assert.deepEqual(
+    keys.filter((key) => key.includes('consumption') || key.includes('cost')),
+    [FEATURE.ENERGY_TODAY_CONSUMPTION, FEATURE.ENERGY_TODAY_COST],
+  );
+
+  // Nothing parents the index itself: that link belongs to the user, in
+  // Settings -> Energy, and re-publishing must not undo it.
+  assert.equal('energy_parent_id' in index, false);
+
+  // These are written by the Gladys 30-minute job, never by this integration.
+  const states = buildStates(gladys, splitUnit(), ENERGY).map(
+    (state) => state.device_feature_external_id,
+  );
+  assert.ok(!states.includes(consumption.external_id));
+  assert.ok(!states.includes(cost.external_id));
+});
+
+test('a feature Gladys already stores keeps the id Gladys gave it', () => {
+  // Publishing another id would rewrite the primary key the states of that
+  // feature hang on. Only a feature Gladys has never seen is named here.
+  const [reference] = buildDiscoveredDevices(gladys, [splitUnit()], ENERGY, new Map());
+  const known = new Map([[featureOf(reference, FEATURE.ENERGY_TODAY).external_id, 'from-gladys']]);
+
+  const [device] = buildDiscoveredDevices(gladys, [splitUnit()], ENERGY, known);
+  const index = featureOf(device, FEATURE.ENERGY_TODAY);
+  assert.equal('id' in index, false, 'a known feature is published without an id');
+  assert.equal(featureOf(device, FEATURE.ENERGY_TODAY_CONSUMPTION).energy_parent_id, 'from-gladys');
+
+  // ...and an unknown one always derives the same id, so republishing never
+  // moves a feature Gladys created from a previous payload.
+  const [again] = buildDiscoveredDevices(gladys, [splitUnit()], ENERGY, new Map());
+  assert.equal(
+    featureOf(again, FEATURE.ENERGY_TODAY).id,
+    featureOf(reference, FEATURE.ENERGY_TODAY).id,
+  );
+  assert.match(featureOf(again, FEATURE.ENERGY_TODAY_CONSUMPTION).id, /^[0-9a-f-]{36}$/);
+});
+
+test('the energy monitoring pair is left out when the ids could not be read', () => {
+  // Publishing it against ids nothing could be checked against risks pointing
+  // at a row that already exists: it comes back on the next publish.
+  const [device] = buildDiscoveredDevices(gladys, [splitUnit()], ENERGY, null);
+  const keys = device.features.map((feature) => feature.external_id.split(':').pop());
+  assert.ok(keys.includes(FEATURE.ENERGY_TODAY));
+  assert.ok(!keys.includes(FEATURE.ENERGY_TODAY_CONSUMPTION));
+  assert.ok(!keys.includes(FEATURE.ENERGY_TODAY_COST));
+});
+
+test('the ids of the created devices are indexed by feature external_id', () => {
+  const ids = featureIdsByExternalId([
+    { features: [{ external_id: 'ext:daikin-cloud:climate:1:power', id: 'uuid-power' }] },
+    { features: [{ external_id: 'ext:daikin-cloud:climate:2:mode' }] },
+    { features: null },
+    null,
+  ]);
+  assert.equal(ids.get('ext:daikin-cloud:climate:1:power'), 'uuid-power');
+  assert.equal(ids.size, 1, 'a feature without an id is not indexed');
+  assert.equal(featureIdsByExternalId(undefined).size, 0);
 });
 
 test('a unit reporting no consumption gets no energy features', () => {
