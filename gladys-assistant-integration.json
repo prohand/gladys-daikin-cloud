@@ -6,10 +6,10 @@
     "en": "Control your Daikin air conditioners through the official Onecta cloud API.",
     "fr": "Pilotez vos climatiseurs Daikin via l'API cloud officielle Daikin Onecta."
   },
-  "version": "1.0.10",
-  "docker_image": "ghcr.io/prohand/gladys-daikin-cloud:1.0.10",
+  "version": "1.0.11",
+  "docker_image": "ghcr.io/prohand/gladys-daikin-cloud:1.0.11",
   "gladys_version": ">=4.62.0",
-  "cover_image": "https://raw.githubusercontent.com/prohand/gladys-daikin-cloud/v1.0.10/cover.png",
+  "cover_image": "https://raw.githubusercontent.com/prohand/gladys-daikin-cloud/v1.0.11/cover.png",
   "transports": ["cloud"],
   "config_schema": [
     {
