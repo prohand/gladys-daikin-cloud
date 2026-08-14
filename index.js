@@ -38,6 +38,7 @@ import {
   buildDiscoveredDevices,
   buildStates,
   buildTransportEntries,
+  featureExternalId,
   featureIdsByExternalId,
   featureKeyOf,
   findUnitByDevice,
@@ -139,7 +140,7 @@ gladys.onSetValue(async (device, feature, value) => {
     throw new Error(`${unit.name} is offline, Daikin cannot reach it right now`);
   }
 
-  const { writes, state } = buildCommands(unit, featureKey, value);
+  const { writes, states } = buildCommands(unit, featureKey, value);
   for (const write of writes) {
     await api.setCharacteristic({
       deviceId: unit.deviceId,
@@ -154,10 +155,17 @@ gladys.onSetValue(async (device, feature, value) => {
 
   // The Daikin cloud serves the previous values for a few seconds after a
   // write: reflect the change locally and publish it now, the next scheduled
-  // refresh will confirm it.
+  // refresh will confirm it. A command can move more than the feature it was
+  // sent to — the unit's power answers to two of them — so what is published
+  // back is the list the command produced, not just the one Gladys named.
   store.markCommandSent();
   store.applyWrites(unit, writes);
-  await gladys.publishState(feature.external_id, state);
+  await gladys.publishStates(
+    states.map((published) => ({
+      device_feature_external_id: featureExternalId(gladys, unit, published.featureKey),
+      state: published.state,
+    })),
+  );
 });
 
 // --- The user just created (or updated) a device -----------------------------

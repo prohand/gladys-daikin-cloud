@@ -98,6 +98,7 @@ test('a split unit exposes the full air conditioning catalog', () => {
       FEATURE.MODE,
       FEATURE.OUTDOOR_TEMPERATURE,
       FEATURE.POWER,
+      FEATURE.POWER_SWITCH,
       FEATURE.POWERFUL,
       FEATURE.ROOM_TEMPERATURE,
       FEATURE.STREAMER,
@@ -116,6 +117,33 @@ test('the on/off feature is a writable air conditioning binary', () => {
   assert.equal(power.type, DEVICE_FEATURE_TYPES.AIR_CONDITIONING.BINARY);
   assert.equal(power.read_only, false);
   assert.equal(power.has_feedback, true);
+});
+
+// The bug this guards against: a scene "turn off the switches" resolves the
+// device to the FIRST (switch, binary) feature Gladys finds — in whatever order
+// the database hands the features back. With the comfort toggles published as
+// switches, that scene switched off the Powerful mode and left the unit running.
+test('the unit has exactly one switch binary, and it is its power', () => {
+  for (const unit of [splitUnit(), ...parseUnits([HEAT_PUMP_UNIT, OFFLINE_UNIT])]) {
+    const [device] = buildDiscoveredDevices(gladys, [unit], FULL);
+    const switches = device.features.filter(
+      (feature) =>
+        feature.category === DEVICE_FEATURE_CATEGORIES.SWITCH &&
+        feature.type === DEVICE_FEATURE_TYPES.SWITCH.BINARY,
+    );
+    assert.equal(switches.length, 1, `${unit.name} must expose one and only one switch`);
+    assert.equal(switches[0].external_id, featureOf(device, FEATURE.POWER_SWITCH).external_id);
+    assert.equal(switches[0].read_only, false);
+    assert.equal(switches[0].has_feedback, true);
+    // The air conditioning binary already historises the same signal.
+    assert.equal(switches[0].keep_history, false);
+  }
+});
+
+test('both faces of the power report the same state', () => {
+  const states = buildStates(gladys, splitUnit(), FULL);
+  assert.equal(stateOf(states, FEATURE.POWER), 1);
+  assert.equal(stateOf(states, FEATURE.POWER_SWITCH), 1);
 });
 
 test('the target temperature spans every mode the unit can reach', () => {
@@ -146,7 +174,10 @@ test('supported options restrict the modes to what the unit accepts', () => {
 test('a unit without a room setpoint or a fan only exposes what it has', () => {
   const [device] = buildDiscoveredDevices(gladys, parseUnits([HEAT_PUMP_UNIT]), FULL);
   const keys = device.features.map((feature) => feature.external_id.split(':').pop());
-  assert.deepEqual(keys.sort(), [FEATURE.MODE, FEATURE.OUTDOOR_TEMPERATURE, FEATURE.POWER].sort());
+  assert.deepEqual(
+    keys.sort(),
+    [FEATURE.MODE, FEATURE.OUTDOOR_TEMPERATURE, FEATURE.POWER, FEATURE.POWER_SWITCH].sort(),
+  );
 });
 
 test('an older Gladys gets the catalog it understands', () => {
@@ -196,12 +227,15 @@ test('each louver axis is its own writable feature', () => {
   }
 });
 
-test('the comfort toggles are switches, and follow what Daikin allows', () => {
+test('the comfort toggles are on/off controls, and follow what Daikin allows', () => {
   const [device] = buildDiscoveredDevices(gladys, [splitUnit()], FULL);
   for (const key of [FEATURE.POWERFUL, FEATURE.ECONO, FEATURE.STREAMER]) {
     const feature = featureOf(device, key);
-    assert.equal(feature.category, DEVICE_FEATURE_CATEGORIES.SWITCH);
-    assert.equal(feature.type, DEVICE_FEATURE_TYPES.SWITCH.BINARY);
+    // Deliberately NOT the switch category: Gladys resolves "turn off the
+    // switches" to the first switch binary of the device, and that slot
+    // belongs to the unit's power.
+    assert.equal(feature.category, DEVICE_FEATURE_CATEGORIES.UNKNOWN);
+    assert.equal(feature.type, DEVICE_FEATURE_TYPES.SENSOR.BINARY);
     assert.equal(feature.read_only, false, 'these three are settable on this unit');
   }
   // Daikin reports "keep dry" read-only on this model: publish it as a sensor
@@ -222,11 +256,11 @@ test('toggling a comfort mode writes its characteristic', () => {
   const unit = splitUnit();
   assert.deepEqual(buildCommands(unit, FEATURE.POWERFUL, 1), {
     writes: [{ characteristic: 'powerfulMode', value: 'on' }],
-    state: 1,
+    states: [{ featureKey: FEATURE.POWERFUL, state: 1 }],
   });
   assert.deepEqual(buildCommands(unit, FEATURE.ECONO, 0), {
     writes: [{ characteristic: 'econoMode', value: 'off' }],
-    state: 0,
+    states: [{ featureKey: FEATURE.ECONO, state: 0 }],
   });
 });
 
@@ -257,7 +291,7 @@ test('steering one louver axis writes only that axis', () => {
         value: 'stop',
       },
     ],
-    state: AC_SWING.OFF,
+    states: [{ featureKey: FEATURE.SWING_VERTICAL, state: AC_SWING.OFF }],
   });
 });
 
@@ -468,11 +502,31 @@ test('turning a unit on and off writes onOffMode', () => {
   const unit = splitUnit();
   assert.deepEqual(buildCommands(unit, FEATURE.POWER, 1), {
     writes: [{ characteristic: 'onOffMode', value: 'on' }],
-    state: 1,
+    states: [
+      { featureKey: FEATURE.POWER, state: 1 },
+      { featureKey: FEATURE.POWER_SWITCH, state: 1 },
+    ],
   });
   assert.deepEqual(buildCommands(unit, FEATURE.POWER, 0), {
     writes: [{ characteristic: 'onOffMode', value: 'off' }],
-    state: 0,
+    states: [
+      { featureKey: FEATURE.POWER, state: 0 },
+      { featureKey: FEATURE.POWER_SWITCH, state: 0 },
+    ],
+  });
+});
+
+// What a scene action "turn off the switches" ends up doing: Gladys resolves
+// the device to its switch binary, and that feature must drive the unit itself,
+// not one of the comfort toggles.
+test('the switch face of the power writes onOffMode too, and moves both features', () => {
+  const unit = splitUnit();
+  assert.deepEqual(buildCommands(unit, FEATURE.POWER_SWITCH, 0), {
+    writes: [{ characteristic: 'onOffMode', value: 'off' }],
+    states: [
+      { featureKey: FEATURE.POWER, state: 0 },
+      { featureKey: FEATURE.POWER_SWITCH, state: 0 },
+    ],
   });
 });
 
@@ -480,7 +534,7 @@ test('changing the mode writes operationMode', () => {
   const unit = splitUnit();
   assert.deepEqual(buildCommands(unit, FEATURE.MODE, AC_MODE.HEATING), {
     writes: [{ characteristic: 'operationMode', value: 'heating' }],
-    state: AC_MODE.HEATING,
+    states: [{ featureKey: FEATURE.MODE, state: AC_MODE.HEATING }],
   });
 });
 
@@ -503,7 +557,7 @@ test('the setpoint is written under the ACTIVE operation mode and snapped', () =
         value: 23.5,
       },
     ],
-    state: 23.5,
+    states: [{ featureKey: FEATURE.TARGET_TEMPERATURE, state: 23.5 }],
   });
 });
 
@@ -523,7 +577,7 @@ test('a unit without a room setpoint refuses the command', () => {
 
 test('setting a manual level forces the fixed mode first, then writes the level', () => {
   const unit = splitUnit();
-  const { writes, state } = buildCommands(unit, FEATURE.FAN_LEVEL, 5);
+  const { writes, states } = buildCommands(unit, FEATURE.FAN_LEVEL, 5);
   assert.deepEqual(writes, [
     {
       characteristic: 'fanControl',
@@ -536,7 +590,7 @@ test('setting a manual level forces the fixed mode first, then writes the level'
       value: 5,
     },
   ]);
-  assert.equal(state, 5);
+  assert.deepEqual(states, [{ featureKey: FEATURE.FAN_LEVEL, state: 5 }]);
 });
 
 test('the oscillation drives both louver axes in one command', () => {
@@ -554,7 +608,7 @@ test('the oscillation drives both louver axes in one command', () => {
         value: 'stop',
       },
     ],
-    state: FAN_ROCK_SETTING.LEFT_RIGHT,
+    states: [{ featureKey: FEATURE.FAN_ROCK, state: FAN_ROCK_SETTING.LEFT_RIGHT }],
   });
 });
 

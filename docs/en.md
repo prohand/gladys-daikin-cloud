@@ -13,14 +13,15 @@ with the features your model actually supports:
 | Feature                    | What it does                                                         |
 | -------------------------- | -------------------------------------------------------------------- |
 | On/Off                     | Turn the unit on and off                                             |
+| On/Off (switch)            | The same on/off, as a switch — that is the one scenes act on         |
 | Mode                       | Auto, Cooling, Heating, Drying, Fan only                             |
 | Target temperature         | The setpoint of the mode currently active                            |
 | Fan speed                  | The fan speed, on the scale your unit declares (often 1-5)           |
 | Horizontal airflow         | The left/right airflow direction                                     |
 | Vertical airflow           | The up/down airflow direction                                        |
-| Powerful mode              | Daikin's "Powerful" mode (switch)                                    |
-| Econo mode                 | Daikin's "Econo" mode (switch)                                       |
-| Streamer mode              | The "Streamer" air purification mode (switch)                        |
+| Powerful mode              | Daikin's "Powerful" mode (on/off)                                    |
+| Econo mode                 | Daikin's "Econo" mode (on/off)                                       |
+| Streamer mode              | The "Streamer" air purification mode (on/off)                        |
 | Keep dry                   | The indoor unit's "Keep dry" advanced function                       |
 | Room temperature           | The temperature the unit measures (sensor, kept in history)          |
 | Outdoor temperature        | The temperature the outdoor unit measures (sensor, kept in history)  |
@@ -35,6 +36,20 @@ no fan speed, a model without the Streamer function gets no Streamer switch:
 only what the hardware reports is published. The choices offered in the
 interface are also restricted to what the unit accepts — a unit without a
 "Drying" mode never shows one.
+
+**Two On/Off features, on purpose.** Gladys' scene actions _Turn on the
+switches_ / _Turn off the switches_ act on a single feature per device: the
+first one filed under the **switch** category. An air conditioning on/off is
+invisible to them, so each unit also publishes **On/Off (switch)** — the same
+button, writing the same Daikin characteristic, simply declared where a scene
+(and a voice assistant) goes looking for it. Both stay in sync, whichever one
+you press.
+
+The comfort modes (Powerful, Econo, Streamer, Keep dry) are on/off controls
+too, but they are deliberately **not** declared as switches. When they were, a
+scene asking to switch the unit off switched the first of them off instead and
+left the unit running. To drive one from a scene, use the _Change the value of a
+device_ action and pick the feature by name.
 
 One detail about the fan: **Fan speed** only shows a value while the unit is
 actually running on a manual level. In Auto or Quiet there is no level to show,

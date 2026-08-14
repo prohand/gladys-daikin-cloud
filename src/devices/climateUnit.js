@@ -38,6 +38,7 @@ export const DEVICE_TYPE = 'climate';
 // Feature keys, kept in one place so discovery, states and commands agree.
 export const FEATURE = {
   POWER: 'power',
+  POWER_SWITCH: 'power-switch',
   MODE: 'mode',
   TARGET_TEMPERATURE: 'target-temperature',
   ROOM_TEMPERATURE: 'room-temperature',
@@ -66,6 +67,19 @@ const FAN_SPEED_TYPE = 'speed';
 const FAN_ROCK_SETTING_TYPE = 'rock-setting';
 const AC_SWING_HORIZONTAL_TYPE = 'swing-horizontal';
 const AC_SWING_VERTICAL_TYPE = 'swing-vertical';
+
+// Gladys reserves ONE feature per device for "is this appliance on?": the
+// scene actions "Turn on/off the switches" and the assistants all resolve a
+// device to the first (category `switch`, type `binary`) feature they find, and
+// an air conditioning binary is invisible to them. The comfort toggles below
+// are on/off characteristics too, so publishing them as switches made them
+// compete for that slot — and a scene asking to switch the unit off silently
+// switched its Powerful mode off instead, in whatever order the database
+// returned the features. They are published under the `unknown` category
+// (which Gladys renders as a plain on/off control, help-circle icon included)
+// so the switch slot belongs to the unit's real power feature and to it alone.
+const TOGGLE_CATEGORY = DEVICE_FEATURE_CATEGORIES.UNKNOWN;
+const TOGGLE_TYPE = DEVICE_FEATURE_TYPES.SENSOR.BINARY;
 
 // The Daikin comfort toggles, each an on/off characteristic of the climate
 // control point — except "keep dry", which the indoor unit owns.
@@ -158,6 +172,25 @@ export function buildDevice(gladys, unit, capabilities, knownFeatureIds = null) 
     read_only: false,
     has_feedback: true,
     keep_history: true,
+  });
+
+  // The SAME on/off, a second time, under the category Gladys looks up when a
+  // scene says "turn off the switches" (`switch` + `binary`, the first match
+  // wins). The air conditioning binary above is what the climate UI, HomeKit
+  // and the mode logic read, and it cannot carry that role too — so the unit
+  // gets an explicit switch handle rather than letting a comfort toggle be
+  // mistaken for its power. No history: the same signal is already historised
+  // by the feature above, this one is a control handle.
+  features.push({
+    name: 'On/Off (switch)',
+    external_id: ids.feature(FEATURE.POWER_SWITCH),
+    category: DEVICE_FEATURE_CATEGORIES.SWITCH,
+    type: DEVICE_FEATURE_TYPES.SWITCH.BINARY,
+    min: 0,
+    max: 1,
+    read_only: false,
+    has_feedback: true,
+    keep_history: false,
   });
 
   const modes = supportedModes(unit);
@@ -388,8 +421,8 @@ export function buildDevice(gladys, unit, capabilities, knownFeatureIds = null) 
     features.push({
       name,
       external_id: ids.feature(FEATURE[feature]),
-      category: DEVICE_FEATURE_CATEGORIES.SWITCH,
-      type: DEVICE_FEATURE_TYPES.SWITCH.BINARY,
+      category: TOGGLE_CATEGORY,
+      type: TOGGLE_TYPE,
       min: 0,
       max: 1,
       read_only: !state.settable,
@@ -442,7 +475,10 @@ export function buildStates(gladys, unit, capabilities) {
   };
 
   if (unit.power !== null) {
+    // Both faces of the same characteristic: the air conditioning one for the
+    // climate UI, the switch one for the scenes and the assistants.
     push(FEATURE.POWER, unit.power === 'on' ? 1 : 0);
+    push(FEATURE.POWER_SWITCH, unit.power === 'on' ? 1 : 0);
   }
   push(FEATURE.MODE, modeToGladys(unit.operationMode));
   push(FEATURE.TARGET_TEMPERATURE, unit.setpoint ? unit.setpoint.value : null);
@@ -481,21 +517,30 @@ export function buildStates(gladys, unit, capabilities) {
 }
 
 /**
- * Translate a user command into the Daikin writes it takes, and into the state
+ * Translate a user command into the Daikin writes it takes, and into the states
  * to publish back so the dashboard reflects the change immediately (the Daikin
  * cloud serves the previous values for a few seconds after a write).
+ *
+ * Several features can describe the same characteristic — the unit's power is
+ * published both as an air conditioning binary and as a switch — so a command
+ * answers with a LIST of states: publishing only the one the user touched
+ * would leave its twin showing the opposite value until the next refresh.
  * @param {object} unit the normalized Daikin unit
  * @param {string} featureKey the feature the user acted on
  * @param {number} value the requested value
- * @returns {{ writes: Array<object>, state: number }} the writes to send and the state to publish
+ * @returns {{ writes: Array<object>, states: Array<{ featureKey: string, state: number }> }} the writes to send and the states to publish
  */
 export function buildCommands(unit, featureKey, value) {
   switch (featureKey) {
-    case FEATURE.POWER: {
+    case FEATURE.POWER:
+    case FEATURE.POWER_SWITCH: {
       const on = Number(value) === 1;
       return {
         writes: [{ characteristic: 'onOffMode', value: on ? 'on' : 'off' }],
-        state: on ? 1 : 0,
+        states: [
+          { featureKey: FEATURE.POWER, state: on ? 1 : 0 },
+          { featureKey: FEATURE.POWER_SWITCH, state: on ? 1 : 0 },
+        ],
       };
     }
 
@@ -509,7 +554,7 @@ export function buildCommands(unit, featureKey, value) {
       }
       return {
         writes: [{ characteristic: 'operationMode', value: daikinMode }],
-        state: Number(value),
+        states: [{ featureKey, state: Number(value) }],
       };
     }
 
@@ -529,7 +574,7 @@ export function buildCommands(unit, featureKey, value) {
             value: temperature,
           },
         ],
-        state: temperature,
+        states: [{ featureKey, state: temperature }],
       };
     }
 
@@ -553,7 +598,7 @@ export function buildCommands(unit, featureKey, value) {
             value: level,
           },
         ],
-        state: level,
+        states: [{ featureKey, state: level }],
       };
     }
 
@@ -570,7 +615,7 @@ export function buildCommands(unit, featureKey, value) {
         })),
         // An axis the unit does not have stays off, so the state we publish is
         // what the unit can actually reach — not blindly what was asked.
-        state: rockSettingToGladys(previewDirection(unit, axes)),
+        states: [{ featureKey, state: rockSettingToGladys(previewDirection(unit, axes)) }],
       };
     }
 
@@ -593,7 +638,7 @@ export function buildCommands(unit, featureKey, value) {
             value: daikinDirection,
           },
         ],
-        state: Number(value),
+        states: [{ featureKey, state: Number(value) }],
       };
     }
 
@@ -620,7 +665,7 @@ export function buildCommands(unit, featureKey, value) {
             ...(state.embeddedId ? { embeddedId: state.embeddedId } : {}),
           },
         ],
-        state: on ? 1 : 0,
+        states: [{ featureKey, state: on ? 1 : 0 }],
       };
     }
 
