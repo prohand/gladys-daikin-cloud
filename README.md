@@ -16,13 +16,15 @@ and started from the
 One Gladys device per Daikin climate unit, with only the features the hardware
 actually reports:
 
-- **On/Off**, **Mode** (auto, cooling, heating, drying, fan only)
+- **On/Off**, published twice — as an air conditioning binary and as a switch,
+  the only category the "turn off the switches" scene action can resolve
+- **Mode** (auto, cooling, heating, drying, fan only)
 - **Target temperature**, with the min/max/step of the active operation mode
 - **Fan speed** level
 - **Horizontal and vertical airflow**, per axis (one folded oscillation feature
   on a Gladys older than 4.84.3)
-- **Powerful**, **Econo**, **Streamer** and **Keep dry**, each published as a
-  switch or, when Daikin reports it read-only, as a sensor
+- **Powerful**, **Econo**, **Streamer** and **Keep dry**, each published as an
+  on/off control or, when Daikin reports it read-only, as a sensor
 - **Room temperature** and **outdoor temperature** sensors, kept in history
 - **Energy consumed** today, this month and this year, in kWh
 - The **30-minute consumption and cost** of the Gladys energy monitoring, hung
@@ -43,7 +45,7 @@ that scope hands out a smaller payload. A function you use daily in the app can
 therefore be simply absent from what the API returns, for your unit.
 
 `econoMode`, `streamerMode` and `dryKeepSetting` are the usual ones. When they
-are in the payload this integration publishes them as switches; when they are
+are in the payload this integration publishes them as on/off controls; when they are
 not, nothing can drive them — no integration built on the public API can, and
 that is not a limitation of this code.
 

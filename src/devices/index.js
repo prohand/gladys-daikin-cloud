@@ -15,6 +15,7 @@ export {
   buildCommands,
   buildStates,
   deviceExternalId,
+  featureExternalId,
   featureKeyOf,
   FEATURE,
 } from './climateUnit.js';

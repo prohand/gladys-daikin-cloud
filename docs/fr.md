@@ -14,14 +14,15 @@ fonctionnalités que votre modèle prend réellement en charge :
 | Fonctionnalité                     | Rôle                                                                            |
 | ---------------------------------- | ------------------------------------------------------------------------------- |
 | Marche/Arrêt                       | Allumer et éteindre l'unité                                                     |
+| Marche/Arrêt (interrupteur)        | Le même marche/arrêt, en interrupteur — c'est sur lui qu'agissent les scènes    |
 | Mode                               | Auto, Froid, Chaud, Déshumidification, Ventilation seule                        |
 | Température de consigne            | La consigne du mode actuellement actif                                          |
 | Vitesse (niveau)                   | La vitesse de ventilation, sur l'échelle déclarée par votre unité (souvent 1-5) |
 | Balayage horizontal                | Le sens du flux d'air gauche/droite                                             |
 | Balayage vertical                  | Le sens du flux d'air haut/bas                                                  |
-| Mode puissant                      | Le mode « Puissant » de Daikin (interrupteur)                                   |
-| Mode Econo                         | Le mode « Econo » de Daikin (interrupteur)                                      |
-| Mode Streamer                      | Le mode « Streamer » de purification d'air (interrupteur)                       |
+| Mode puissant                      | Le mode « Puissant » de Daikin (marche/arrêt)                                   |
+| Mode Econo                         | Le mode « Econo » de Daikin (marche/arrêt)                                      |
+| Mode Streamer                      | Le mode « Streamer » de purification d'air (marche/arrêt)                       |
 | Garder au sec                      | La fonction avancée « Garder au sec » de l'unité intérieure                     |
 | Température intérieure             | La température mesurée par l'unité (capteur, historisé)                         |
 | Température extérieure             | La température mesurée par le groupe extérieur (capteur, historisé)             |
@@ -36,6 +37,22 @@ ventilateur n'obtient pas de vitesse, un modèle sans fonction Streamer n'obtien
 pas l'interrupteur correspondant : seul ce que le matériel déclare est publié.
 Les choix proposés dans l'interface sont également limités à ce que l'unité
 accepte — une unité sans mode « Déshumidification » ne l'affiche jamais.
+
+**Deux fonctionnalités Marche/Arrêt, et c'est voulu.** Les actions de scène
+_Allumer les prises_ / _Éteindre les prises_ de Gladys agissent sur une seule
+fonctionnalité par appareil : la première rangée dans la catégorie
+**interrupteur**. Un marche/arrêt de climatisation leur est invisible, alors
+chaque unité publie aussi **Marche/Arrêt (interrupteur)** — le même bouton, qui
+écrit la même caractéristique Daikin, simplement déclaré là où une scène (et un
+assistant vocal) va le chercher. Les deux restent synchronisés, quel que soit
+celui sur lequel vous appuyez.
+
+Les modes de confort (Puissant, Econo, Streamer, Garder au sec) sont eux aussi
+des commandes marche/arrêt, mais ils ne sont volontairement **pas** déclarés
+comme des interrupteurs. Quand ils l'étaient, une scène demandant d'éteindre le
+climatiseur éteignait le premier d'entre eux à la place, et l'unité continuait
+de tourner. Pour en piloter un depuis une scène, utilisez l'action _Changer la
+valeur d'un appareil_ et choisissez la fonctionnalité par son nom.
 
 Une précision sur la ventilation : **Vitesse (niveau)** n'affiche une valeur que
 lorsque l'unité tourne effectivement sur un niveau manuel. En Auto ou en
