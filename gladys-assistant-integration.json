@@ -10,7 +10,7 @@
   "docker_image": "ghcr.io/prohand/gladys-daikin-cloud:1.0.11",
   "gladys_version": ">=4.86.0",
   "cover_image": "https://raw.githubusercontent.com/prohand/gladys-daikin-cloud/v1.0.11/cover.png",
-  "categories": ["climate", "energy"],
+  "categories": ["climate"],
   "transports": ["cloud"],
   "config_schema": [
     {
