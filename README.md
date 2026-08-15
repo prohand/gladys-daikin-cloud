@@ -11,6 +11,9 @@ and started from the
 
 > User documentation: [English](./docs/en.md) · [Français](./docs/fr.md)
 
+Requires **Gladys 4.86 or later**: the manifest declares the store catalog
+`categories` field, which older cores reject as an unknown field.
+
 ## Features
 
 One Gladys device per Daikin climate unit, with only the features the hardware
@@ -21,14 +24,13 @@ actually reports:
 - **Mode** (auto, cooling, heating, drying, fan only)
 - **Target temperature**, with the min/max/step of the active operation mode
 - **Fan speed** level
-- **Horizontal and vertical airflow**, per axis (one folded oscillation feature
-  on a Gladys older than 4.84.3)
+- **Horizontal and vertical airflow**, per axis
 - **Powerful**, **Econo**, **Streamer** and **Keep dry**, each published as an
   on/off control or, when Daikin reports it read-only, as a sensor
 - **Room temperature** and **outdoor temperature** sensors, kept in history
 - **Energy consumed** today, this month and this year, in kWh
 - The **30-minute consumption and cost** of the Gladys energy monitoring, hung
-  off the daily counter (Gladys 4.66+)
+  off the daily counter
 - The remaining Daikin API quota, shown live in the Configuration screen
 - A per-device transport badge: `cloud`, `cloud + degraded` when the unit
   reports a fault, `unreachable` when Daikin cannot reach it
@@ -107,9 +109,11 @@ scale. The level becomes `fan.speed`, a slider carrying the device's own bounds
 so no scaling is needed. The airflow mode was dropped: `fan.mode` offers five
 fixed labels the UI cannot restrict, so "Medium" had to stand for "manual" —
 a control nobody could read. The louvers get one air conditioning feature per
-axis, matching what Daikin drives and what the Onecta app shows; a Gladys older
-than 4.84.3 has no per-axis type, so they fold there into a single
-`fan.rock-setting` whose bitmap encoding carries both.
+axis, matching what Daikin drives and what the Onecta app shows; a core without
+the per-axis type folds them into a single `fan.rock-setting` whose bitmap
+encoding carries both — a step of the catalog ladder the manifest's 4.86
+minimum now puts out of reach, kept because the ladder probes rather than
+assumes.
 
 ## Development
 
@@ -142,6 +146,16 @@ npm start
 Push a `vX.Y.Z` tag, or run the **Release** workflow from the GitHub UI: it
 bumps `package.json` and the manifest (version _and_ image tag), then builds and
 pushes a multi-arch image (`linux/amd64` + `linux/arm64`) to `ghcr.io`.
+
+The manifest declares `categories: ["climate", "energy"]` — the shelves the
+integration sits on in the store catalog, out of the twelve keys of the store
+vocabulary (1 to 3 per integration; without any, it only shows under "All" and
+in search). The field requires `gladys_version` to start at 4.86.0 or later,
+and the store validator enforces that coupling:
+
+```bash
+npx github:GladysAssistant/integration-store .
+```
 
 ## License
 

@@ -5,6 +5,9 @@ Onecta cloud API** — the same cloud the Onecta mobile app talks to. No hardwar
 to add, no reverse engineering: your units keep working exactly as they do
 today, Gladys just becomes another remote control.
 
+> **Gladys 4.86 or newer is required.** The store will not offer the
+> integration to an older instance.
+
 ## What you get
 
 For every air conditioner of your Daikin account, Gladys creates one device
@@ -97,11 +100,6 @@ Daikin reports some functions read-only depending on the model and firmware —
 "Keep dry" almost always is. Those are published as sensors, without a switch
 the API would refuse anyway.
 
-> **The fan controls need Gladys 4.79 or newer**, and the per-axis airflow
-> direction (plus the restricted mode lists) need 4.84.3. In between, the
-> louvers fold into a single "Oscillation" feature. On an older Gladys the
-> integration still works and simply publishes less.
-
 Heat pumps (Altherma…) are partially supported: their on/off, mode and outdoor
 temperature work, but their water temperature setpoint is not exposed — this
 integration targets air conditioners.
@@ -175,10 +173,6 @@ That is intended: those two rows have no parent, and there is nothing to fix.
 
 In other words, a correctly configured setup does leave two features of the air
 conditioner at level 0, next to the main meter.
-
-> **The energy monitoring needs Gladys 4.66 or newer.** On an older instance the
-> two features are simply not published, and the rest of the integration is
-> unaffected.
 
 ## Before you start: create your Daikin application
 
@@ -313,10 +307,10 @@ one the API does not expose for your unit.
 
 **The "Energy today (consumption)" and "(cost)" rows do not show up in
 Settings → Energy.**
-They need Gladys 4.66 or newer. If your version is recent enough, the device was
-created before they existed: run _Test the connection_, which re-publishes the
-discovery and completes the devices already created. They arrive already chained
-to one another; all that is left is to give **Energy today** a parent.
+The device was created before they existed: run _Test the connection_, which
+re-publishes the discovery and completes the devices already created. They
+arrive already chained to one another; all that is left is to give **Energy
+today** a parent.
 
 **Nothing appears in the Discovery tab.**
 Make sure the units are visible in the Onecta app with the same account, then
