@@ -6,6 +6,9 @@ Onecta. Aucun matériel à ajouter, aucun bricolage : vos unités continuent de
 fonctionner exactement comme aujourd'hui, Gladys devient simplement une
 télécommande de plus.
 
+> **Gladys 4.86 ou plus récent est nécessaire.** Le store ne propose pas
+> l'intégration à une instance plus ancienne.
+
 ## Ce que vous obtenez
 
 Pour chaque climatiseur de votre compte Daikin, Gladys crée un appareil avec les
@@ -105,12 +108,6 @@ et le firmware — c'est presque toujours le cas de « Garder au sec ». Elles s
 alors publiées comme capteurs, sans interrupteur qui serait de toute façon
 refusé par l'API.
 
-> **Les contrôles de ventilation nécessitent Gladys 4.79 ou plus récent**, et le
-> sens du flux d'air par axe (ainsi que les listes de modes restreintes)
-> nécessitent la 4.84.3. Entre les deux, les volets sont regroupés dans une
-> unique fonctionnalité « Oscillation ». Sur une version antérieure
-> l'intégration fonctionne quand même, elle publie simplement moins de choses.
-
 Les pompes à chaleur (Altherma…) sont partiellement prises en charge : leur
 marche/arrêt, leur mode et leur température extérieure fonctionnent, mais leur
 consigne de température d'eau n'est pas exposée — cette intégration vise les
@@ -187,10 +184,6 @@ C'est voulu : ces deux lignes n'ont pas de parent, et il n'y a rien à corriger.
 
 Autrement dit, un suivi correctement configuré laisse bien deux fonctionnalités
 du climatiseur au niveau 0, à côté du compteur principal.
-
-> **Le suivi de l'énergie nécessite Gladys 4.66 ou plus récent.** Sur une version
-> antérieure, les deux fonctionnalités ne sont simplement pas publiées et le
-> reste de l'intégration n'est pas affecté.
 
 ## Avant de commencer : créez votre application Daikin
 
@@ -337,8 +330,7 @@ pour votre unité.
 
 **Les lignes « Énergie aujourd'hui (consommation) » et « (coût) » n'apparaissent
 pas dans Réglages → Énergie.**
-Elles nécessitent Gladys 4.66 ou plus récent. Si votre version convient, c'est
-que l'appareil a été créé avant leur ajout : lancez _Tester la connexion_, qui
+L'appareil a été créé avant leur ajout : lancez _Tester la connexion_, qui
 republie la découverte et complète les appareils déjà existants. Elles arrivent
 déjà rattachées l'une à l'autre ; il ne vous reste qu'à donner un parent à
 « Énergie aujourd'hui ».

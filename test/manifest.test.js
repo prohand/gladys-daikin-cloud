@@ -57,6 +57,30 @@ test('the cover image is pinned to the released tag, never to a branch', () => {
   );
 });
 
+test('the catalog categories are declared, and they require Gladys >= 4.86.0', () => {
+  // The shelves the integration sits on in the store catalog: an integration
+  // declaring none is only reachable through "All" and search. The store
+  // vocabulary itself is checked by the store validator (an unknown key is
+  // dropped there with a warning) — what this test pins is the coupling rule,
+  // because a Gladys older than 4.86 validates manifests against a strict
+  // field allowlist and rejects ANY unknown top-level field. Claiming a lower
+  // minimum while declaring `categories` is refused by the store indexer.
+  assert.ok(Array.isArray(manifest.categories));
+  assert.ok(manifest.categories.length >= 1 && manifest.categories.length <= 3);
+  assert.equal(
+    new Set(manifest.categories).size,
+    manifest.categories.length,
+    'the categories must be unique',
+  );
+  const minVersion = manifest.gladys_version.match(/>=\s*(\d+)\.(\d+)\.\d+/);
+  assert.ok(minVersion, 'gladys_version must declare a minimum version');
+  const [, major, minor] = minVersion.map(Number);
+  assert.ok(
+    major > 4 || (major === 4 && minor >= 86),
+    `categories requires gladys_version >= 4.86.0, got "${manifest.gladys_version}"`,
+  );
+});
+
 test('the integration declares itself as cloud only', () => {
   // Daikin exposes no documented local API for these units: there is no local
   // channel to prefer, and declaring one would show a misleading toggle.
