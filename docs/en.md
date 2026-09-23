@@ -254,8 +254,7 @@ switch to edit mode, add a box and look for "Daikin":
 
 - **Daikin air conditioner** — one unit (picked in the widget settings): room,
   outdoor and target temperatures, energy of the day, state, mode, fan,
-  louvers, active comfort modes, and two buttons, **Turn on** / **Turn off**.
-  A setting picks the chart: temperatures over 24 h, **energy per two-hour
+  louvers and active comfort modes — display only. A setting picks the chart: temperatures over 24 h, **energy per two-hour
   slot (today next to yesterday)**, or none.
 - **Daikin account** — every unit at a glance (running, off, in error,
   unreachable), the energy of the day for the whole account, **the energy per

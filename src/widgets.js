@@ -10,7 +10,7 @@
 //     state is published, with no pull. What no feature carries goes in the
 //     status list (fan, comfort modes, reachability, in words) and the chart:
 //     either the feature history, or today's two-hour consumption slots next
-//     to yesterday's, which only Daikin's buckets hold.
+//     to yesterday's, which only Daikin's buckets hold. Display only.
 //   - `daikin_account`: the whole account — which units run, the energy of the
 //     day, the months of this year against last year's, and the one number
 //     that governs this integration: the API calls left today.
@@ -132,29 +132,10 @@ export function buildUnitWidget(gladys, unit, options = {}) {
     components.push(chartComponent);
   }
 
+  // No buttons: driving the unit is the core Devices box's job, which renders
+  // every feature with its native control — an on/off pair here only
+  // duplicated the one control the widget vocabulary could offer.
   components.push({ type: 'status', items: unitStatusItems(unit) });
-
-  // Commands to an unreachable unit are refused by Daikin: no buttons then.
-  if (unit.online) {
-    components.push(
-      {
-        type: 'button',
-        label: { en: 'Turn on', fr: 'Allumer' },
-        icon: 'power',
-        style: 'primary',
-        device_feature: feature(FEATURE.POWER),
-        value: 1,
-      },
-      {
-        type: 'button',
-        label: { en: 'Turn off', fr: 'Éteindre' },
-        icon: 'power',
-        style: 'secondary',
-        device_feature: feature(FEATURE.POWER),
-        value: 0,
-      },
-    );
-  }
 
   return { ttl_seconds: UNIT_TTL_SECONDS, components };
 }

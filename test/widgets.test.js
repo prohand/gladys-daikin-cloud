@@ -39,19 +39,11 @@ test('the unit tiles are live bindings to the device features', () => {
     featureExternalId(gladys, unit, FEATURE.OUTDOOR_TEMPERATURE),
     featureExternalId(gladys, unit, FEATURE.ENERGY_TODAY),
   ]);
-  const buttons = ofType(content, 'button');
-  assert.deepEqual(
-    buttons.map((button) => [button.device_feature, button.value]),
-    [
-      [featureExternalId(gladys, unit, FEATURE.POWER), 1],
-      [featureExternalId(gladys, unit, FEATURE.POWER), 0],
-    ],
-  );
+  assert.equal(ofType(content, 'button').length, 0, 'display only: the Devices box drives');
 });
 
-test('an unreachable unit gets no buttons, and says why its values are old', () => {
+test('an unreachable unit says why its values are old', () => {
   const content = buildUnitWidget(gladys, unitOf(OFFLINE_UNIT), { now: NOW });
-  assert.equal(ofType(content, 'button').length, 0);
   assert.match(ofType(content, 'text')[0].text.en, /Unreachable/);
   const state = ofType(content, 'status')[0].items[0];
   assert.equal(state.color, 'danger');

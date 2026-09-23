@@ -272,8 +272,8 @@ bord, passez en mode édition, ajoutez une boîte et cherchez « Daikin » :
 
 - **Climatiseur Daikin** — une unité (à choisir dans les réglages du widget) :
   températures intérieure, extérieure et de consigne, énergie du jour, état,
-  mode, ventilation, volets, modes confort actifs, et deux boutons
-  **Allumer** / **Éteindre**. Un réglage choisit le graphique : températures
+  mode, ventilation, volets et modes confort actifs — affichage seul. Un
+  réglage choisit le graphique : températures
   sur 24 h, **énergie par tranche de 2 h (aujourd'hui à côté d'hier)**, ou
   aucun.
 - **Compte Daikin** — toutes les unités d'un coup d'œil (en marche, arrêtée,
