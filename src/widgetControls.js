@@ -1,15 +1,18 @@
 // -----------------------------------------------------------------------------
-// The `daikin_controls` widget: one unit's settings, as pages of buttons.
-//
-// It is a widget of its own, next to `daikin_unit` rather than inside it: the
-// core caps a content at eight components, and four buttons there pushed the
-// unit widget's tiles and chart out.
+// The `daikin_controls` widget: the buttons of ONE setting of one unit.
 //
 // A widget is "read and tap": the core offers no slider and no select there,
-// only buttons — four at most per content. A unit has far more to set than
-// four buttons can hold (setpoint, mode, fan, louvers, comfort modes), so the
-// widget shows ONE page at a time: two buttons for the page's setting, the
-// unit's on/off, and a "Next" button that moves to the following page.
+// only buttons, four at most per content. A unit has more to set than four
+// buttons hold, so each widget instance drives one setting, picked in its
+// settings — power, setpoint, mode, fan, louvers or comfort modes — and the
+// user places one widget per setting they want at hand. Every setting fits
+// in four buttons, so a button always does exactly one thing. A first version
+// walked all the settings in pages behind a "Next" button, next to the
+// on/off; in use it read as a jumble (a "Fan only" MODE button next to "Next:
+// Fan"), and was dropped.
+//
+// Nothing but buttons: the temperatures and the state are the `daikin_unit`
+// widget's job, and repeating them here only crowded the card.
 //
 // Every button carries a widget `action`, never a `device_feature` value: the
 // core drops the cached content as soon as an action is handled, so the next
@@ -18,17 +21,17 @@
 // have sent the same absolute setpoint twice. The relative actions are
 // therefore computed at tap time, from the snapshot the previous tap patched.
 //
-// Pages exist only for what the unit can do in its CURRENT mode — no fan page
-// while drying — and a page that vanished falls back to the first one.
-//
-// Pure: the page to show is kept by the caller, and the commands go through
-// the same `sendCommand` as the dashboard, the scenes and the assistants.
+// Pure: the commands go through the same `sendCommand` as the dashboard, the
+// scenes and the assistants.
 // -----------------------------------------------------------------------------
 
 import { FEATURE } from './devices/index.js';
 import { fanLevelToDaikin, modeToGladys, rockSettingToGladys, roundToStep } from './mapping.js';
 
-export const CONTROL_PAGE = {
+// The values of the `control` setting, stored by the dashboards: never
+// renamed once published.
+export const CONTROL = {
+  POWER: 'power',
   SETPOINT: 'setpoint',
   MODE: 'mode',
   FAN: 'fan',
@@ -51,12 +54,12 @@ export const TOGGLE_LABELS = {
   dryKeep: { en: 'Keep dry', fr: 'Maintien au sec' },
 };
 
-const PAGE_LABELS = {
-  [CONTROL_PAGE.SETPOINT]: { en: 'Setpoint', fr: 'Consigne' },
-  [CONTROL_PAGE.MODE]: { en: 'Mode', fr: 'Mode' },
-  [CONTROL_PAGE.FAN]: { en: 'Fan', fr: 'Ventilation' },
-  [CONTROL_PAGE.SWING]: { en: 'Louvers', fr: 'Balayage' },
-  [CONTROL_PAGE.COMFORT]: { en: 'Comfort', fr: 'Confort' },
+const MODE_ICONS = {
+  auto: 'refresh-cw',
+  cooling: 'cloud-snow',
+  heating: 'sun',
+  dry: 'droplet',
+  fanOnly: 'wind',
 };
 
 const AXES = {
@@ -79,9 +82,6 @@ const TOGGLE_FEATURES = {
   dryKeep: FEATURE.DRY_KEEP,
 };
 
-// Two setting buttons per page: with the on/off and "Next", the core's cap.
-const BUTTONS_PER_PAGE = 2;
-
 const AT_LIMIT = {
   en: 'Already at the limit of this mode.',
   fr: 'Déjà à la limite de ce mode.',
@@ -90,97 +90,60 @@ const AT_LIMIT = {
 const FULL_CATALOG = { fanCategory: true, acSwing: true };
 
 /**
- * The page to show: its name, its buttons, the on/off, and the way to the
- * next page.
+ * The buttons of one setting of the unit, as it is right now: none when the
+ * unit cannot use that setting in its current mode (no manual fan level
+ * while drying) or does not have it at all.
  * @param {object} unit the normalized Daikin unit (reachable)
- * @param {string|undefined} page the page the user last moved to
+ * @param {string} control one of CONTROL
  * @param {{ fanCategory: boolean, acSwing: boolean }} [capabilities] the catalog Gladys accepted
- * @returns {{ label: object|null, buttons: Array<object> }} the page name (null when the unit has no page) and the button components, four at most
+ * @returns {Array<object>} the button components, four at most
  */
-export function controlPanel(unit, page, capabilities = FULL_CATALOG) {
-  const pages = controlPages(unit, capabilities);
-  const index = Math.max(
-    0,
-    pages.findIndex((candidate) => candidate.key === page),
-  );
-  const current = pages[index];
-  const buttons = current ? [...current.buttons] : [];
-
-  const on = unit.power === 'on';
-  buttons.push({
-    type: 'button',
-    label: on ? { en: 'Turn off', fr: 'Éteindre' } : { en: 'Turn on', fr: 'Allumer' },
-    icon: 'power',
-    style: on ? 'secondary' : 'primary',
-    action: { key: 'power', params: { on: !on } },
-  });
-
-  if (pages.length > 1) {
-    const next = pages[(index + 1) % pages.length];
-    buttons.push({
-      type: 'button',
-      label: { en: `Next: ${next.label.en}`, fr: `Suivant : ${next.label.fr}` },
-      icon: 'chevron-right',
-      style: 'secondary',
-      action: { key: 'next_page', params: { page: next.key } },
-    });
-  }
-  return { label: current?.label ?? null, buttons };
-}
-
-/**
- * The pages this unit offers right now, in the order the user walks them.
- * @param {object} unit the normalized Daikin unit
- * @param {{ fanCategory: boolean, acSwing: boolean }} capabilities the catalog Gladys accepted
- * @returns {Array<{ key: string, label: object, buttons: Array<object> }>} the pages
- */
-export function controlPages(unit, capabilities = FULL_CATALOG) {
-  const pages = [];
-  const page = (key, buttons, label = PAGE_LABELS[key]) => {
-    if (buttons.length > 0) {
-      pages.push({ key, label, buttons });
+export function controlButtons(unit, control, capabilities = FULL_CATALOG) {
+  switch (control) {
+    case CONTROL.POWER: {
+      const on = unit.power === 'on';
+      return [
+        button(
+          'power',
+          on ? { en: 'Turn off', fr: 'Éteindre' } : { en: 'Turn on', fr: 'Allumer' },
+          'power',
+          { on: !on },
+          on ? 'secondary' : 'primary',
+        ),
+      ];
     }
-  };
 
-  if (unit.setpoint?.settable) {
-    page(CONTROL_PAGE.SETPOINT, [
-      button('setpoint_down', { en: 'Setpoint −', fr: 'Consigne −' }, 'minus'),
-      button('setpoint_up', { en: 'Setpoint +', fr: 'Consigne +' }, 'plus'),
-    ]);
-  }
+    case CONTROL.SETPOINT:
+      return unit.setpoint?.settable
+        ? [
+            button('setpoint_down', { en: 'Setpoint −', fr: 'Consigne −' }, 'minus'),
+            button('setpoint_up', { en: 'Setpoint +', fr: 'Consigne +' }, 'plus'),
+          ]
+        : [];
 
-  const modes = supportedModes(unit);
-  const at = modes.indexOf(unit.operationMode);
-  if (modes.length > 1) {
-    // Two neighbours in the cycle, or the only other mode once.
-    const previous = modes[(at - 1 + modes.length) % modes.length];
-    const next = modes[(at + 1) % modes.length];
-    const targets = at === -1 ? modes.slice(0, 2) : [...new Set([previous, next])];
-    page(
-      CONTROL_PAGE.MODE,
-      targets.map((mode, position) => {
-        const back = position === 0 && targets.length > 1;
-        return button(
-          back ? 'mode_previous' : 'mode_next',
-          MODE_LABELS[mode],
-          back ? 'chevron-left' : 'chevron-right',
-          { mode },
+    case CONTROL.MODE:
+      // One button per mode the unit can switch TO: Gladys knows five modes,
+      // so leaving the active one out always fits the four buttons.
+      return supportedModes(unit)
+        .filter((mode) => mode !== unit.operationMode)
+        .slice(0, 4)
+        .map((mode) =>
+          button(`mode_${snakeCase(mode)}`, MODE_LABELS[mode], MODE_ICONS[mode], { mode }),
         );
-      }),
-    );
-  }
 
-  if (capabilities.fanCategory && unit.fan?.current?.speed?.fixed) {
-    page(CONTROL_PAGE.FAN, [
-      button('fan_down', { en: 'Fan −', fr: 'Ventilation −' }, 'minus'),
-      button('fan_up', { en: 'Fan +', fr: 'Ventilation +' }, 'plus'),
-    ]);
-  }
+    case CONTROL.FAN:
+      return capabilities.fanCategory && unit.fan?.current?.speed?.fixed
+        ? [
+            button('fan_down', { en: 'Fan −', fr: 'Ventilation −' }, 'minus'),
+            button('fan_up', { en: 'Fan +', fr: 'Ventilation +' }, 'plus'),
+          ]
+        : [];
 
-  if (capabilities.acSwing || capabilities.fanCategory) {
-    page(
-      CONTROL_PAGE.SWING,
-      steerableAxes(unit).map((axis) => {
+    case CONTROL.SWING:
+      if (!capabilities.acSwing && !capabilities.fanCategory) {
+        return [];
+      }
+      return steerableAxes(unit).map((axis) => {
         const swinging = unit.fan.current.direction[axis].value === 'swing';
         return button(
           `swing_${axis}`,
@@ -189,39 +152,28 @@ export function controlPages(unit, capabilities = FULL_CATALOG) {
           { on: !swinging },
           swinging ? 'secondary' : 'primary',
         );
-      }),
-    );
-  }
+      });
 
-  const toggles = Object.entries(unit.toggles ?? {}).filter(([, toggle]) => toggle?.settable);
-  for (let start = 0; start < toggles.length; start += BUTTONS_PER_PAGE) {
-    const chunk = toggles.slice(start, start + BUTTONS_PER_PAGE);
-    // A unit with more comfort modes than a page holds gets a second page,
-    // numbered: its content in words would not fit the 24 characters of the
-    // "Next" button that names it.
-    const number = start / BUTTONS_PER_PAGE + 1;
-    const label =
-      number === 1
-        ? PAGE_LABELS[CONTROL_PAGE.COMFORT]
-        : { en: `Comfort ${number}`, fr: `Confort ${number}` };
-    page(
-      number === 1 ? CONTROL_PAGE.COMFORT : `${CONTROL_PAGE.COMFORT}_${number}`,
-      chunk.map(([key, toggle]) => {
-        const name = TOGGLE_LABELS[key];
-        return button(
-          `toggle_${key}`,
-          toggle.on
-            ? { en: `Turn ${name.en} off`, fr: `Couper ${name.fr}` }
-            : { en: `Turn ${name.en} on`, fr: `Activer ${name.fr}` },
-          'star',
-          { on: !toggle.on },
-          toggle.on ? 'secondary' : 'primary',
-        );
-      }),
-      label,
-    );
+    case CONTROL.COMFORT:
+      // Four comfort modes at most, and a read-only one gets no button.
+      return Object.entries(unit.toggles ?? {})
+        .filter(([, toggle]) => toggle?.settable)
+        .map(([key, toggle]) => {
+          const name = TOGGLE_LABELS[key];
+          return button(
+            `toggle_${key}`,
+            toggle.on
+              ? { en: `Turn ${name.en} off`, fr: `Couper ${name.fr}` }
+              : { en: `Turn ${name.en} on`, fr: `Activer ${name.fr}` },
+            'star',
+            { on: !toggle.on },
+            toggle.on ? 'secondary' : 'primary',
+          );
+        });
+
+    default:
+      return [];
   }
-  return pages;
 }
 
 /**
@@ -232,13 +184,10 @@ export function controlPages(unit, capabilities = FULL_CATALOG) {
  * @param {string} actionKey the `action.key` of the button
  * @param {object} [params] the `action.params` of the button
  * @param {{ fanCategory: boolean, acSwing: boolean }} [capabilities] the catalog Gladys accepted
- * @returns {{ page: string } | { command: { featureKey: string, value: number } } | { message: object }} a page to show, a command to send, or why there is nothing to send
+ * @returns {{ command: { featureKey: string, value: number } } | { message: object }} the command to send, or why there is nothing to send
  */
 export function resolveControl(unit, actionKey, params = {}, capabilities = FULL_CATALOG) {
   switch (actionKey) {
-    case 'next_page':
-      return { page: String(params.page ?? '') };
-
     case 'power':
       return { command: { featureKey: FEATURE.POWER, value: params.on ? 1 : 0 } };
 
@@ -254,14 +203,6 @@ export function resolveControl(unit, actionKey, params = {}, capabilities = FULL
       return target === value
         ? { message: AT_LIMIT }
         : { command: { featureKey: FEATURE.TARGET_TEMPERATURE, value: target } };
-    }
-
-    case 'mode_previous':
-    case 'mode_next': {
-      if (!supportedModes(unit).includes(params.mode)) {
-        throw new Error(`${unit.name} does not support the "${params.mode}" mode`);
-      }
-      return { command: { featureKey: FEATURE.MODE, value: modeToGladys(params.mode) } };
     }
 
     case 'fan_down':
@@ -300,6 +241,12 @@ export function resolveControl(unit, actionKey, params = {}, capabilities = FULL
     }
 
     default: {
+      if (actionKey.startsWith('mode_')) {
+        if (!supportedModes(unit).includes(params.mode)) {
+          throw new Error(`${unit.name} does not support the "${params.mode}" mode`);
+        }
+        return { command: { featureKey: FEATURE.MODE, value: modeToGladys(params.mode) } };
+      }
       const toggleKey = actionKey.startsWith('toggle_') ? actionKey.slice('toggle_'.length) : null;
       if (toggleKey && TOGGLE_FEATURES[toggleKey]) {
         return { command: { featureKey: TOGGLE_FEATURES[toggleKey], value: params.on ? 1 : 0 } };
@@ -332,6 +279,14 @@ function steerableAxes(unit) {
     const values = direction[axis]?.values ?? [];
     return values.includes('swing') && values.includes('stop');
   });
+}
+
+/**
+ * @param {string} name a camelCase Daikin name
+ * @returns {string} the same name as an action key accepts it (`^[a-z0-9_]+$`)
+ */
+function snakeCase(name) {
+  return name.replace(/[A-Z]/g, (letter) => `_${letter.toLowerCase()}`);
 }
 
 /**

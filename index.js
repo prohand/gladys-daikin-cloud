@@ -91,10 +91,6 @@ const api = new DaikinApi({
 // store, whoever asked for it, so that is where the comparison hooks in.
 const sceneEvents = new SceneEventTracker();
 
-// The page of buttons each controls widget shows, by device external_id. Kept
-// in memory only: after a restart every widget opens on its first page again.
-// Two widgets bound to the same unit turn their pages together.
-const widgetPages = new Map();
 // Taps on the widget buttons run one after the other: "+" is relative to the
 // setpoint the PREVIOUS tap wrote, so it must not read the snapshot before
 // that tap has patched it.
@@ -320,7 +316,7 @@ gladys.onWidgetGet(WIDGET.UNIT, async ({ settings, units: unitSystem }) => {
 
 gladys.onWidgetGet(WIDGET.CONTROLS, async ({ settings }) =>
   buildControlsWidget(gladys, widgetUnit(settings), {
-    page: widgetPages.get(settings?.unit),
+    control: settings?.control,
     capabilities,
     ready: store.lastRefreshAt > 0,
   }),
@@ -508,8 +504,8 @@ function widgetUnit(settings) {
 }
 
 /**
- * Carry out one tap on a controls widget button: move to another page, or
- * send the command through the same path as the dashboard.
+ * Carry out one tap on a controls widget button, through the same path as the
+ * dashboard.
  * @param {string} actionKey the `action.key` of the button
  * @param {object} params the `action.params` of the button
  * @param {object} settings the settings of the widget instance
@@ -518,10 +514,6 @@ function widgetUnit(settings) {
 async function runControlAction(actionKey, params, settings) {
   const unit = await unitOf(settings?.unit);
   const control = resolveControl(unit, actionKey, params ?? {}, capabilities);
-  if (control.page !== undefined) {
-    widgetPages.set(settings.unit, control.page);
-    return undefined;
-  }
   if (control.message) {
     return control.message;
   }

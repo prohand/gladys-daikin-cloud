@@ -11,10 +11,10 @@
 //     status list (fan, comfort modes, reachability, in words) and the chart:
 //     either the feature history, or today's two-hour consumption slots next
 //     to yesterday's, which only Daikin's buckets hold.
-//   - `daikin_controls`: one unit, to drive it. The core offers buttons only,
-//     four at most: the settings come one page at a time
-//     (src/widgetControls.js), with the two temperatures that tell whether a
-//     tap did what it should.
+//   - `daikin_controls`: the buttons of ONE setting of one unit (power,
+//     setpoint, mode, fan, louvers or comfort modes): the core offers four
+//     buttons at most, so the user places one per setting they want at hand
+//     (src/widgetControls.js).
 //   - `daikin_account`: the whole account — which units run, the energy of the
 //     day, the months of this year against last year's, and the one number
 //     that governs this integration: the API calls left today.
@@ -34,7 +34,7 @@
 import { WIDGET_COLORS } from '@gladysassistant/integration-sdk';
 import { FEATURE, featureExternalId } from './devices/index.js';
 import { QUOTA_LOW_THRESHOLD } from './sceneEvents.js';
-import { MODE_LABELS, TOGGLE_LABELS, controlPanel } from './widgetControls.js';
+import { CONTROL, MODE_LABELS, TOGGLE_LABELS, controlButtons } from './widgetControls.js';
 
 // The keys the dashboards store: never renamed once published.
 export const WIDGET = {
@@ -141,49 +141,41 @@ export function buildUnitWidget(gladys, unit, options = {}) {
 }
 
 /**
- * The content of the `daikin_controls` widget: the page of buttons the user
- * moved to, with its name, the room and target temperatures and the status
- * list — the heading, two tiles, the status and four buttons fill the eight
- * components the core keeps.
+ * The content of the `daikin_controls` widget: the buttons of the setting the
+ * instance drives, and nothing else — the values are the unit widget's job.
  * @param {object} gladys the SDK instance (external ids only)
  * @param {object|undefined} unit the unit the widget instance is bound to, when found
- * @param {{ page?: string, capabilities?: object, ready?: boolean }} [options] the page the user moved to, the catalog Gladys accepted and the context
+ * @param {{ control?: string, capabilities?: object, ready?: boolean }} [options] the setting the instance drives, the catalog Gladys accepted and the context
  * @returns {object} the widget content
  */
 export function buildControlsWidget(gladys, unit, options = {}) {
-  const { page, capabilities, ready = true } = options;
+  const { control = CONTROL.POWER, capabilities, ready = true } = options;
   if (!unit) {
     return missingUnit(ready);
   }
-
-  const feature = (key) => featureExternalId(gladys, unit, key);
-  const components = [];
   // Commands to an unreachable unit are refused by Daikin: no buttons then.
-  const panel = unit.online ? controlPanel(unit, page, capabilities) : null;
-
-  if (panel?.label) {
-    components.push({ type: 'text', variant: 'heading', text: panel.label });
-  }
-  if (unit.roomTemperature !== null) {
-    components.push(tile(feature(FEATURE.ROOM_TEMPERATURE), 'thermometer', 'Room', 'Pièce'));
-  }
-  if (Object.keys(unit.setpoints).length > 0) {
-    components.push(tile(feature(FEATURE.TARGET_TEMPERATURE), 'target', 'Setpoint', 'Consigne'));
-  }
   if (!unit.online) {
-    components.push({
-      type: 'text',
-      variant: 'caption',
-      text: {
+    return message(
+      {
         en: 'Unreachable: Daikin cannot pass on any command right now.',
         fr: 'Injoignable : Daikin ne peut transmettre aucune commande pour le moment.',
       },
-    });
+      UNIT_TTL_SECONDS,
+    );
   }
-  components.push({ type: 'status', items: unitStatusItems(unit) });
-  components.push(...(panel?.buttons ?? []));
-
-  return { ttl_seconds: UNIT_TTL_SECONDS, components };
+  const buttons = controlButtons(unit, control, capabilities);
+  if (buttons.length === 0) {
+    // A setting the unit has in other modes only (no manual fan while drying)
+    // comes back by itself: say so rather than show an empty card.
+    return message(
+      {
+        en: 'Not available on this unit in its current mode.',
+        fr: 'Indisponible sur cette unité dans son mode actuel.',
+      },
+      UNIT_TTL_SECONDS,
+    );
+  }
+  return { ttl_seconds: UNIT_TTL_SECONDS, components: buttons };
 }
 
 /**
