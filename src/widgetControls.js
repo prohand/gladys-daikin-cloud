@@ -1,5 +1,9 @@
 // -----------------------------------------------------------------------------
-// The controls of the `daikin_unit` widget, as pages of buttons.
+// The `daikin_controls` widget: one unit's settings, as pages of buttons.
+//
+// It is a widget of its own, next to `daikin_unit` rather than inside it: the
+// core caps a content at eight components, and four buttons there pushed the
+// unit widget's tiles and chart out.
 //
 // A widget is "read and tap": the core offers no slider and no select there,
 // only buttons — four at most per content. A unit has far more to set than
@@ -30,13 +34,6 @@ export const CONTROL_PAGE = {
   FAN: 'fan',
   SWING: 'swing',
   COMFORT: 'comfort',
-};
-
-// What the instance setting `controls` offers: the pages, or the plain on/off
-// pair of the first version, which leaves room for every tile.
-export const UNIT_CONTROLS = {
-  PAGES: 'pages',
-  POWER: 'power',
 };
 
 export const MODE_LABELS = {
@@ -93,14 +90,14 @@ const AT_LIMIT = {
 const FULL_CATALOG = { fanCategory: true, acSwing: true };
 
 /**
- * The buttons of the unit widget: the ones of the page to show, the on/off,
- * and the way to the next page.
+ * The page to show: its name, its buttons, the on/off, and the way to the
+ * next page.
  * @param {object} unit the normalized Daikin unit (reachable)
  * @param {string|undefined} page the page the user last moved to
  * @param {{ fanCategory: boolean, acSwing: boolean }} [capabilities] the catalog Gladys accepted
- * @returns {Array<object>} the button components, four at most
+ * @returns {{ label: object|null, buttons: Array<object> }} the page name (null when the unit has no page) and the button components, four at most
  */
-export function controlButtons(unit, page, capabilities = FULL_CATALOG) {
+export function controlPanel(unit, page, capabilities = FULL_CATALOG) {
   const pages = controlPages(unit, capabilities);
   const index = Math.max(
     0,
@@ -128,7 +125,7 @@ export function controlButtons(unit, page, capabilities = FULL_CATALOG) {
       action: { key: 'next_page', params: { page: next.key } },
     });
   }
-  return buttons;
+  return { label: current?.label ?? null, buttons };
 }
 
 /**

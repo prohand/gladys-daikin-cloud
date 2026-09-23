@@ -254,20 +254,18 @@ switch to edit mode, add a box and look for "Daikin":
 
 - **Daikin air conditioner** — one unit (picked in the widget settings): room,
   outdoor and target temperatures, energy of the day, state, mode, fan,
-  louvers, active comfort modes, and **buttons to drive the unit**. A setting
-  picks the chart: temperatures over 24 h, **energy per two-hour slot (today
-  next to yesterday)**, or none.
-
-  Gladys allows only four buttons in a widget, and no slider, so the
-  settings come **one page at a time**: two buttons for the page, **Turn
-  on/off**, and **Next: …** to move to the following page — **Setpoint** (− /
-  +), **Mode** (the modes before and after the current one), **Fan** (− / +),
-  **Louvers** (left/right and up/down), **Comfort** (Powerful, Econo…). A
-  page the unit cannot use in its current mode is skipped (no fan page while
-  drying). Every tap is a command: it spends Daikin API calls like any other.
-  To make room for the buttons the widget shows two or three tiles; the
-  **Buttons** setting set to **On/off only** brings back every tile.
-
+  louvers, active comfort modes, and two buttons, **Turn on** / **Turn off**.
+  A setting picks the chart: temperatures over 24 h, **energy per two-hour
+  slot (today next to yesterday)**, or none.
+- **Daikin controls** — one unit, to drive it. Gladys allows only four
+  buttons in a widget and no slider, so the settings come **one page at a
+  time**: the page name, the room and target temperatures, the unit's state,
+  two buttons for the page, **Turn on/off**, and **Next: …** to move on —
+  **Setpoint** (− / +), **Mode** (the modes before and after the current
+  one), **Fan** (− / +), **Louvers** (left/right and up/down), **Comfort**
+  (Powerful, Econo…). A page the unit cannot use in its current mode is
+  skipped (no fan page while drying). Every tap is a command: it spends
+  Daikin API calls like any other.
 - **Daikin account** — every unit at a glance (running, off, in error,
   unreachable), the energy of the day for the whole account, **the energy per
   month this year against last year**, a gauge of the **API calls left

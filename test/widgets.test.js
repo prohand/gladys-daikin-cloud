@@ -3,8 +3,13 @@ import assert from 'node:assert/strict';
 import { validateWidgetContent } from '@gladysassistant/integration-sdk';
 import { parseUnits } from '../src/daikin/model.js';
 import { FEATURE, featureExternalId } from '../src/devices/index.js';
-import { UNIT_CONTROLS, controlPages } from '../src/widgetControls.js';
-import { UNIT_CHART, buildAccountWidget, buildUnitWidget } from '../src/widgets.js';
+import { CONTROL_PAGE, controlPages } from '../src/widgetControls.js';
+import {
+  UNIT_CHART,
+  buildAccountWidget,
+  buildControlsWidget,
+  buildUnitWidget,
+} from '../src/widgets.js';
 import { createFakeGladys } from './helpers/fakeGladys.js';
 import {
   ALL_DEVICES,
@@ -22,35 +27,17 @@ const ofType = (content, type) => content.components.filter((component) => compo
 // rendered exactly as sent — nothing dropped by the budget, nothing truncated.
 const assertRenderedAsSent = (content) => assert.deepEqual(validateWidgetContent(content), []);
 
-test('the unit widget fits the vocabulary for every unit shape, chart and page', () => {
+test('the unit widget fits the vocabulary for every unit shape and every chart', () => {
   for (const payload of [SPLIT_UNIT, OFFLINE_UNIT, HEAT_PUMP_UNIT]) {
-    const unit = unitOf(payload);
-    const pages = [undefined, ...controlPages(unit).map((page) => page.key)];
     for (const chart of Object.values(UNIT_CHART)) {
-      for (const controls of Object.values(UNIT_CONTROLS)) {
-        for (const page of pages) {
-          assertRenderedAsSent(buildUnitWidget(gladys, unit, { chart, controls, page, now: NOW }));
-        }
-      }
+      assertRenderedAsSent(buildUnitWidget(gladys, unitOf(payload), { chart, now: NOW }));
     }
   }
 });
 
-test('a page of buttons pushes out the tiles the chart already shows', () => {
-  const unit = unitOf(SPLIT_UNIT);
-  const tilesOf = (options) =>
-    ofType(buildUnitWidget(gladys, unit, { now: NOW, ...options }), 'value').map(
-      (tile) => tile.label.en,
-    );
-  // 8 components: chart, status and 4 buttons leave room for 2 tiles.
-  assert.deepEqual(tilesOf({}), ['Room', 'Setpoint']);
-  assert.deepEqual(tilesOf({ chart: UNIT_CHART.NONE }), ['Room', 'Setpoint', 'Outdoor']);
-  assert.equal(tilesOf({ controls: UNIT_CONTROLS.POWER }).length, 4);
-});
-
 test('the unit tiles are live bindings to the device features', () => {
   const unit = unitOf(SPLIT_UNIT);
-  const content = buildUnitWidget(gladys, unit, { controls: UNIT_CONTROLS.POWER, now: NOW });
+  const content = buildUnitWidget(gladys, unit, { now: NOW });
   const bound = ofType(content, 'value').map((tile) => tile.device_feature);
   assert.deepEqual(bound, [
     featureExternalId(gladys, unit, FEATURE.ROOM_TEMPERATURE),
@@ -107,6 +94,39 @@ test('a unit missing from the snapshot gets a message, not an error', () => {
   assert.match(gone.components[0].text.en, /no longer/);
   assertRenderedAsSent(waiting);
   assertRenderedAsSent(gone);
+});
+
+test('the controls widget fits the vocabulary on every page of every unit', () => {
+  for (const payload of [SPLIT_UNIT, OFFLINE_UNIT, HEAT_PUMP_UNIT]) {
+    const unit = unitOf(payload);
+    for (const page of [undefined, ...controlPages(unit).map((entry) => entry.key)]) {
+      assertRenderedAsSent(buildControlsWidget(gladys, unit, { page }));
+    }
+  }
+  assertRenderedAsSent(buildControlsWidget(gladys, undefined, { ready: false }));
+});
+
+test('the controls widget names its page and keeps the two temperatures', () => {
+  const unit = unitOf(SPLIT_UNIT);
+  const content = buildControlsWidget(gladys, unit, { page: CONTROL_PAGE.FAN });
+  assert.equal(ofType(content, 'text')[0].text.fr, 'Ventilation');
+  assert.deepEqual(
+    ofType(content, 'value').map((tile) => tile.device_feature),
+    [
+      featureExternalId(gladys, unit, FEATURE.ROOM_TEMPERATURE),
+      featureExternalId(gladys, unit, FEATURE.TARGET_TEMPERATURE),
+    ],
+  );
+  assert.deepEqual(
+    ofType(content, 'button').map((button) => button.action.key),
+    ['fan_down', 'fan_up', 'power', 'next_page'],
+  );
+});
+
+test('an unreachable unit gets no controls, and says why', () => {
+  const content = buildControlsWidget(gladys, unitOf(OFFLINE_UNIT));
+  assert.equal(ofType(content, 'button').length, 0);
+  assert.match(ofType(content, 'text')[0].text.en, /Unreachable/);
 });
 
 test('the account widget sums the account and shows the quota', () => {

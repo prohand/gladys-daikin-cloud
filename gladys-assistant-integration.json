@@ -132,8 +132,8 @@
         "fr": "Climatiseur Daikin"
       },
       "description": {
-        "en": "One unit: temperatures, energy, and buttons for setpoint, mode, fan, louvers and comfort.",
-        "fr": "Une unité : températures, énergie, boutons de consigne, mode, ventilation, balayage et confort."
+        "en": "One unit: temperatures, energy, fan, comfort modes and on/off buttons.",
+        "fr": "Une unité : températures, énergie, ventilation, modes confort et marche/arrêt."
       },
       "icon": "wind",
       "settings": [
@@ -178,31 +178,30 @@
               }
             }
           ]
-        },
+        }
+      ]
+    },
+    {
+      "key": "daikin_controls",
+      "label": {
+        "en": "Daikin controls",
+        "fr": "Commandes Daikin"
+      },
+      "description": {
+        "en": "Drive one unit: power, setpoint, mode, fan, louvers and comfort, page by page.",
+        "fr": "Piloter une unité : marche, consigne, mode, ventilation, balayage et confort, page par page."
+      },
+      "icon": "sliders",
+      "settings": [
         {
-          "key": "controls",
+          "key": "unit",
           "type": "select",
+          "source": "devices",
           "label": {
-            "en": "Buttons",
-            "fr": "Boutons"
+            "en": "Unit",
+            "fr": "Unité"
           },
-          "default": "pages",
-          "options": [
-            {
-              "value": "pages",
-              "label": {
-                "en": "Every setting, one page at a time",
-                "fr": "Tous les réglages, page par page"
-              }
-            },
-            {
-              "value": "power",
-              "label": {
-                "en": "On/off only",
-                "fr": "Marche/arrêt seulement"
-              }
-            }
-          ]
+          "required": true
         }
       ]
     },

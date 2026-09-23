@@ -4,14 +4,10 @@ import { parseUnits } from '../src/daikin/model.js';
 import { FEATURE, buildCommands } from '../src/devices/index.js';
 import { AC_MODE, FAN_ROCK_SETTING } from '../src/mapping.js';
 import { DaikinStore } from '../src/store.js';
-import {
-  CONTROL_PAGE,
-  controlButtons,
-  controlPages,
-  resolveControl,
-} from '../src/widgetControls.js';
+import { CONTROL_PAGE, controlPanel, controlPages, resolveControl } from '../src/widgetControls.js';
 import { HEAT_PUMP_UNIT, SPLIT_UNIT } from './fixtures/gatewayDevices.js';
 
+const controlButtons = (...args) => controlPanel(...args).buttons;
 const unitOf = (payload) => parseUnits([structuredClone(payload)])[0];
 const keysOf = (buttons) => buttons.map((button) => button.action.key);
 const store = new DaikinStore({ api: {} });

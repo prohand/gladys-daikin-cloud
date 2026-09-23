@@ -11,7 +11,6 @@ import { readFile } from 'node:fs/promises';
 import { DEFAULT_CONFIG, MAX_POLL_FREQUENCY, MIN_POLL_FREQUENCY } from '../src/config.js';
 import { SCENE_ACTION, SET_CLIMATE_MODES } from '../src/sceneActions.js';
 import { SCENE_TRIGGER } from '../src/sceneEvents.js';
-import { UNIT_CONTROLS } from '../src/widgetControls.js';
 import { UNIT_CHART, WIDGET } from '../src/widgets.js';
 
 const manifest = JSON.parse(
@@ -111,9 +110,6 @@ test('the select options of the capabilities are the values the code reads', () 
   const chart = unitWidget.settings.find((field) => field.key === 'chart');
   assert.deepEqual(optionsOf(chart).sort(), Object.values(UNIT_CHART).sort());
   assert.ok(Object.values(UNIT_CHART).includes(chart.default));
-  const controls = unitWidget.settings.find((field) => field.key === 'controls');
-  assert.deepEqual(optionsOf(controls).sort(), Object.values(UNIT_CONTROLS).sort());
-  assert.equal(controls.default, UNIT_CONTROLS.PAGES);
 
   const setClimate = manifest.scene_actions.find(
     (action) => action.key === SCENE_ACTION.SET_CLIMATE,

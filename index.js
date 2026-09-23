@@ -55,7 +55,7 @@ import {
 } from './src/sceneActions.js';
 import { SceneEventTracker } from './src/sceneEvents.js';
 import { resolveControl } from './src/widgetControls.js';
-import { WIDGET, buildAccountWidget, buildUnitWidget } from './src/widgets.js';
+import { WIDGET, buildAccountWidget, buildControlsWidget, buildUnitWidget } from './src/widgets.js';
 
 const gladys = new GladysIntegration();
 
@@ -91,8 +91,8 @@ const api = new DaikinApi({
 // store, whoever asked for it, so that is where the comparison hooks in.
 const sceneEvents = new SceneEventTracker();
 
-// The page of buttons each unit widget shows, by device external_id. Kept in
-// memory only: after a restart every widget opens on its first page again.
+// The page of buttons each controls widget shows, by device external_id. Kept
+// in memory only: after a restart every widget opens on its first page again.
 // Two widgets bound to the same unit turn their pages together.
 const widgetPages = new Map();
 // Taps on the widget buttons run one after the other: "+" is relative to the
@@ -311,23 +311,25 @@ gladys.onSceneAction(SCENE_ACTION.REFRESH_ACCOUNT, async () => {
 // Built from the snapshot, never from a read of their own: a dashboard left
 // open on a wall tablet must not cost a single API call.
 gladys.onWidgetGet(WIDGET.UNIT, async ({ settings, units: unitSystem }) => {
-  const unit = settings?.unit
-    ? findUnitByDevice(gladys, store.units, { external_id: settings.unit })
-    : undefined;
-  return buildUnitWidget(gladys, unit, {
+  return buildUnitWidget(gladys, widgetUnit(settings), {
     chart: settings?.chart,
-    controls: settings?.controls,
-    page: widgetPages.get(settings?.unit),
-    capabilities,
     unitSystem,
     ready: store.lastRefreshAt > 0,
   });
 });
 
+gladys.onWidgetGet(WIDGET.CONTROLS, async ({ settings }) =>
+  buildControlsWidget(gladys, widgetUnit(settings), {
+    page: widgetPages.get(settings?.unit),
+    capabilities,
+    ready: store.lastRefreshAt > 0,
+  }),
+);
+
 // A tap on one of its buttons. The core drops the cached content once this
 // resolves, so the widget comes back with the labels of the new state.
-gladys.onWidgetAction(WIDGET.UNIT, (actionKey, params, { settings } = {}) => {
-  const run = widgetActions.then(() => runUnitWidgetAction(actionKey, params, settings));
+gladys.onWidgetAction(WIDGET.CONTROLS, (actionKey, params, { settings } = {}) => {
+  const run = widgetActions.then(() => runControlAction(actionKey, params, settings));
   widgetActions = run.catch(() => {});
   return run;
 });
@@ -494,14 +496,26 @@ async function sendCommand(unit, featureKey, value) {
 }
 
 /**
- * Carry out one tap on a unit widget button: move to another page, or send
- * the command through the same path as the dashboard.
+ * The unit a widget instance is bound to (a `source: "devices"` setting: the
+ * device external_id), when the snapshot still holds it.
+ * @param {object} settings the settings of the widget instance
+ * @returns {object|undefined} the unit
+ */
+function widgetUnit(settings) {
+  return settings?.unit
+    ? findUnitByDevice(gladys, store.units, { external_id: settings.unit })
+    : undefined;
+}
+
+/**
+ * Carry out one tap on a controls widget button: move to another page, or
+ * send the command through the same path as the dashboard.
  * @param {string} actionKey the `action.key` of the button
  * @param {object} params the `action.params` of the button
  * @param {object} settings the settings of the widget instance
  * @returns {Promise<object|undefined>} a toast, when nothing was sent
  */
-async function runUnitWidgetAction(actionKey, params, settings) {
+async function runControlAction(actionKey, params, settings) {
   const unit = await unitOf(settings?.unit);
   const control = resolveControl(unit, actionKey, params ?? {}, capabilities);
   if (control.page !== undefined) {
