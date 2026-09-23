@@ -54,8 +54,7 @@ import {
   setClimate,
 } from './src/sceneActions.js';
 import { SceneEventTracker } from './src/sceneEvents.js';
-import { resolveControl } from './src/widgetControls.js';
-import { WIDGET, buildAccountWidget, buildControlsWidget, buildUnitWidget } from './src/widgets.js';
+import { WIDGET, buildAccountWidget, buildUnitWidget } from './src/widgets.js';
 
 const gladys = new GladysIntegration();
 
@@ -90,11 +89,6 @@ const api = new DaikinApi({
 // out, the session dying) becomes a scene trigger. Every read goes through the
 // store, whoever asked for it, so that is where the comparison hooks in.
 const sceneEvents = new SceneEventTracker();
-
-// Taps on the widget buttons run one after the other: "+" is relative to the
-// setpoint the PREVIOUS tap wrote, so it must not read the snapshot before
-// that tap has patched it.
-let widgetActions = Promise.resolve();
 
 // A scene asking for a fresh read this soon after the last one gets that one:
 // a scene run every minute must not be able to spend the daily quota.
@@ -307,27 +301,14 @@ gladys.onSceneAction(SCENE_ACTION.REFRESH_ACCOUNT, async () => {
 // Built from the snapshot, never from a read of their own: a dashboard left
 // open on a wall tablet must not cost a single API call.
 gladys.onWidgetGet(WIDGET.UNIT, async ({ settings, units: unitSystem }) => {
-  return buildUnitWidget(gladys, widgetUnit(settings), {
+  const unit = settings?.unit
+    ? findUnitByDevice(gladys, store.units, { external_id: settings.unit })
+    : undefined;
+  return buildUnitWidget(gladys, unit, {
     chart: settings?.chart,
     unitSystem,
     ready: store.lastRefreshAt > 0,
   });
-});
-
-gladys.onWidgetGet(WIDGET.CONTROLS, async ({ settings }) =>
-  buildControlsWidget(gladys, widgetUnit(settings), {
-    control: settings?.control,
-    capabilities,
-    ready: store.lastRefreshAt > 0,
-  }),
-);
-
-// A tap on one of its buttons. The core drops the cached content once this
-// resolves, so the widget comes back with the labels of the new state.
-gladys.onWidgetAction(WIDGET.CONTROLS, (actionKey, params, { settings } = {}) => {
-  const run = widgetActions.then(() => runControlAction(actionKey, params, settings));
-  widgetActions = run.catch(() => {});
-  return run;
 });
 
 gladys.onWidgetGet(WIDGET.ACCOUNT, async ({ units: unitSystem }) =>
@@ -489,39 +470,6 @@ async function sendCommand(unit, featureKey, value) {
       state: published.state,
     })),
   );
-}
-
-/**
- * The unit a widget instance is bound to (a `source: "devices"` setting: the
- * device external_id), when the snapshot still holds it.
- * @param {object} settings the settings of the widget instance
- * @returns {object|undefined} the unit
- */
-function widgetUnit(settings) {
-  return settings?.unit
-    ? findUnitByDevice(gladys, store.units, { external_id: settings.unit })
-    : undefined;
-}
-
-/**
- * Carry out one tap on a controls widget button, through the same path as the
- * dashboard.
- * @param {string} actionKey the `action.key` of the button
- * @param {object} params the `action.params` of the button
- * @param {object} settings the settings of the widget instance
- * @returns {Promise<object|undefined>} a toast, when nothing was sent
- */
-async function runControlAction(actionKey, params, settings) {
-  const unit = await unitOf(settings?.unit);
-  const control = resolveControl(unit, actionKey, params ?? {}, capabilities);
-  if (control.message) {
-    return control.message;
-  }
-  const { featureKey, value } = control.command;
-  logger.info(`Widget action ${actionKey} -> ${unit.name}:${featureKey} = ${value}`);
-  await sendCommand(unit, featureKey, value);
-  nudgeWidgets();
-  return undefined;
 }
 
 /**

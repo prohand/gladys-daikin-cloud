@@ -254,18 +254,8 @@ switch to edit mode, add a box and look for "Daikin":
 
 - **Daikin air conditioner** — one unit (picked in the widget settings): room,
   outdoor and target temperatures, energy of the day, state, mode, fan,
-  louvers, active comfort modes, and two buttons, **Turn on** / **Turn off**.
-  A setting picks the chart: temperatures over 24 h, **energy per two-hour
+  louvers and active comfort modes — display only. A setting picks the chart: temperatures over 24 h, **energy per two-hour
   slot (today next to yesterday)**, or none.
-- **Daikin control** — the buttons of **one setting** of one unit, picked in
-  the widget settings: **On/off**, **Setpoint** (− / +), **Mode** (one button
-  per mode the unit can switch to), **Fan speed** (− / +), **Louvers**
-  (left/right and up/down) or **Comfort modes** (Powerful, Econo…). Gladys
-  allows only four buttons in a widget and no slider, so place one widget per
-  setting you want at hand; each button does exactly one thing, and the values
-  stay in the "Daikin air conditioner" widget. A setting the unit cannot use
-  in its current mode says so (no fan speed while drying). Every tap is a
-  command: it spends Daikin API calls like any other.
 - **Daikin account** — every unit at a glance (running, off, in error,
   unreachable), the energy of the day for the whole account, **the energy per
   month this year against last year**, a gauge of the **API calls left
@@ -274,6 +264,11 @@ switch to edit mode, add a box and look for "Daikin":
 The widgets cost **no API call**: they read the values already received. The
 temperature and energy tiles follow the values live; the rest updates at every
 refresh and after every command.
+
+To **drive** the unit (mode, setpoint, fan, louvers, Powerful…), add Gladys'
+own **Devices** box next to it and pick the Daikin unit: it shows every
+function with its proper control (mode selector, − / + setpoint, fan slider,
+switches). An integration widget cannot: Gladys only lets it hold buttons.
 
 ## Scenes
 

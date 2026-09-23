@@ -3,13 +3,7 @@ import assert from 'node:assert/strict';
 import { validateWidgetContent } from '@gladysassistant/integration-sdk';
 import { parseUnits } from '../src/daikin/model.js';
 import { FEATURE, featureExternalId } from '../src/devices/index.js';
-import { CONTROL } from '../src/widgetControls.js';
-import {
-  UNIT_CHART,
-  buildAccountWidget,
-  buildControlsWidget,
-  buildUnitWidget,
-} from '../src/widgets.js';
+import { UNIT_CHART, buildAccountWidget, buildUnitWidget } from '../src/widgets.js';
 import { createFakeGladys } from './helpers/fakeGladys.js';
 import {
   ALL_DEVICES,
@@ -45,19 +39,11 @@ test('the unit tiles are live bindings to the device features', () => {
     featureExternalId(gladys, unit, FEATURE.OUTDOOR_TEMPERATURE),
     featureExternalId(gladys, unit, FEATURE.ENERGY_TODAY),
   ]);
-  const buttons = ofType(content, 'button');
-  assert.deepEqual(
-    buttons.map((button) => [button.device_feature, button.value]),
-    [
-      [featureExternalId(gladys, unit, FEATURE.POWER), 1],
-      [featureExternalId(gladys, unit, FEATURE.POWER), 0],
-    ],
-  );
+  assert.equal(ofType(content, 'button').length, 0, 'display only: the Devices box drives');
 });
 
-test('an unreachable unit gets no buttons, and says why its values are old', () => {
+test('an unreachable unit says why its values are old', () => {
   const content = buildUnitWidget(gladys, unitOf(OFFLINE_UNIT), { now: NOW });
-  assert.equal(ofType(content, 'button').length, 0);
   assert.match(ofType(content, 'text')[0].text.en, /Unreachable/);
   const state = ofType(content, 'status')[0].items[0];
   assert.equal(state.color, 'danger');
@@ -94,31 +80,6 @@ test('a unit missing from the snapshot gets a message, not an error', () => {
   assert.match(gone.components[0].text.en, /no longer/);
   assertRenderedAsSent(waiting);
   assertRenderedAsSent(gone);
-});
-
-test('the controls widget fits the vocabulary for every unit and every setting', () => {
-  for (const payload of [SPLIT_UNIT, OFFLINE_UNIT, HEAT_PUMP_UNIT]) {
-    for (const control of Object.values(CONTROL)) {
-      assertRenderedAsSent(buildControlsWidget(gladys, unitOf(payload), { control }));
-    }
-  }
-  assertRenderedAsSent(buildControlsWidget(gladys, undefined, { ready: false }));
-});
-
-test('the controls widget holds its buttons and nothing else', () => {
-  const content = buildControlsWidget(gladys, unitOf(SPLIT_UNIT), { control: CONTROL.SETPOINT });
-  assert.deepEqual(
-    content.components.map((component) => component.type),
-    ['button', 'button'],
-  );
-});
-
-test('a setting with no button, or an unreachable unit, gets a message', () => {
-  const heatPump = buildControlsWidget(gladys, unitOf(HEAT_PUMP_UNIT), { control: CONTROL.FAN });
-  assert.match(heatPump.components[0].text.fr, /Indisponible/);
-  const offline = buildControlsWidget(gladys, unitOf(OFFLINE_UNIT), { control: CONTROL.MODE });
-  assert.equal(ofType(offline, 'button').length, 0);
-  assert.match(offline.components[0].text.en, /Unreachable/);
 });
 
 test('the account widget sums the account and shows the quota', () => {

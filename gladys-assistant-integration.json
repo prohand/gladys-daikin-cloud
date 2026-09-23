@@ -132,8 +132,8 @@
         "fr": "Climatiseur Daikin"
       },
       "description": {
-        "en": "One unit: temperatures, energy, fan, comfort modes and on/off buttons.",
-        "fr": "Une unité : températures, énergie, ventilation, modes confort et marche/arrêt."
+        "en": "One unit at a glance: temperatures, energy, state, fan, louvers and comfort modes.",
+        "fr": "Une unité d'un coup d'œil : températures, énergie, état, ventilation, volets et modes confort."
       },
       "icon": "wind",
       "settings": [
@@ -175,83 +175,6 @@
               "label": {
                 "en": "No chart",
                 "fr": "Aucun graphique"
-              }
-            }
-          ]
-        }
-      ]
-    },
-    {
-      "key": "daikin_controls",
-      "label": {
-        "en": "Daikin control",
-        "fr": "Commande Daikin"
-      },
-      "description": {
-        "en": "The buttons of one setting of a unit: power, setpoint, mode, fan, louvers or comfort.",
-        "fr": "Les boutons d'un réglage d'une unité : marche, consigne, mode, ventilation, balayage ou confort."
-      },
-      "icon": "sliders",
-      "settings": [
-        {
-          "key": "unit",
-          "type": "select",
-          "source": "devices",
-          "label": {
-            "en": "Unit",
-            "fr": "Unité"
-          },
-          "required": true
-        },
-        {
-          "key": "control",
-          "type": "select",
-          "label": {
-            "en": "Setting",
-            "fr": "Réglage"
-          },
-          "default": "power",
-          "options": [
-            {
-              "value": "power",
-              "label": {
-                "en": "On/off",
-                "fr": "Marche/arrêt"
-              }
-            },
-            {
-              "value": "setpoint",
-              "label": {
-                "en": "Setpoint",
-                "fr": "Consigne"
-              }
-            },
-            {
-              "value": "mode",
-              "label": {
-                "en": "Mode",
-                "fr": "Mode"
-              }
-            },
-            {
-              "value": "fan",
-              "label": {
-                "en": "Fan speed",
-                "fr": "Vitesse de ventilation"
-              }
-            },
-            {
-              "value": "swing",
-              "label": {
-                "en": "Louvers",
-                "fr": "Balayage"
-              }
-            },
-            {
-              "value": "comfort",
-              "label": {
-                "en": "Comfort modes (Powerful…)",
-                "fr": "Modes confort (Powerful…)"
               }
             }
           ]

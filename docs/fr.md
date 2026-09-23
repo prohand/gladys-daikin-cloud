@@ -272,20 +272,10 @@ bord, passez en mode édition, ajoutez une boîte et cherchez « Daikin » :
 
 - **Climatiseur Daikin** — une unité (à choisir dans les réglages du widget) :
   températures intérieure, extérieure et de consigne, énergie du jour, état,
-  mode, ventilation, volets, modes confort actifs, et deux boutons
-  **Allumer** / **Éteindre**. Un réglage choisit le graphique : températures
+  mode, ventilation, volets et modes confort actifs — affichage seul. Un
+  réglage choisit le graphique : températures
   sur 24 h, **énergie par tranche de 2 h (aujourd'hui à côté d'hier)**, ou
   aucun.
-- **Commande Daikin** — les boutons d'**un réglage** d'une unité, à choisir
-  dans les réglages du widget : **Marche/arrêt**, **Consigne** (− / +),
-  **Mode** (un bouton par mode où l'unité peut passer), **Vitesse de
-  ventilation** (− / +), **Balayage** (gauche/droite et haut/bas) ou **Modes
-  confort** (Powerful, Econo…). Gladys n'accepte que quatre boutons dans un
-  widget, et pas de curseur : posez un widget par réglage voulu. Chaque bouton
-  fait une seule chose, et les valeurs restent dans le widget « Climatiseur
-  Daikin ». Un réglage que l'unité ne peut pas utiliser dans son mode actuel
-  le signale (pas de ventilation en déshumidification). Chaque appui est une
-  commande : il consomme des appels d'API Daikin comme les autres.
 - **Compte Daikin** — toutes les unités d'un coup d'œil (en marche, arrêtée,
   en erreur, injoignable), l'énergie du jour de tout le compte, **l'énergie
   par mois de cette année comparée à l'an dernier**, la jauge des **appels
@@ -294,6 +284,12 @@ bord, passez en mode édition, ajoutez une boîte et cherchez « Daikin » :
 Les widgets ne coûtent **aucun appel d'API** : ils lisent les valeurs déjà
 reçues. Les tuiles de température et d'énergie suivent les valeurs en direct ;
 le reste se met à jour à chaque rafraîchissement et après chaque commande.
+
+Pour **piloter** l'unité (mode, consigne, ventilation, balayage, Powerful…),
+ajoutez à côté la boîte **Appareils** de Gladys et choisissez l'unité Daikin :
+elle affiche chaque fonction avec la bonne commande (sélecteur de mode,
+consigne − / +, curseur de ventilation, interrupteurs). Un widget
+d'intégration ne le peut pas : Gladys n'y autorise que des boutons.
 
 ## Scènes
 
