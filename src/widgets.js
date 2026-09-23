@@ -10,8 +10,7 @@
 //     state is published, with no pull. What no feature carries goes in the
 //     status list (fan, comfort modes, reachability, in words) and the chart:
 //     either the feature history, or today's two-hour consumption slots next
-//     to yesterday's, which only Daikin's buckets hold. Below, a page of
-//     buttons to drive it (src/widgetControls.js).
+//     to yesterday's, which only Daikin's buckets hold.
 //   - `daikin_account`: the whole account — which units run, the energy of the
 //     day, the months of this year against last year's, and the one number
 //     that governs this integration: the API calls left today.
@@ -22,8 +21,7 @@
 // inline temperature is converted here.
 //
 // Nothing here costs an API call: the widgets read the snapshot of the store,
-// and index.js nudges them after each refresh and each command. A tap on a
-// button is a command like any other, and spends quota like one.
+// and index.js nudges them after each refresh and each command.
 //
 // Pure: the content is built from the units, the SDK only carries it.
 // -----------------------------------------------------------------------------
@@ -31,7 +29,6 @@
 import { WIDGET_COLORS } from '@gladysassistant/integration-sdk';
 import { FEATURE, featureExternalId } from './devices/index.js';
 import { QUOTA_LOW_THRESHOLD } from './sceneEvents.js';
-import { MODE_LABELS, TOGGLE_LABELS, UNIT_CONTROLS, controlButtons } from './widgetControls.js';
 
 // The keys the dashboards store: never renamed once published.
 export const WIDGET = {
@@ -58,26 +55,30 @@ const DEFAULT_DAILY_QUOTA = 200;
 
 const LANGUAGES = ['en', 'fr'];
 
-// The core's cap on the components of one content (the SDK's content budget):
-// beyond it, the last ones are dropped.
-const MAX_COMPONENTS = 8;
+const MODE_LABELS = {
+  auto: { en: 'Auto', fr: 'Auto' },
+  cooling: { en: 'Cooling', fr: 'Froid' },
+  heating: { en: 'Heating', fr: 'Chauffage' },
+  dry: { en: 'Drying', fr: 'Déshumidification' },
+  fanOnly: { en: 'Fan only', fr: 'Ventilation' },
+};
+
+const TOGGLE_LABELS = {
+  powerful: { en: 'Powerful', fr: 'Powerful' },
+  econo: { en: 'Econo', fr: 'Econo' },
+  streamer: { en: 'Streamer', fr: 'Streamer' },
+  dryKeep: { en: 'Keep dry', fr: 'Maintien au sec' },
+};
 
 /**
  * The content of the `daikin_unit` widget.
  * @param {object} gladys the SDK instance (external ids only)
  * @param {object|undefined} unit the unit the widget instance is bound to, when found
- * @param {{ chart?: string, controls?: string, page?: string, capabilities?: object, unitSystem?: string, now?: Date, ready?: boolean }} [options] the instance settings, the page of buttons the user moved to, the catalog Gladys accepted and the context
+ * @param {{ chart?: string, unitSystem?: string, now?: Date, ready?: boolean }} [options] the instance settings and the context
  * @returns {object} the widget content
  */
 export function buildUnitWidget(gladys, unit, options = {}) {
-  const {
-    chart = UNIT_CHART.TEMPERATURE,
-    controls = UNIT_CONTROLS.PAGES,
-    page,
-    capabilities,
-    now = new Date(),
-    ready = true,
-  } = options;
+  const { chart = UNIT_CHART.TEMPERATURE, now = new Date(), ready = true } = options;
   if (!unit) {
     return message(
       ready
@@ -94,26 +95,32 @@ export function buildUnitWidget(gladys, unit, options = {}) {
   }
 
   const feature = (key) => featureExternalId(gladys, unit, key);
+  const components = [];
 
-  // Commands to an unreachable unit are refused by Daikin: no buttons then.
-  let buttons = [];
-  if (unit.online) {
-    buttons =
-      controls === UNIT_CONTROLS.POWER
-        ? powerButtons(feature)
-        : controlButtons(unit, page, capabilities);
+  // Live tiles: the core follows the published states on its own.
+  if (unit.roomTemperature !== null) {
+    components.push(tile(feature(FEATURE.ROOM_TEMPERATURE), 'thermometer', 'Room', 'Pièce'));
+  }
+  if (Object.keys(unit.setpoints).length > 0) {
+    components.push(tile(feature(FEATURE.TARGET_TEMPERATURE), 'target', 'Setpoint', 'Consigne'));
+  }
+  if (unit.outdoorTemperature !== null) {
+    components.push(tile(feature(FEATURE.OUTDOOR_TEMPERATURE), 'sun', 'Outdoor', 'Extérieur'));
+  }
+  if (unit.energy) {
+    components.push(tile(feature(FEATURE.ENERGY_TODAY), 'zap', 'Today', "Aujourd'hui"));
   }
 
-  const caption = unit.online
-    ? null
-    : {
-        type: 'text',
-        variant: 'caption',
-        text: {
-          en: 'Unreachable: the values are the last ones known.',
-          fr: 'Injoignable : les valeurs sont les dernières connues.',
-        },
-      };
+  if (!unit.online) {
+    components.push({
+      type: 'text',
+      variant: 'caption',
+      text: {
+        en: 'Unreachable: the values are the last ones known.',
+        fr: 'Injoignable : les valeurs sont les dernières connues.',
+      },
+    });
+  }
 
   const chartComponent =
     chart === UNIT_CHART.CONSUMPTION
@@ -121,33 +128,33 @@ export function buildUnitWidget(gladys, unit, options = {}) {
       : chart === UNIT_CHART.NONE
         ? null
         : temperatureChart(unit, feature);
+  if (chartComponent) {
+    components.push(chartComponent);
+  }
 
-  // Live tiles: the core follows the published states on its own. They get
-  // what the buttons, the chart and the status list leave of the budget, in
-  // this order — the outdoor temperature and the energy are also what the two
-  // charts show, so they are the ones a full page of buttons pushes out.
-  const tiles = [];
-  if (unit.roomTemperature !== null) {
-    tiles.push(tile(feature(FEATURE.ROOM_TEMPERATURE), 'thermometer', 'Room', 'Pièce'));
-  }
-  if (Object.keys(unit.setpoints).length > 0) {
-    tiles.push(tile(feature(FEATURE.TARGET_TEMPERATURE), 'target', 'Setpoint', 'Consigne'));
-  }
-  if (unit.outdoorTemperature !== null) {
-    tiles.push(tile(feature(FEATURE.OUTDOOR_TEMPERATURE), 'sun', 'Outdoor', 'Extérieur'));
-  }
-  if (unit.energy) {
-    tiles.push(tile(feature(FEATURE.ENERGY_TODAY), 'zap', 'Today', "Aujourd'hui"));
-  }
-  const others = [caption, chartComponent].filter(Boolean).length + 1 + buttons.length;
+  components.push({ type: 'status', items: unitStatusItems(unit) });
 
-  const components = [
-    ...tiles.slice(0, Math.max(0, MAX_COMPONENTS - others)),
-    ...(caption ? [caption] : []),
-    ...(chartComponent ? [chartComponent] : []),
-    { type: 'status', items: unitStatusItems(unit) },
-    ...buttons,
-  ];
+  // Commands to an unreachable unit are refused by Daikin: no buttons then.
+  if (unit.online) {
+    components.push(
+      {
+        type: 'button',
+        label: { en: 'Turn on', fr: 'Allumer' },
+        icon: 'power',
+        style: 'primary',
+        device_feature: feature(FEATURE.POWER),
+        value: 1,
+      },
+      {
+        type: 'button',
+        label: { en: 'Turn off', fr: 'Éteindre' },
+        icon: 'power',
+        style: 'secondary',
+        device_feature: feature(FEATURE.POWER),
+        value: 0,
+      },
+    );
+  }
 
   return { ttl_seconds: UNIT_TTL_SECONDS, components };
 }
@@ -482,33 +489,6 @@ function monthsChart(units, now) {
       { name: String(year - 1), points: lastYear },
     ],
   };
-}
-
-/**
- * The on/off pair of the `power` controls setting: the standard command path,
- * nothing else on the card, so every tile keeps its place.
- * @param {Function} feature `(key) => external_id`
- * @returns {Array<object>} the two buttons
- */
-function powerButtons(feature) {
-  return [
-    {
-      type: 'button',
-      label: { en: 'Turn on', fr: 'Allumer' },
-      icon: 'power',
-      style: 'primary',
-      device_feature: feature(FEATURE.POWER),
-      value: 1,
-    },
-    {
-      type: 'button',
-      label: { en: 'Turn off', fr: 'Éteindre' },
-      icon: 'power',
-      style: 'secondary',
-      device_feature: feature(FEATURE.POWER),
-      value: 0,
-    },
-  ];
 }
 
 /**

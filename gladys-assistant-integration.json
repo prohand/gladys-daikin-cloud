@@ -132,8 +132,8 @@
         "fr": "Climatiseur Daikin"
       },
       "description": {
-        "en": "One unit: temperatures, energy, and buttons for setpoint, mode, fan, louvers and comfort.",
-        "fr": "Une unité : températures, énergie, boutons de consigne, mode, ventilation, balayage et confort."
+        "en": "One unit: temperatures, energy, fan, comfort modes and on/off buttons.",
+        "fr": "Une unité : températures, énergie, ventilation, modes confort et marche/arrêt."
       },
       "icon": "wind",
       "settings": [
@@ -175,31 +175,6 @@
               "label": {
                 "en": "No chart",
                 "fr": "Aucun graphique"
-              }
-            }
-          ]
-        },
-        {
-          "key": "controls",
-          "type": "select",
-          "label": {
-            "en": "Buttons",
-            "fr": "Boutons"
-          },
-          "default": "pages",
-          "options": [
-            {
-              "value": "pages",
-              "label": {
-                "en": "Every setting, one page at a time",
-                "fr": "Tous les réglages, page par page"
-              }
-            },
-            {
-              "value": "power",
-              "label": {
-                "en": "On/off only",
-                "fr": "Marche/arrêt seulement"
               }
             }
           ]

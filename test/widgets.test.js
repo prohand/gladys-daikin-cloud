@@ -3,7 +3,6 @@ import assert from 'node:assert/strict';
 import { validateWidgetContent } from '@gladysassistant/integration-sdk';
 import { parseUnits } from '../src/daikin/model.js';
 import { FEATURE, featureExternalId } from '../src/devices/index.js';
-import { UNIT_CONTROLS, controlPages } from '../src/widgetControls.js';
 import { UNIT_CHART, buildAccountWidget, buildUnitWidget } from '../src/widgets.js';
 import { createFakeGladys } from './helpers/fakeGladys.js';
 import {
@@ -22,35 +21,17 @@ const ofType = (content, type) => content.components.filter((component) => compo
 // rendered exactly as sent — nothing dropped by the budget, nothing truncated.
 const assertRenderedAsSent = (content) => assert.deepEqual(validateWidgetContent(content), []);
 
-test('the unit widget fits the vocabulary for every unit shape, chart and page', () => {
+test('the unit widget fits the vocabulary for every unit shape and every chart', () => {
   for (const payload of [SPLIT_UNIT, OFFLINE_UNIT, HEAT_PUMP_UNIT]) {
-    const unit = unitOf(payload);
-    const pages = [undefined, ...controlPages(unit).map((page) => page.key)];
     for (const chart of Object.values(UNIT_CHART)) {
-      for (const controls of Object.values(UNIT_CONTROLS)) {
-        for (const page of pages) {
-          assertRenderedAsSent(buildUnitWidget(gladys, unit, { chart, controls, page, now: NOW }));
-        }
-      }
+      assertRenderedAsSent(buildUnitWidget(gladys, unitOf(payload), { chart, now: NOW }));
     }
   }
 });
 
-test('a page of buttons pushes out the tiles the chart already shows', () => {
-  const unit = unitOf(SPLIT_UNIT);
-  const tilesOf = (options) =>
-    ofType(buildUnitWidget(gladys, unit, { now: NOW, ...options }), 'value').map(
-      (tile) => tile.label.en,
-    );
-  // 8 components: chart, status and 4 buttons leave room for 2 tiles.
-  assert.deepEqual(tilesOf({}), ['Room', 'Setpoint']);
-  assert.deepEqual(tilesOf({ chart: UNIT_CHART.NONE }), ['Room', 'Setpoint', 'Outdoor']);
-  assert.equal(tilesOf({ controls: UNIT_CONTROLS.POWER }).length, 4);
-});
-
 test('the unit tiles are live bindings to the device features', () => {
   const unit = unitOf(SPLIT_UNIT);
-  const content = buildUnitWidget(gladys, unit, { controls: UNIT_CONTROLS.POWER, now: NOW });
+  const content = buildUnitWidget(gladys, unit, { now: NOW });
   const bound = ofType(content, 'value').map((tile) => tile.device_feature);
   assert.deepEqual(bound, [
     featureExternalId(gladys, unit, FEATURE.ROOM_TEMPERATURE),
