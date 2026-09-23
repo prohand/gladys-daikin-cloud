@@ -2,7 +2,7 @@
 // Dashboard widgets (Gladys 5.1): what the integration shows beyond features.
 //
 // Gladys renders the widget; the integration only returns content in the
-// core's declarative vocabulary (tiles, a chart, a status list, buttons). Two
+// core's declarative vocabulary (tiles, a chart, a status list, buttons). Three
 // widgets, one per question a dashboard asks:
 //
 //   - `daikin_unit`: one unit at a glance. The temperatures and today's energy
@@ -11,6 +11,10 @@
 //     status list (fan, comfort modes, reachability, in words) and the chart:
 //     either the feature history, or today's two-hour consumption slots next
 //     to yesterday's, which only Daikin's buckets hold.
+//   - `daikin_controls`: one unit, to drive it. The core offers buttons only,
+//     four at most: the settings come one page at a time
+//     (src/widgetControls.js), with the two temperatures that tell whether a
+//     tap did what it should.
 //   - `daikin_account`: the whole account — which units run, the energy of the
 //     day, the months of this year against last year's, and the one number
 //     that governs this integration: the API calls left today.
@@ -21,7 +25,8 @@
 // inline temperature is converted here.
 //
 // Nothing here costs an API call: the widgets read the snapshot of the store,
-// and index.js nudges them after each refresh and each command.
+// and index.js nudges them after each refresh and each command. A tap on a
+// control is a command like any other, and spends quota like one.
 //
 // Pure: the content is built from the units, the SDK only carries it.
 // -----------------------------------------------------------------------------
@@ -29,11 +34,13 @@
 import { WIDGET_COLORS } from '@gladysassistant/integration-sdk';
 import { FEATURE, featureExternalId } from './devices/index.js';
 import { QUOTA_LOW_THRESHOLD } from './sceneEvents.js';
+import { MODE_LABELS, TOGGLE_LABELS, controlPanel } from './widgetControls.js';
 
 // The keys the dashboards store: never renamed once published.
 export const WIDGET = {
   UNIT: 'daikin_unit',
   ACCOUNT: 'daikin_account',
+  CONTROLS: 'daikin_controls',
 };
 
 // What the unit widget charts, a setting of each instance.
@@ -55,21 +62,6 @@ const DEFAULT_DAILY_QUOTA = 200;
 
 const LANGUAGES = ['en', 'fr'];
 
-const MODE_LABELS = {
-  auto: { en: 'Auto', fr: 'Auto' },
-  cooling: { en: 'Cooling', fr: 'Froid' },
-  heating: { en: 'Heating', fr: 'Chauffage' },
-  dry: { en: 'Drying', fr: 'Déshumidification' },
-  fanOnly: { en: 'Fan only', fr: 'Ventilation' },
-};
-
-const TOGGLE_LABELS = {
-  powerful: { en: 'Powerful', fr: 'Powerful' },
-  econo: { en: 'Econo', fr: 'Econo' },
-  streamer: { en: 'Streamer', fr: 'Streamer' },
-  dryKeep: { en: 'Keep dry', fr: 'Maintien au sec' },
-};
-
 /**
  * The content of the `daikin_unit` widget.
  * @param {object} gladys the SDK instance (external ids only)
@@ -80,18 +72,7 @@ const TOGGLE_LABELS = {
 export function buildUnitWidget(gladys, unit, options = {}) {
   const { chart = UNIT_CHART.TEMPERATURE, now = new Date(), ready = true } = options;
   if (!unit) {
-    return message(
-      ready
-        ? {
-            en: 'This unit is no longer in the Daikin account. Pick another one in the widget settings.',
-            fr: "Cette unité n'est plus dans le compte Daikin. Choisissez-en une autre dans les réglages du widget.",
-          }
-        : {
-            en: 'Reading the Daikin account, this widget fills in a moment.',
-            fr: 'Lecture du compte Daikin en cours, ce widget se remplit dans un instant.',
-          },
-      ready ? UNIT_TTL_SECONDS : WAITING_TTL_SECONDS,
-    );
+    return missingUnit(ready);
   }
 
   const feature = (key) => featureExternalId(gladys, unit, key);
@@ -155,6 +136,52 @@ export function buildUnitWidget(gladys, unit, options = {}) {
       },
     );
   }
+
+  return { ttl_seconds: UNIT_TTL_SECONDS, components };
+}
+
+/**
+ * The content of the `daikin_controls` widget: the page of buttons the user
+ * moved to, with its name, the room and target temperatures and the status
+ * list — the heading, two tiles, the status and four buttons fill the eight
+ * components the core keeps.
+ * @param {object} gladys the SDK instance (external ids only)
+ * @param {object|undefined} unit the unit the widget instance is bound to, when found
+ * @param {{ page?: string, capabilities?: object, ready?: boolean }} [options] the page the user moved to, the catalog Gladys accepted and the context
+ * @returns {object} the widget content
+ */
+export function buildControlsWidget(gladys, unit, options = {}) {
+  const { page, capabilities, ready = true } = options;
+  if (!unit) {
+    return missingUnit(ready);
+  }
+
+  const feature = (key) => featureExternalId(gladys, unit, key);
+  const components = [];
+  // Commands to an unreachable unit are refused by Daikin: no buttons then.
+  const panel = unit.online ? controlPanel(unit, page, capabilities) : null;
+
+  if (panel?.label) {
+    components.push({ type: 'text', variant: 'heading', text: panel.label });
+  }
+  if (unit.roomTemperature !== null) {
+    components.push(tile(feature(FEATURE.ROOM_TEMPERATURE), 'thermometer', 'Room', 'Pièce'));
+  }
+  if (Object.keys(unit.setpoints).length > 0) {
+    components.push(tile(feature(FEATURE.TARGET_TEMPERATURE), 'target', 'Setpoint', 'Consigne'));
+  }
+  if (!unit.online) {
+    components.push({
+      type: 'text',
+      variant: 'caption',
+      text: {
+        en: 'Unreachable: Daikin cannot pass on any command right now.',
+        fr: 'Injoignable : Daikin ne peut transmettre aucune commande pour le moment.',
+      },
+    });
+  }
+  components.push({ type: 'status', items: unitStatusItems(unit) });
+  components.push(...(panel?.buttons ?? []));
 
   return { ttl_seconds: UNIT_TTL_SECONDS, components };
 }
@@ -500,6 +527,26 @@ function monthsChart(units, now) {
  */
 function tile(externalId, icon, en, fr) {
   return { type: 'value', device_feature: externalId, label: { en, fr }, icon };
+}
+
+/**
+ * What a unit widget says when its unit is not in the snapshot.
+ * @param {boolean} ready whether the account was read at least once
+ * @returns {object} the content
+ */
+function missingUnit(ready) {
+  return message(
+    ready
+      ? {
+          en: 'This unit is no longer in the Daikin account. Pick another one in the widget settings.',
+          fr: "Cette unité n'est plus dans le compte Daikin. Choisissez-en une autre dans les réglages du widget.",
+        }
+      : {
+          en: 'Reading the Daikin account, this widget fills in a moment.',
+          fr: 'Lecture du compte Daikin en cours, ce widget se remplit dans un instant.',
+        },
+    ready ? UNIT_TTL_SECONDS : WAITING_TTL_SECONDS,
+  );
 }
 
 /**

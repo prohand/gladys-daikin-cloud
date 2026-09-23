@@ -276,6 +276,17 @@ bord, passez en mode édition, ajoutez une boîte et cherchez « Daikin » :
   **Allumer** / **Éteindre**. Un réglage choisit le graphique : températures
   sur 24 h, **énergie par tranche de 2 h (aujourd'hui à côté d'hier)**, ou
   aucun.
+- **Commandes Daikin** — une unité, pour la piloter. Gladys n'accepte que
+  quatre boutons dans un widget, et pas de curseur : les réglages viennent
+  donc **page par page** — le nom de la page, les températures intérieure et
+  de consigne, l'état de l'unité, deux boutons pour la page,
+  **Allumer/Éteindre**, et **Suivant : …** pour passer à la suite :
+  **Consigne** (− / +), **Mode** (le mode d'avant et celui d'après),
+  **Ventilation** (− / +), **Balayage** (gauche/droite et haut/bas),
+  **Confort** (Powerful, Econo…). Une page que l'unité ne peut pas utiliser
+  dans son mode actuel est sautée (pas de ventilation en déshumidification).
+  Chaque appui est une commande : il consomme des appels d'API Daikin comme
+  les autres.
 - **Compte Daikin** — toutes les unités d'un coup d'œil (en marche, arrêtée,
   en erreur, injoignable), l'énergie du jour de tout le compte, **l'énergie
   par mois de cette année comparée à l'an dernier**, la jauge des **appels

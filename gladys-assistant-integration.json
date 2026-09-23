@@ -182,6 +182,30 @@
       ]
     },
     {
+      "key": "daikin_controls",
+      "label": {
+        "en": "Daikin controls",
+        "fr": "Commandes Daikin"
+      },
+      "description": {
+        "en": "Drive one unit: power, setpoint, mode, fan, louvers and comfort, page by page.",
+        "fr": "Piloter une unité : marche, consigne, mode, ventilation, balayage et confort, page par page."
+      },
+      "icon": "sliders",
+      "settings": [
+        {
+          "key": "unit",
+          "type": "select",
+          "source": "devices",
+          "label": {
+            "en": "Unit",
+            "fr": "Unité"
+          },
+          "required": true
+        }
+      ]
+    },
+    {
       "key": "daikin_account",
       "label": {
         "en": "Daikin account",
