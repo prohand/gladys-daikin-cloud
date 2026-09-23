@@ -35,8 +35,9 @@ actually reports:
 - The remaining Daikin API quota, shown live in the Configuration screen
 - A per-device transport badge: `cloud`, `cloud + degraded` when the unit
   reports a fault, `unreachable` when Daikin cannot reach it
-- Two **dashboard widgets** (Gladys 5.1): one unit (live tiles, status, on/off
-  buttons, temperature or two-hour energy chart) and the whole account (units,
+- Two **dashboard widgets** (Gladys 5.1): one unit (live tiles, status,
+  temperature or two-hour energy chart, and pages of buttons for power,
+  setpoint, mode, fan, louvers and comfort modes) and the whole account (units,
   energy per month against last year, API calls left)
 - Four **scene triggers**, each a transition between two reads: a unit going
   offline/online, a unit reporting/clearing a fault, the daily quota almost
