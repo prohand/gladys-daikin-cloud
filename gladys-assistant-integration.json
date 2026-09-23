@@ -8,7 +8,7 @@
   },
   "version": "1.0.12",
   "docker_image": "ghcr.io/prohand/gladys-daikin-cloud:1.0.12",
-  "gladys_version": ">=4.86.0",
+  "gladys_version": ">=5.1.0",
   "cover_image": "https://raw.githubusercontent.com/prohand/gladys-daikin-cloud/v1.0.12/cover.png",
   "categories": ["climate"],
   "transports": ["cloud"],
@@ -122,6 +122,566 @@
         "fr": "Lit votre compte Daikin maintenant : affiche les unités trouvées et les appels d'API restants pour aujourd'hui."
       },
       "timeout_seconds": 30
+    }
+  ],
+  "widgets": [
+    {
+      "key": "daikin_unit",
+      "label": {
+        "en": "Daikin air conditioner",
+        "fr": "Climatiseur Daikin"
+      },
+      "description": {
+        "en": "One unit: temperatures, energy, fan, comfort modes and on/off buttons.",
+        "fr": "Une unité : températures, énergie, ventilation, modes confort et marche/arrêt."
+      },
+      "icon": "wind",
+      "settings": [
+        {
+          "key": "unit",
+          "type": "select",
+          "source": "devices",
+          "label": {
+            "en": "Unit",
+            "fr": "Unité"
+          },
+          "required": true
+        },
+        {
+          "key": "chart",
+          "type": "select",
+          "label": {
+            "en": "Chart",
+            "fr": "Graphique"
+          },
+          "default": "temperature",
+          "options": [
+            {
+              "value": "temperature",
+              "label": {
+                "en": "Temperatures, last 24 h",
+                "fr": "Températures sur 24 h"
+              }
+            },
+            {
+              "value": "consumption",
+              "label": {
+                "en": "Energy per 2 h, today and yesterday",
+                "fr": "Énergie par 2 h, aujourd'hui et hier"
+              }
+            },
+            {
+              "value": "none",
+              "label": {
+                "en": "No chart",
+                "fr": "Aucun graphique"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "daikin_account",
+      "label": {
+        "en": "Daikin account",
+        "fr": "Compte Daikin"
+      },
+      "description": {
+        "en": "Every unit at a glance, energy per month and the API calls left today.",
+        "fr": "Toutes les unités, l'énergie par mois et les appels d'API restants du jour."
+      },
+      "icon": "cloud"
+    }
+  ],
+  "scene_triggers": [
+    {
+      "key": "unit_connection_changed",
+      "label": {
+        "en": "A Daikin unit goes offline or back online",
+        "fr": "Une unité Daikin est perdue ou retrouvée"
+      },
+      "description": {
+        "en": "The unit lost, or found again, its connection to the Daikin cloud. Checked at every refresh.",
+        "fr": "L'unité a perdu, ou retrouvé, sa connexion au cloud Daikin. Vérifié à chaque rafraîchissement."
+      },
+      "fields": [
+        {
+          "key": "unit",
+          "type": "select",
+          "source": "devices",
+          "label": {
+            "en": "Unit",
+            "fr": "Unité"
+          },
+          "description": {
+            "en": "Empty: any unit.",
+            "fr": "Vide : n'importe quelle unité."
+          }
+        },
+        {
+          "key": "connection",
+          "type": "select",
+          "label": {
+            "en": "Connection",
+            "fr": "Connexion"
+          },
+          "description": {
+            "en": "Empty: both.",
+            "fr": "Vide : les deux."
+          },
+          "options": [
+            {
+              "value": "offline",
+              "label": {
+                "en": "Lost",
+                "fr": "Perdue"
+              }
+            },
+            {
+              "value": "online",
+              "label": {
+                "en": "Restored",
+                "fr": "Rétablie"
+              }
+            }
+          ]
+        }
+      ],
+      "variables": [
+        {
+          "key": "unit_name",
+          "type": "string",
+          "label": {
+            "en": "Unit name",
+            "fr": "Nom de l'unité"
+          }
+        },
+        {
+          "key": "connection",
+          "type": "string",
+          "label": {
+            "en": "Connection (online or offline)",
+            "fr": "Connexion (online ou offline)"
+          }
+        }
+      ]
+    },
+    {
+      "key": "unit_error_changed",
+      "label": {
+        "en": "A Daikin unit reports or clears an error",
+        "fr": "Une unité Daikin signale ou efface une erreur"
+      },
+      "description": {
+        "en": "The unit started, or stopped, reporting a fault. The error code is shown in the Onecta app.",
+        "fr": "L'unité a commencé, ou cessé, de signaler une panne. Le code d'erreur est visible dans l'application Onecta."
+      },
+      "fields": [
+        {
+          "key": "unit",
+          "type": "select",
+          "source": "devices",
+          "label": {
+            "en": "Unit",
+            "fr": "Unité"
+          },
+          "description": {
+            "en": "Empty: any unit.",
+            "fr": "Vide : n'importe quelle unité."
+          }
+        },
+        {
+          "key": "state",
+          "type": "select",
+          "label": {
+            "en": "Error",
+            "fr": "Erreur"
+          },
+          "description": {
+            "en": "Empty: both.",
+            "fr": "Vide : les deux."
+          },
+          "options": [
+            {
+              "value": "error",
+              "label": {
+                "en": "Reported",
+                "fr": "Signalée"
+              }
+            },
+            {
+              "value": "ok",
+              "label": {
+                "en": "Cleared",
+                "fr": "Effacée"
+              }
+            }
+          ]
+        }
+      ],
+      "variables": [
+        {
+          "key": "unit_name",
+          "type": "string",
+          "label": {
+            "en": "Unit name",
+            "fr": "Nom de l'unité"
+          }
+        },
+        {
+          "key": "state",
+          "type": "string",
+          "label": {
+            "en": "State (error or ok)",
+            "fr": "État (error ou ok)"
+          }
+        }
+      ]
+    },
+    {
+      "key": "api_quota_low",
+      "label": {
+        "en": "The Daikin API quota is almost spent",
+        "fr": "Le quota d'API Daikin est presque épuisé"
+      },
+      "description": {
+        "en": "20 calls or fewer left today: refreshes and commands stop when it reaches 0.",
+        "fr": "20 appels ou moins restants aujourd'hui : rafraîchissements et commandes s'arrêtent à 0."
+      },
+      "variables": [
+        {
+          "key": "remaining",
+          "type": "number",
+          "label": {
+            "en": "Calls left today",
+            "fr": "Appels restants aujourd'hui"
+          }
+        },
+        {
+          "key": "limit",
+          "type": "number",
+          "label": {
+            "en": "Daily quota",
+            "fr": "Quota quotidien"
+          }
+        }
+      ]
+    },
+    {
+      "key": "daikin_session_expired",
+      "label": {
+        "en": "The Daikin session expired",
+        "fr": "La session Daikin a expiré"
+      },
+      "description": {
+        "en": "Daikin refused the account: reconnect it in the integration configuration.",
+        "fr": "Daikin refuse le compte : reconnectez-le dans la configuration de l'intégration."
+      }
+    }
+  ],
+  "scene_actions": [
+    {
+      "key": "set_climate",
+      "label": {
+        "en": "Set a Daikin air conditioner",
+        "fr": "Régler un climatiseur Daikin"
+      },
+      "description": {
+        "en": "Power, mode, temperature and fan speed in one step: the mode lands first, what is already set is skipped.",
+        "fr": "Marche, mode, température et ventilation en une étape : le mode d'abord, ce qui est déjà réglé est ignoré."
+      },
+      "timeout_seconds": 60,
+      "fields": [
+        {
+          "key": "unit",
+          "type": "select",
+          "source": "devices",
+          "label": {
+            "en": "Unit",
+            "fr": "Unité"
+          },
+          "required": true
+        },
+        {
+          "key": "power",
+          "type": "select",
+          "label": {
+            "en": "Power",
+            "fr": "Marche/arrêt"
+          },
+          "default": "on",
+          "options": [
+            {
+              "value": "on",
+              "label": {
+                "en": "Turn on",
+                "fr": "Allumer"
+              }
+            },
+            {
+              "value": "off",
+              "label": {
+                "en": "Turn off (other settings ignored)",
+                "fr": "Éteindre (le reste est ignoré)"
+              }
+            },
+            {
+              "value": "unchanged",
+              "label": {
+                "en": "Leave as is",
+                "fr": "Ne pas changer"
+              }
+            }
+          ]
+        },
+        {
+          "key": "mode",
+          "type": "select",
+          "label": {
+            "en": "Mode",
+            "fr": "Mode"
+          },
+          "default": "unchanged",
+          "options": [
+            {
+              "value": "unchanged",
+              "label": {
+                "en": "Leave as is",
+                "fr": "Ne pas changer"
+              }
+            },
+            {
+              "value": "auto",
+              "label": {
+                "en": "Auto",
+                "fr": "Auto"
+              }
+            },
+            {
+              "value": "cooling",
+              "label": {
+                "en": "Cooling",
+                "fr": "Froid"
+              }
+            },
+            {
+              "value": "heating",
+              "label": {
+                "en": "Heating",
+                "fr": "Chauffage"
+              }
+            },
+            {
+              "value": "dry",
+              "label": {
+                "en": "Drying",
+                "fr": "Déshumidification"
+              }
+            },
+            {
+              "value": "fan_only",
+              "label": {
+                "en": "Fan only",
+                "fr": "Ventilation"
+              }
+            }
+          ]
+        },
+        {
+          "key": "temperature",
+          "type": "number",
+          "label": {
+            "en": "Target temperature (°C)",
+            "fr": "Température de consigne (°C)"
+          },
+          "description": {
+            "en": "Empty: keep the current one. Rounded to what the unit accepts in that mode.",
+            "fr": "Vide : garder l'actuelle. Arrondie à ce que l'unité accepte dans ce mode."
+          },
+          "min": 10,
+          "max": 32
+        },
+        {
+          "key": "fan_speed",
+          "type": "number",
+          "label": {
+            "en": "Fan speed (level)",
+            "fr": "Vitesse de ventilation (niveau)"
+          },
+          "description": {
+            "en": "Empty: keep the current one. A level switches the fan to manual.",
+            "fr": "Vide : garder l'actuelle. Un niveau passe la ventilation en manuel."
+          },
+          "min": 1,
+          "max": 5
+        }
+      ],
+      "outputs": [
+        {
+          "key": "power",
+          "type": "string",
+          "label": {
+            "en": "Power (on or off)",
+            "fr": "Marche (on ou off)"
+          }
+        },
+        {
+          "key": "mode",
+          "type": "string",
+          "label": {
+            "en": "Mode",
+            "fr": "Mode"
+          }
+        },
+        {
+          "key": "temperature",
+          "type": "number",
+          "label": {
+            "en": "Target temperature (°C)",
+            "fr": "Température de consigne (°C)"
+          }
+        },
+        {
+          "key": "commands_sent",
+          "type": "number",
+          "label": {
+            "en": "Commands sent",
+            "fr": "Commandes envoyées"
+          }
+        },
+        {
+          "key": "api_calls_left",
+          "type": "number",
+          "label": {
+            "en": "API calls left today",
+            "fr": "Appels d'API restants aujourd'hui"
+          }
+        }
+      ]
+    },
+    {
+      "key": "read_consumption",
+      "label": {
+        "en": "Read the Daikin consumption",
+        "fr": "Lire la consommation Daikin"
+      },
+      "description": {
+        "en": "Energy used today, yesterday, this month, last month, this year and last year, in kWh.",
+        "fr": "Énergie consommée aujourd'hui, hier, ce mois-ci, le mois dernier, cette année et l'an dernier, en kWh."
+      },
+      "timeout_seconds": 30,
+      "fields": [
+        {
+          "key": "unit",
+          "type": "select",
+          "source": "devices",
+          "label": {
+            "en": "Unit",
+            "fr": "Unité"
+          },
+          "description": {
+            "en": "Empty: all the units added up.",
+            "fr": "Vide : toutes les unités additionnées."
+          }
+        }
+      ],
+      "outputs": [
+        {
+          "key": "today_kwh",
+          "type": "number",
+          "label": {
+            "en": "Today (kWh)",
+            "fr": "Aujourd'hui (kWh)"
+          }
+        },
+        {
+          "key": "yesterday_kwh",
+          "type": "number",
+          "label": {
+            "en": "Yesterday (kWh)",
+            "fr": "Hier (kWh)"
+          }
+        },
+        {
+          "key": "this_month_kwh",
+          "type": "number",
+          "label": {
+            "en": "This month (kWh)",
+            "fr": "Ce mois-ci (kWh)"
+          }
+        },
+        {
+          "key": "last_month_kwh",
+          "type": "number",
+          "label": {
+            "en": "Last month (kWh)",
+            "fr": "Le mois dernier (kWh)"
+          }
+        },
+        {
+          "key": "this_year_kwh",
+          "type": "number",
+          "label": {
+            "en": "This year (kWh)",
+            "fr": "Cette année (kWh)"
+          }
+        },
+        {
+          "key": "last_year_kwh",
+          "type": "number",
+          "label": {
+            "en": "Last year (kWh)",
+            "fr": "L'an dernier (kWh)"
+          }
+        }
+      ]
+    },
+    {
+      "key": "refresh_account",
+      "label": {
+        "en": "Refresh the Daikin account now",
+        "fr": "Actualiser le compte Daikin maintenant"
+      },
+      "description": {
+        "en": "Reads every unit now (1 API call, at most once a minute) before the next steps of the scene.",
+        "fr": "Lit toutes les unités maintenant (1 appel d'API, au plus une fois par minute) avant la suite de la scène."
+      },
+      "timeout_seconds": 30,
+      "outputs": [
+        {
+          "key": "units_total",
+          "type": "number",
+          "label": {
+            "en": "Units",
+            "fr": "Unités"
+          }
+        },
+        {
+          "key": "units_online",
+          "type": "number",
+          "label": {
+            "en": "Units reachable",
+            "fr": "Unités joignables"
+          }
+        },
+        {
+          "key": "units_running",
+          "type": "number",
+          "label": {
+            "en": "Units running",
+            "fr": "Unités en marche"
+          }
+        },
+        {
+          "key": "api_calls_left",
+          "type": "number",
+          "label": {
+            "en": "API calls left today",
+            "fr": "Appels d'API restants aujourd'hui"
+          }
+        }
+      ]
     }
   ]
 }

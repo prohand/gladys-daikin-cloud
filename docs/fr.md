@@ -6,8 +6,9 @@ Onecta. Aucun matériel à ajouter, aucun bricolage : vos unités continuent de
 fonctionner exactement comme aujourd'hui, Gladys devient simplement une
 télécommande de plus.
 
-> **Gladys 4.86 ou plus récent est nécessaire.** Le store ne propose pas
-> l'intégration à une instance plus ancienne.
+> **Gladys 5.1 ou plus récent est nécessaire** (widgets du tableau de bord,
+> déclencheurs et actions de scène). Le store ne propose pas l'intégration à
+> une instance plus ancienne.
 
 ## Ce que vous obtenez
 
@@ -263,6 +264,67 @@ la même réponse. Si une fonction visible dans Onecta vous manque, lancez cette
 action : si son nom n'apparaît ni dans les fonctionnalités publiées ni dans les
 caractéristiques ignorées, c'est que l'API Daikin ne l'expose pas pour votre
 modèle.
+
+## Widgets du tableau de bord
+
+Depuis Gladys 5.1, l'intégration ajoute ses propres widgets. Dans le tableau de
+bord, passez en mode édition, ajoutez une boîte et cherchez « Daikin » :
+
+- **Climatiseur Daikin** — une unité (à choisir dans les réglages du widget) :
+  températures intérieure, extérieure et de consigne, énergie du jour, état,
+  mode, ventilation, volets, modes confort actifs, et deux boutons
+  **Allumer** / **Éteindre**. Un réglage choisit le graphique : températures
+  sur 24 h, **énergie par tranche de 2 h (aujourd'hui à côté d'hier)**, ou
+  aucun.
+- **Compte Daikin** — toutes les unités d'un coup d'œil (en marche, arrêtée,
+  en erreur, injoignable), l'énergie du jour de tout le compte, **l'énergie
+  par mois de cette année comparée à l'an dernier**, la jauge des **appels
+  d'API restants aujourd'hui**, et l'âge de la dernière lecture.
+
+Les widgets ne coûtent **aucun appel d'API** : ils lisent les valeurs déjà
+reçues. Les tuiles de température et d'énergie suivent les valeurs en direct ;
+le reste se met à jour à chaque rafraîchissement et après chaque commande.
+
+## Scènes
+
+### Déclencheurs
+
+Quatre déclencheurs apparaissent dans l'éditeur de scènes. Chacun se produit
+**une seule fois par changement**, constaté entre deux lectures du cloud (donc
+au rythme de l'intervalle de rafraîchissement). Le premier passage après un
+redémarrage ne déclenche rien : il sert de point de départ.
+
+| Déclencheur                                   | Filtres                              | Variables                 |
+| --------------------------------------------- | ------------------------------------ | ------------------------- |
+| Une unité Daikin est perdue ou retrouvée      | Unité, Connexion (perdue / rétablie) | `unit_name`, `connection` |
+| Une unité Daikin signale ou efface une erreur | Unité, Erreur (signalée / effacée)   | `unit_name`, `state`      |
+| Le quota d'API Daikin est presque épuisé      | —                                    | `remaining`, `limit`      |
+| La session Daikin a expiré                    | —                                    | —                         |
+
+Un filtre laissé vide accepte tout. Le quota est « presque épuisé » à 20 appels
+restants ou moins ; le déclencheur se réarme quand le compteur remonte (le
+lendemain). Exemple : _« Une unité Daikin est perdue » → Envoyer un message :
+« {{triggerEvent.data.unit_name}} ne répond plus »_.
+
+### Actions
+
+| Action                                 | Ce qu'elle fait                                                                                                          | Sorties                                                                                            |
+| -------------------------------------- | ------------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------- |
+| Régler un climatiseur Daikin           | Marche/arrêt, mode, consigne et vitesse en une seule étape. Le mode est toujours envoyé avant la consigne.               | `power`, `mode`, `temperature`, `commands_sent`, `api_calls_left`                                  |
+| Lire la consommation Daikin            | Énergie d'aujourd'hui, d'hier, du mois, du mois dernier, de l'année et de l'an dernier, pour une unité ou tout le compte | `today_kwh`, `yesterday_kwh`, `this_month_kwh`, `last_month_kwh`, `this_year_kwh`, `last_year_kwh` |
+| Actualiser le compte Daikin maintenant | Relit toutes les unités tout de suite (1 appel, au plus une fois par minute)                                             | `units_total`, `units_online`, `units_running`, `api_calls_left`                                   |
+
+**Pourquoi « Régler un climatiseur » plutôt que plusieurs cartes ?** Chez
+Daikin, la consigne et la ventilation dépendent du mode. Une scène qui règle
+21 °C puis passe en Chauffage écrit la consigne du mode **Froid**. L'action
+envoie toujours le mode d'abord, et saute ce qui est déjà réglé (chaque envoi
+coûte un appel d'API). Un champ laissé vide ne change rien. Si un réglage est
+impossible (mode absent de l'unité, pas de consigne dans ce mode…), l'action
+échoue **avant** le premier envoi.
+
+« Lire la consommation » répond depuis la dernière lecture, sans appel d'API.
+Exemple : _chaque matin à 8 h → Lire la consommation → Envoyer un message :
+« Hier : {{…yesterday_kwh}} kWh »_.
 
 ## Quota d'API restant
 

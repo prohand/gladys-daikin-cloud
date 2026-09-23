@@ -108,9 +108,15 @@ const MONTHLY_THIS_YEAR_FROM = 12;
  * charting. Daikin splits its buckets per operation mode (heating, cooling…);
  * they are summed, because what a dashboard wants is what the unit consumed,
  * not how it was split.
+ *
+ * The three running totals feed the device features. The previous periods and
+ * the buckets themselves feed nothing Gladys stores: they are what the
+ * dashboard widgets chart (two-hour slots, months side by side) and what the
+ * "read the consumption" scene action answers — history Gladys cannot rebuild
+ * from its own states, since it only ever saw the running totals.
  * @param {Record<string, unknown>} consumptionData the consumptionData characteristic
  * @param {Date} [now] the current date, injectable for the tests
- * @returns {{ today: number, thisMonth: number, thisYear: number }|null} the totals, or null when the unit reports none
+ * @returns {{ today: number, yesterday: number, thisMonth: number, lastMonth: number, thisYear: number, lastYear: number, slots: { yesterday: Array<number>, today: Array<number> }, months: { lastYear: Array<number>, thisYear: Array<number> } }|null} the totals and the buckets, or null when the unit reports none
  */
 export function parseConsumption(consumptionData, now = new Date()) {
   const electrical = consumptionData?.value?.electrical;
@@ -118,11 +124,9 @@ export function parseConsumption(consumptionData, now = new Date()) {
     return null;
   }
 
-  // 0-based index of the current month inside the "this year" half.
-  const monthIndex = MONTHLY_THIS_YEAR_FROM + now.getMonth();
-  let today = 0;
-  let thisMonth = 0;
-  let thisYear = 0;
+  // The buckets of every operation mode, summed position by position.
+  const daily = Array(24).fill(0);
+  const monthly = Array(24).fill(0);
   let found = false;
 
   for (const buckets of Object.values(electrical)) {
@@ -130,31 +134,59 @@ export function parseConsumption(consumptionData, now = new Date()) {
       continue;
     }
     found = true;
-    today += sumFrom(buckets.d, DAILY_TODAY_FROM);
-    thisYear += sumFrom(buckets.m, MONTHLY_THIS_YEAR_FROM);
-    thisMonth += numberOr(Array.isArray(buckets.m) ? buckets.m[monthIndex] : null, 0);
+    addInto(daily, buckets.d);
+    addInto(monthly, buckets.m);
   }
 
   if (!found) {
     return null;
   }
+
   // Daikin sends tenths of a kWh: keep three decimals so summing modes does
   // not drift into 0.30000000000000004.
-  return { today: round(today), thisMonth: round(thisMonth), thisYear: round(thisYear) };
+  const slots = {
+    yesterday: daily.slice(0, DAILY_TODAY_FROM).map(round),
+    today: daily.slice(DAILY_TODAY_FROM).map(round),
+  };
+  const months = {
+    lastYear: monthly.slice(0, MONTHLY_THIS_YEAR_FROM).map(round),
+    thisYear: monthly.slice(MONTHLY_THIS_YEAR_FROM).map(round),
+  };
+  const month = now.getMonth();
+  return {
+    today: sum(slots.today),
+    yesterday: sum(slots.yesterday),
+    thisMonth: months.thisYear[month],
+    // January's previous month is December of the half before it.
+    lastMonth: month === 0 ? months.lastYear[11] : months.thisYear[month - 1],
+    thisYear: sum(months.thisYear),
+    lastYear: sum(months.lastYear),
+    slots,
+    months,
+  };
 }
 
 /**
- * Sum a bucket array from an index, treating the `null` Daikin uses for "not
- * measured yet" as zero.
- * @param {unknown} buckets the bucket array
- * @param {number} from the first index to count
- * @returns {number} the total
+ * Add a bucket array into a running total, position by position, treating the
+ * `null` Daikin uses for "not measured yet" as zero.
+ * @param {Array<number>} totals the running totals, modified in place
+ * @param {unknown} buckets the bucket array of one operation mode
  */
-function sumFrom(buckets, from) {
+function addInto(totals, buckets) {
   if (!Array.isArray(buckets)) {
-    return 0;
+    return;
   }
-  return buckets.slice(from).reduce((total, value) => total + numberOr(value, 0), 0);
+  for (let index = 0; index < totals.length; index += 1) {
+    totals[index] += numberOr(buckets[index], 0);
+  }
+}
+
+/**
+ * @param {Array<number>} values the values to add up
+ * @returns {number} their total, with three decimals at most
+ */
+function sum(values) {
+  return round(values.reduce((total, value) => total + value, 0));
 }
 
 /**
