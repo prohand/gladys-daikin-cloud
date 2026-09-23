@@ -9,6 +9,9 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { DEFAULT_CONFIG, MAX_POLL_FREQUENCY, MIN_POLL_FREQUENCY } from '../src/config.js';
+import { SCENE_ACTION, SET_CLIMATE_MODES } from '../src/sceneActions.js';
+import { SCENE_TRIGGER } from '../src/sceneEvents.js';
+import { UNIT_CHART, WIDGET } from '../src/widgets.js';
 
 const manifest = JSON.parse(
   await readFile(new URL('../gladys-assistant-integration.json', import.meta.url), 'utf8'),
@@ -79,6 +82,64 @@ test('the catalog categories are declared, and they require Gladys >= 4.86.0', (
     major > 4 || (major === 4 && minor >= 86),
     `categories requires gladys_version >= 4.86.0, got "${manifest.gladys_version}"`,
   );
+});
+
+test('the widgets and the scene declarations require Gladys >= 5.1.0', () => {
+  // Same coupling as `categories`, one release later: a Gladys older than
+  // 5.1 rejects the unknown top-level fields, and the store indexer refuses a
+  // manifest whose range claims otherwise.
+  const [, major, minor] = manifest.gladys_version.match(/>=\s*(\d+)\.(\d+)\.\d+/).map(Number);
+  assert.ok(
+    major > 5 || (major === 5 && minor >= 1),
+    `widgets, scene_triggers and scene_actions require gladys_version >= 5.1.0, got "${manifest.gladys_version}"`,
+  );
+});
+
+test('every declared widget, scene trigger and scene action is served by the code', () => {
+  // index.js registers its handlers from these constants, and the scenes and
+  // dashboards store these keys: the two lists must be the same, both ways.
+  const keys = (list) => (list ?? []).map((entry) => entry.key).sort();
+  assert.deepEqual(keys(manifest.widgets), Object.values(WIDGET).sort());
+  assert.deepEqual(keys(manifest.scene_actions), Object.values(SCENE_ACTION).sort());
+  assert.deepEqual(keys(manifest.scene_triggers), Object.values(SCENE_TRIGGER).sort());
+});
+
+test('the select options of the capabilities are the values the code reads', () => {
+  const optionsOf = (field) => field.options.map((option) => option.value);
+  const unitWidget = manifest.widgets.find((widget) => widget.key === WIDGET.UNIT);
+  const chart = unitWidget.settings.find((field) => field.key === 'chart');
+  assert.deepEqual(optionsOf(chart).sort(), Object.values(UNIT_CHART).sort());
+  assert.ok(Object.values(UNIT_CHART).includes(chart.default));
+
+  const setClimate = manifest.scene_actions.find(
+    (action) => action.key === SCENE_ACTION.SET_CLIMATE,
+  );
+  const field = (key) => setClimate.fields.find((entry) => entry.key === key);
+  assert.deepEqual(optionsOf(field('mode')), ['unchanged', ...SET_CLIMATE_MODES]);
+  assert.deepEqual(optionsOf(field('power')), ['on', 'off', 'unchanged']);
+
+  const trigger = (key) => manifest.scene_triggers.find((entry) => entry.key === key);
+  const filter = (key, name) => trigger(key).fields.find((entry) => entry.key === name);
+  assert.deepEqual(optionsOf(filter(SCENE_TRIGGER.UNIT_CONNECTION, 'connection')).sort(), [
+    'offline',
+    'online',
+  ]);
+  assert.deepEqual(optionsOf(filter(SCENE_TRIGGER.UNIT_ERROR, 'state')).sort(), ['error', 'ok']);
+});
+
+test('the unit pickers list the devices of this integration', () => {
+  // A `source: "devices"` select hands the handler the device external_id,
+  // which is what `findUnitByDevice` routes on.
+  const pickers = [
+    ...manifest.widgets.flatMap((widget) => widget.settings ?? []),
+    ...manifest.scene_triggers.flatMap((trigger) => trigger.fields ?? []),
+    ...manifest.scene_actions.flatMap((action) => action.fields ?? []),
+  ].filter((field) => field.key === 'unit');
+  assert.ok(pickers.length > 0);
+  for (const picker of pickers) {
+    assert.equal(picker.type, 'select');
+    assert.equal(picker.source, 'devices');
+  }
 });
 
 test('the integration declares itself as cloud only', () => {
@@ -176,6 +237,30 @@ test('every user-facing text is translated in English and French', () => {
     texts.push(action.label);
     if (action.description) {
       texts.push(action.description);
+    }
+  }
+  const capabilities = [
+    ...(manifest.widgets ?? []),
+    ...(manifest.scene_triggers ?? []),
+    ...(manifest.scene_actions ?? []),
+  ];
+  for (const capability of capabilities) {
+    texts.push(capability.label);
+    if (capability.description) {
+      texts.push(capability.description);
+    }
+    const fields = [...(capability.settings ?? []), ...(capability.fields ?? [])];
+    for (const field of fields) {
+      texts.push(field.label);
+      if (field.description) {
+        texts.push(field.description);
+      }
+      for (const option of field.options ?? []) {
+        texts.push(option.label);
+      }
+    }
+    for (const value of [...(capability.variables ?? []), ...(capability.outputs ?? [])]) {
+      texts.push(value.label);
     }
   }
   for (const text of texts) {

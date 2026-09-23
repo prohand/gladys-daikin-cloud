@@ -11,8 +11,9 @@ and started from the
 
 > User documentation: [English](./docs/en.md) · [Français](./docs/fr.md)
 
-Requires **Gladys 4.86 or later**: the manifest declares the store catalog
-`categories` field, which older cores reject as an unknown field.
+Requires **Gladys 5.1 or later**: the manifest declares dashboard `widgets`,
+`scene_triggers` and `scene_actions` (and the store catalog `categories`),
+fields older cores reject as unknown.
 
 ## Features
 
@@ -34,6 +35,15 @@ actually reports:
 - The remaining Daikin API quota, shown live in the Configuration screen
 - A per-device transport badge: `cloud`, `cloud + degraded` when the unit
   reports a fault, `unreachable` when Daikin cannot reach it
+- Two **dashboard widgets** (Gladys 5.1): one unit (live tiles, status, on/off
+  buttons, temperature or two-hour energy chart) and the whole account (units,
+  energy per month against last year, API calls left)
+- Four **scene triggers**, each a transition between two reads: a unit going
+  offline/online, a unit reporting/clearing a fault, the daily quota almost
+  spent, the Daikin session expired
+- Three **scene actions**: set a unit in one step (mode before setpoint, what
+  is already set is skipped), read the consumption (yesterday and last month
+  included), force a refresh
 
 The connection to the Daikin account uses the OAuth2 flow relayed by Gladys: the
 tokens are exchanged and stored by the integration itself, and never transit
@@ -111,7 +121,7 @@ fixed labels the UI cannot restrict, so "Medium" had to stand for "manual" —
 a control nobody could read. The louvers get one air conditioning feature per
 axis, matching what Daikin drives and what the Onecta app shows; a core without
 the per-axis type folds them into a single `fan.rock-setting` whose bitmap
-encoding carries both — a step of the catalog ladder the manifest's 4.86
+encoding carries both — a step of the catalog ladder the manifest's 5.1
 minimum now puts out of reach, kept because the ladder probes rather than
 assumes.
 
@@ -150,8 +160,9 @@ pushes a multi-arch image (`linux/amd64` + `linux/arm64`) to `ghcr.io`.
 The manifest declares `categories: ["climate"]` — the shelf the integration
 sits on in the store catalog, out of the twelve keys of the store vocabulary
 (1 to 3 per integration; without any, it only shows under "All" and in
-search). The field requires `gladys_version` to start at 4.86.0 or later, and
-the store validator enforces that coupling:
+search). The field requires `gladys_version` to start at 4.86.0 or later, the
+`widgets`/`scene_triggers`/`scene_actions` fields at 5.1.0 or later, and the
+store validator enforces that coupling:
 
 ```bash
 npx github:GladysAssistant/integration-store .

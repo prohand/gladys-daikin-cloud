@@ -30,10 +30,15 @@ export const POST_COMMAND_QUIET_MS = 10_000;
 
 export class DaikinStore {
   /**
-   * @param {{ api: object }} params the Daikin API client to read through
+   * @param {{ api: object, onRead?: Function, onReadFailed?: Function }} params the Daikin API
+   * client to read through, and who to tell about each read — whoever asked for it. The scene
+   * triggers compare every read with the previous one, and the store is the one place every
+   * read goes through (the schedule, the test action, a scene, a poll).
    */
-  constructor({ api }) {
+  constructor({ api, onRead, onReadFailed }) {
     this.api = api;
+    this.onRead = onRead;
+    this.onReadFailed = onReadFailed;
     /** @type {Array<object>} the units of the account, as of the last refresh */
     this.units = [];
     this.lastRefreshAt = 0;
@@ -74,10 +79,17 @@ export class DaikinStore {
       logger.debug(`Waiting ${quietFor} ms after the last command before reading the Daikin cloud`);
       await sleep(quietFor);
     }
-    const gatewayDevices = await this.api.getGatewayDevices();
+    let gatewayDevices;
+    try {
+      gatewayDevices = await this.api.getGatewayDevices();
+    } catch (err) {
+      notify(this.onReadFailed, err);
+      throw err;
+    }
     this.units = parseUnits(gatewayDevices);
     this.lastRefreshAt = Date.now();
     logger.info(`Read ${this.units.length} climate unit(s) from the Daikin cloud`);
+    notify(this.onRead, this.units);
     return this.units;
   }
 
@@ -216,6 +228,23 @@ function applyToggleWrite(unit, write) {
   const toggle = key ? unit.toggles?.[key] : null;
   if (toggle) {
     toggle.on = write.value === 'on';
+  }
+}
+
+/**
+ * Tell a listener about a read. A listener that throws must never turn a good
+ * read into a failed one: the states still have to reach Gladys.
+ * @param {Function|undefined} listener the callback, when there is one
+ * @param {unknown} payload what to pass it
+ */
+function notify(listener, payload) {
+  if (typeof listener !== 'function') {
+    return;
+  }
+  try {
+    listener(payload);
+  } catch (err) {
+    logger.error('A refresh listener failed', err);
   }
 }
 

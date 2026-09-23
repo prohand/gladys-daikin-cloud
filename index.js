@@ -6,7 +6,10 @@
 // src/daikin/api.js, the payload mapping in src/devices/ — it only:
 //   1. instantiates the SDK (connection, auth, reconnection: handled for you);
 //   2. registers the event handlers BEFORE connect();
-//   3. keeps the Daikin session, the device list and the states in sync.
+//   3. keeps the Daikin session, the device list and the states in sync;
+//   4. serves the Gladys 5.1 capabilities — dashboard widgets (src/widgets.js),
+//      scene actions (src/sceneActions.js) and scene triggers
+//      (src/sceneEvents.js) — from the same snapshot and the same write path.
 //
 // Environment variables provided by the Gladys supervisor to the container:
 //   - GLADYS_HOST_API_URL         (host API URL)
@@ -38,11 +41,20 @@ import {
   buildDiscoveredDevices,
   buildStates,
   buildTransportEntries,
+  deviceExternalId,
   featureExternalId,
   featureIdsByExternalId,
   featureKeyOf,
   findUnitByDevice,
 } from './src/devices/index.js';
+import {
+  SCENE_ACTION,
+  accountOutputs,
+  consumptionOutputs,
+  setClimate,
+} from './src/sceneActions.js';
+import { SceneEventTracker } from './src/sceneEvents.js';
+import { WIDGET, buildAccountWidget, buildUnitWidget } from './src/widgets.js';
 
 const gladys = new GladysIntegration();
 
@@ -73,7 +85,38 @@ const api = new DaikinApi({
   },
 });
 
-const store = new DaikinStore({ api });
+// What happened between two reads (a unit lost, a fault, the quota running
+// out, the session dying) becomes a scene trigger. Every read goes through the
+// store, whoever asked for it, so that is where the comparison hooks in.
+const sceneEvents = new SceneEventTracker();
+
+// A scene asking for a fresh read this soon after the last one gets that one:
+// a scene run every minute must not be able to spend the daily quota.
+const MIN_FORCED_REFRESH_MS = 60_000;
+
+const store = new DaikinStore({
+  api,
+  onRead: (units) => {
+    publishSceneEvents([
+      ...sceneEvents.unitsRead(units, (unit) => ({
+        unit: deviceExternalId(gladys, unit),
+        unit_name: unit.name,
+      })),
+      ...sceneEvents.quotaRead(api.rateLimits),
+    ]);
+    // The widgets are built from this snapshot: have the open dashboards
+    // pull the new one rather than wait for their TTL.
+    nudgeWidgets();
+  },
+  onReadFailed: (err) => {
+    publishSceneEvents([
+      // Without a linked account every read is a 401 too, and nothing expired:
+      // there was no session to lose.
+      ...(api.isConnected ? sceneEvents.refreshFailed(err) : []),
+      ...sceneEvents.quotaRead(api.rateLimits),
+    ]);
+  },
+});
 
 // --- OAuth2: the user clicks "Connect" on the Daikin account field -----------
 gladys.onOAuthAuthorizeUrl((key, redirectUri) => {
@@ -136,36 +179,8 @@ gladys.onSetValue(async (device, feature, value) => {
   if (!featureKey) {
     throw new Error(`Unknown feature ${feature.external_id}`);
   }
-  if (!unit.online) {
-    throw new Error(`${unit.name} is offline, Daikin cannot reach it right now`);
-  }
-
-  const { writes, states } = buildCommands(unit, featureKey, value);
-  for (const write of writes) {
-    await api.setCharacteristic({
-      deviceId: unit.deviceId,
-      // Most characteristics belong to the climate control point, but a few
-      // (the indoor unit's "keep dry") live on another one and carry it.
-      embeddedId: write.embeddedId ?? unit.embeddedId,
-      characteristic: write.characteristic,
-      path: write.path,
-      value: write.value,
-    });
-  }
-
-  // The Daikin cloud serves the previous values for a few seconds after a
-  // write: reflect the change locally and publish it now, the next scheduled
-  // refresh will confirm it. A command can move more than the feature it was
-  // sent to — the unit's power answers to two of them — so what is published
-  // back is the list the command produced, not just the one Gladys named.
-  store.markCommandSent();
-  store.applyWrites(unit, writes);
-  await gladys.publishStates(
-    states.map((published) => ({
-      device_feature_external_id: featureExternalId(gladys, unit, published.featureKey),
-      state: published.state,
-    })),
-  );
+  await sendCommand(unit, featureKey, value);
+  nudgeWidgets();
 });
 
 // --- The user just created (or updated) a device -----------------------------
@@ -242,6 +257,69 @@ gladys.onAction('test_connection', async () => {
       `Fonctionnalités publiées, puis ce que l'unité déclare et que l'intégration n'exploite pas — ${summary}`,
   };
 });
+
+// --- Scene actions (Gladys 5.1) -----------------------------------------------
+// See src/sceneActions.js for why each one exists next to the device features.
+gladys.onSceneAction(SCENE_ACTION.SET_CLIMATE, async (fields) => {
+  const unit = await unitOf(fields.unit);
+  logger.info(`Scene action set_climate -> ${unit.name} ${JSON.stringify(fields)}`);
+  // The same write path as the dashboard: optimistic states, quiet period,
+  // quota tracking. Each step sees the snapshot the previous one patched.
+  const outputs = await setClimate(unit, fields, (featureKey, value) =>
+    sendCommand(unit, featureKey, value),
+  );
+  if (outputs.commands_sent > 0) {
+    nudgeWidgets();
+  }
+  return { ...outputs, api_calls_left: api.rateLimits.remainingDay };
+});
+
+gladys.onSceneAction(SCENE_ACTION.READ_CONSUMPTION, async (fields) => {
+  // Served from the snapshot: the consumption buckets move by tenths of a kWh,
+  // a read of their own would spend quota for nothing the next refresh won't
+  // bring anyway.
+  const units = fields.unit ? [await unitOf(fields.unit)] : await currentUnits();
+  return consumptionOutputs(units);
+});
+
+gladys.onSceneAction(SCENE_ACTION.REFRESH_ACCOUNT, async () => {
+  let units = store.units;
+  if (store.lastRefreshAt === 0 || Date.now() - store.lastRefreshAt >= MIN_FORCED_REFRESH_MS) {
+    logger.info('Scene action refresh_account -> live request to the Daikin cloud');
+    try {
+      units = await refreshAndPublish();
+      await reportConnected();
+    } catch (err) {
+      await reportFailure(err);
+      throw err;
+    }
+  }
+  return { ...accountOutputs(units), api_calls_left: api.rateLimits.remainingDay };
+});
+
+// --- Dashboard widgets (Gladys 5.1) -------------------------------------------
+// Built from the snapshot, never from a read of their own: a dashboard left
+// open on a wall tablet must not cost a single API call.
+gladys.onWidgetGet(WIDGET.UNIT, async ({ settings, units: unitSystem }) => {
+  const unit = settings?.unit
+    ? findUnitByDevice(gladys, store.units, { external_id: settings.unit })
+    : undefined;
+  return buildUnitWidget(gladys, unit, {
+    chart: settings?.chart,
+    unitSystem,
+    ready: store.lastRefreshAt > 0,
+  });
+});
+
+gladys.onWidgetGet(WIDGET.ACCOUNT, async ({ units: unitSystem }) =>
+  buildAccountWidget(store.units, {
+    linked: api.isConnected,
+    ready: store.lastRefreshAt > 0,
+    rateLimits: api.rateLimits,
+    lastRefreshAt: store.lastRefreshAt,
+    unitSystem,
+  }),
+);
 
 // --- Configuration updated by the user ---------------------------------------
 gladys.onConfigUpdated(async (newConfig) => {
@@ -346,6 +424,107 @@ function unusedCharacteristics(unit) {
     }
   }
   return unused;
+}
+
+/**
+ * Send one feature command to a unit: the Daikin writes, then the optimistic
+ * states. The dashboard, a scene card on a feature and the `set_climate` scene
+ * action all go through here, so they all leave the snapshot in the same state.
+ * @param {object} unit the normalized Daikin unit, patched in place
+ * @param {string} featureKey the feature the command is addressed to
+ * @param {number} value the requested value
+ */
+async function sendCommand(unit, featureKey, value) {
+  if (!unit.online) {
+    throw new Error(`${unit.name} is offline, Daikin cannot reach it right now`);
+  }
+
+  const { writes, states } = buildCommands(unit, featureKey, value);
+  try {
+    for (const write of writes) {
+      await api.setCharacteristic({
+        deviceId: unit.deviceId,
+        // Most characteristics belong to the climate control point, but a few
+        // (the indoor unit's "keep dry") live on another one and carry it.
+        embeddedId: write.embeddedId ?? unit.embeddedId,
+        characteristic: write.characteristic,
+        path: write.path,
+        value: write.value,
+      });
+    }
+  } finally {
+    // Every write spends quota, accepted or not.
+    publishSceneEvents(sceneEvents.quotaRead(api.rateLimits));
+  }
+
+  // The Daikin cloud serves the previous values for a few seconds after a
+  // write: reflect the change locally and publish it now, the next scheduled
+  // refresh will confirm it. A command can move more than the feature it was
+  // sent to — the unit's power answers to two of them — so what is published
+  // back is the list the command produced, not just the one Gladys named.
+  store.markCommandSent();
+  store.applyWrites(unit, writes);
+  await gladys.publishStates(
+    states.map((published) => ({
+      device_feature_external_id: featureExternalId(gladys, unit, published.featureKey),
+      state: published.state,
+    })),
+  );
+}
+
+/**
+ * The units of the account, read once if nothing was read yet.
+ * @returns {Promise<Array<object>>} the units
+ */
+async function currentUnits() {
+  return store.lastRefreshAt > 0 ? store.units : store.refresh();
+}
+
+/**
+ * The unit a scene field names (a `source: "devices"` select: the device
+ * external_id).
+ * @param {string} externalId the device external_id chosen in the scene
+ * @returns {Promise<object>} the unit
+ */
+async function unitOf(externalId) {
+  if (!externalId) {
+    throw new Error('No Daikin unit selected');
+  }
+  const unit = findUnitByDevice(gladys, await currentUnits(), { external_id: externalId });
+  if (!unit) {
+    throw new Error(`${externalId} is no longer in the Daikin account`);
+  }
+  return unit;
+}
+
+/**
+ * Fire the scene triggers. An event is a notification, not a state: one that
+ * Gladys refuses (quota of events, a disconnection) is logged and dropped,
+ * never retried — a late "unit offline" is worse than a missing one.
+ * @param {Array<{ key: string, data: object }>} events the events to fire
+ */
+function publishSceneEvents(events) {
+  for (const { key, data } of events) {
+    logger.info(`Scene trigger ${key} ${JSON.stringify(data)}`);
+    gladys.publishSceneEvent(key, data).catch((err) => {
+      logger.warn(`Could not fire the scene trigger ${key}`, err);
+    });
+  }
+}
+
+/**
+ * Ask the open dashboards to pull the widgets again. Rate limited by the core
+ * (one per 10 s per widget) and dropped while disconnected: a nudge is a hint,
+ * the TTL of the content stays the safety net.
+ */
+function nudgeWidgets() {
+  for (const key of Object.values(WIDGET)) {
+    try {
+      gladys.requestWidgetRefresh(key);
+    } catch (err) {
+      logger.warn(`Could not nudge the widget ${key}`, err);
+    }
+  }
 }
 
 /**

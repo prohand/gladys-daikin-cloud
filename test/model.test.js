@@ -167,3 +167,21 @@ test('a malformed payload never throws', () => {
   assert.deepEqual(parseUnits(), []);
   assert.deepEqual(parseUnits([null, {}, { managementPoints: 'nope' }]), []);
 });
+
+test('the previous day, month and year come from the first half of the buckets', () => {
+  const consumption = SPLIT_UNIT.managementPoints[1].consumptionData;
+  const energy = parseConsumption(consumption, new Date(2026, 7, 15));
+  assert.equal(energy.yesterday, 9.6, '12 x 0.5 heating + 12 x 0.3 cooling');
+  assert.equal(energy.lastMonth, 7.5, 'July: 7 heating + 0.5 cooling');
+  assert.equal(energy.lastYear, 204, '12 x 9 heating + 12 x 8 cooling');
+  assert.deepEqual(energy.slots.today, Array(12).fill(0.15));
+  assert.deepEqual(energy.slots.yesterday, Array(12).fill(0.8));
+  assert.equal(energy.months.thisYear[0], 1.5);
+  assert.equal(energy.months.lastYear[11], 17);
+});
+
+test("January's previous month is last year's December", () => {
+  const consumption = SPLIT_UNIT.managementPoints[1].consumptionData;
+  const energy = parseConsumption(consumption, new Date(2026, 0, 10));
+  assert.equal(energy.lastMonth, 17, 'December of last year: 9 heating + 8 cooling');
+});
