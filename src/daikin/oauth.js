@@ -116,7 +116,11 @@ async function postToken(body) {
     // The provider describes the refusal in `error` / `error_description`:
     // surfacing it is what tells the user "wrong secret" from "expired code".
     const detail = payload.error_description || payload.error || `HTTP ${response.status}`;
-    throw new Error(`Daikin token request refused: ${detail}`);
+    // The status travels with the error: only a refusal by the provider says
+    // anything about the session, a request that never got an answer does not.
+    throw Object.assign(new Error(`Daikin token request refused: ${detail}`), {
+      status: response.status,
+    });
   }
 
   if (!payload.access_token) {

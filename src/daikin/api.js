@@ -189,7 +189,17 @@ export class DaikinApi {
         refreshToken: this.tokens.refreshToken,
       });
     } catch (err) {
-      throw new DaikinApiError(401, `Could not refresh the Daikin session: ${err.message}`);
+      // Only the provider refusing the refresh token (4xx) kills the session.
+      // A DNS failure, an unreachable host or an identity provider in trouble
+      // (5xx) leaves the refresh token valid: reporting those as an expired
+      // session asked the user to reconnect, and fired the scene trigger, for
+      // what the next scheduled read recovers on its own.
+      if (err.status >= 400 && err.status < 500) {
+        throw new DaikinApiError(401, `Could not refresh the Daikin session: ${err.message}`);
+      }
+      throw new Error(`Could not reach the Daikin identity provider: ${err.message}`, {
+        cause: err,
+      });
     }
     if (typeof this.onTokensRefreshed === 'function') {
       await this.onTokensRefreshed({ ...this.tokens });

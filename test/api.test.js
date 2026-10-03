@@ -165,6 +165,43 @@ test('a session that cannot be refreshed asks the user to reconnect', async () =
   );
 });
 
+test('a refresh token the provider refuses ends the session', async () => {
+  const stub = stubFetch([() => response({ status: 400, payload: { error: 'invalid_grant' } })]);
+  try {
+    const api = createApi({ expiresAt: Date.now() - 1000 });
+    await assert.rejects(
+      () => api.getGatewayDevices(),
+      (err) => err.isAuthError === true && /invalid_grant/.test(err.message),
+    );
+  } finally {
+    stub.restore();
+  }
+});
+
+test('a refresh that never got an answer is not an expired session', async () => {
+  // What the logs of issue #13 show: the network down for a while, every
+  // renewal attempt failing with "fetch failed".
+  const stub = stubFetch([
+    () => {
+      throw new TypeError('fetch failed', { cause: new Error('getaddrinfo EAI_AGAIN') });
+    },
+    () => response({ status: 503 }),
+  ]);
+  try {
+    const api = createApi({ expiresAt: Date.now() - 1000 });
+    for (let attempt = 0; attempt < 2; attempt += 1) {
+      await assert.rejects(
+        () => api.getGatewayDevices(),
+        (err) =>
+          !err.isAuthError && /Could not reach the Daikin identity provider/.test(err.message),
+      );
+    }
+    assert.equal(api.isConnected, true, 'the session is kept for the next read');
+  } finally {
+    stub.restore();
+  }
+});
+
 test('a spent quota is reported as such, not as a generic failure', async () => {
   const stub = stubFetch([
     () => response({ status: 429, headers: { 'X-RateLimit-Remaining-day': '0' } }),
