@@ -116,4 +116,7 @@ test('versions compare numerically, not as strings', () => {
   assert.equal(isAtLeast('4.85.0-beta.1', [4, 84, 3]), true, 'a pre-release counts as its base');
   assert.equal(isAtLeast('4.84', [4, 84, 3]), false, 'a truncated version is not trusted');
   assert.equal(isAtLeast(undefined, [4, 84, 3]), false);
+  // What Gladys 5.1 actually reports (issue #13).
+  assert.equal(isAtLeast('v5.1.3', [4, 84, 3]), true, 'the leading v is not part of the number');
+  assert.equal(isAtLeast('v4.9.0', [4, 84, 3]), false);
 });

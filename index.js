@@ -71,6 +71,9 @@ let capabilities = { ...CAPABILITY_LEVELS[0], supportedOptions: false };
 // been read once: publishing the pair against ids we could not check is the
 // one thing worse than publishing it a refresh later.
 let knownFeatureIds = null;
+// Whether the discovery payload still has to reach Gladys on this connection
+// (see startPolling: the read that normally carries it can fail).
+let discoveryPending = true;
 // Anti-CSRF state of the OAuth2 flow in progress, generated when the user
 // clicks "Connect" and verified when the provider redirects back.
 let oauthState = null;
@@ -343,6 +346,9 @@ gladys.onConfigUpdated(async (newConfig) => {
 // reconnection attempts) under the `gladys-sdk` name: these handlers only run
 // the integration's own (re)initialization.
 gladys.on('connected', async () => {
+  // A new connection may be a new Gladys (an update restarts it): what it
+  // accepts is learned again.
+  discoveryPending = true;
   try {
     // 1) The one thing still worth asking the version about, then the config
     // filled in by the user.
@@ -363,15 +369,24 @@ gladys.on('connected', async () => {
       return;
     }
 
-    // 3) Read the account and publish everything we know about it.
+    // 3) Keep it fresh, on our own schedule — armed BEFORE the first read.
+    // That read fails whenever the network is not there yet (a DNS answer
+    // missing right after a container start, a host route still down): armed
+    // after it, the schedule was skipped by the throw and the integration
+    // never read the cloud again until someone pressed "Test the connection".
+    startPolling();
+
+    // 4) Read the account and publish everything we know about it.
     await refreshAndPublish({ publishDevices: true });
     await reportConnected();
-
-    // 4) Keep it fresh, on our own schedule.
-    startPolling();
   } catch (err) {
     logger.error('Post-connection initialization failed', err);
     await reportFailure(err);
+  } finally {
+    // A dashboard that asked for a widget while the integration was away is
+    // left on "unavailable" by the core, with no retry of its own: tell it
+    // we are back, whatever the first read gave.
+    nudgeWidgets();
   }
 });
 
@@ -581,6 +596,7 @@ async function publishEverything(units, { publishDevices = false } = {}) {
       (candidate) => buildDiscoveredDevices(gladys, units, candidate, knownFeatureIds),
       capabilities.supportedOptions,
     );
+    discoveryPending = false;
   }
   if (units.length === 0) {
     return;
@@ -623,7 +639,10 @@ function startPolling() {
   }
   store.ensurePolling(config.poll_frequency, async (units) => {
     try {
-      await publishEverything(units);
+      // The discovery payload is normally published by the first read after
+      // the connection; when that one failed, the first scheduled read that
+      // succeeds does it, or the catalog Gladys accepts is never learned.
+      await publishEverything(units, { publishDevices: discoveryPending });
       await reportConnected();
     } catch (err) {
       logger.error('Could not publish the refreshed states', err);

@@ -99,8 +99,8 @@ export async function detectSupportedOptions(gladys) {
 }
 
 /**
- * Compare a `major.minor.patch` version against a minimum. Pre-release
- * suffixes are ignored: `4.85.0-beta.1` counts as `4.85.0`.
+ * Compare a `major.minor.patch` version against a minimum. A leading `v` and
+ * pre-release suffixes are ignored: `v4.85.0-beta.1` counts as `4.85.0`.
  * @param {string} version the version to test
  * @param {Array<number>} minimum the minimum version, as [major, minor, patch]
  * @returns {boolean} true when the version is greater than or equal to the minimum
@@ -109,7 +109,10 @@ export function isAtLeast(version, minimum) {
   if (typeof version !== 'string') {
     return false;
   }
+  // Gladys 5.1 reports itself as `v5.1.3`: without dropping the prefix, every
+  // recent core read as unparseable and lost its restricted mode lists.
   const parsed = version
+    .replace(/^v/i, '')
     .split('-')[0]
     .split('.')
     .map((part) => Number.parseInt(part, 10));
