@@ -455,6 +455,9 @@ async function sendCommand(unit, featureKey, value) {
   }
 
   const { writes, states } = buildCommands(unit, featureKey, value);
+  // Before the first write, not after the last: a scheduled read starting in
+  // between must wait for the quiet period too.
+  store.markCommandSent();
   try {
     for (const write of writes) {
       await api.setCharacteristic({
@@ -478,7 +481,12 @@ async function sendCommand(unit, featureKey, value) {
   // sent to — the unit's power answers to two of them — so what is published
   // back is the list the command produced, not just the one Gladys named.
   store.markCommandSent();
-  store.applyWrites(unit, writes);
+  // A read already queued when the command was sent replaces the snapshot with
+  // the values from BEFORE it (the API serializes requests, so it answers
+  // first). Patching the object captured above would then change a unit no
+  // longer in the snapshot, and widgets, republishes and set_climate would see
+  // the old values until the next read: patch the unit the snapshot holds now.
+  store.applyWrites(store.getUnit(unit.platformId) ?? unit, writes);
   await gladys.publishStates(
     states.map((published) => ({
       device_feature_external_id: featureExternalId(gladys, unit, published.featureKey),
