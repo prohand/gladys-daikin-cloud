@@ -6,6 +6,8 @@ All notable changes to this integration are documented here. The format follows
 
 ## [Unreleased]
 
+## [4.3.0] - 2026-10-08
+
 ### Fixed
 
 - The _Refresh the Daikin account now_ scene action reads at most once every 10 minutes (was once a
@@ -203,7 +205,8 @@ First public release.
 
 - Publish min/max on the On/Off feature, and warn to save before connecting
 
-[Unreleased]: https://github.com/prohand/gladys-daikin-cloud/compare/v4.2.0...HEAD
+[Unreleased]: https://github.com/prohand/gladys-daikin-cloud/compare/v4.3.0...HEAD
+[4.3.0]: https://github.com/prohand/gladys-daikin-cloud/compare/v4.2.0...v4.3.0
 [4.2.0]: https://github.com/prohand/gladys-daikin-cloud/compare/v4.1.0...v4.2.0
 [4.1.0]: https://github.com/prohand/gladys-daikin-cloud/compare/v4.0.5...v4.1.0
 [4.0.5]: https://github.com/prohand/gladys-daikin-cloud/compare/v4.0.4...v4.0.5
