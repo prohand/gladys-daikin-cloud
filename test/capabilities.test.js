@@ -4,9 +4,20 @@ import {
   CAPABILITY_LEVELS,
   detectSupportedOptions,
   isAtLeast,
+  isCatalogRefusal,
   publishWithBestCatalog,
 } from '../src/capabilities.js';
 import { createFakeGladys } from './helpers/fakeGladys.js';
+
+/**
+ * What the SDK throws when the core rejects a payload (a GladysApiError).
+ * @param {string} message the validation message
+ * @param {number} [status] the HTTP status the core answered
+ * @returns {Error} the error
+ */
+function validationError(message, status = 400) {
+  return Object.assign(new Error(message), { name: 'GladysApiError', status, code: 'BAD_REQUEST' });
+}
 
 /**
  * A Gladys that refuses every catalog richer than the one it knows, the way
@@ -24,7 +35,7 @@ function createPickyGladys(accepts) {
         const level = devices[0].level;
         attempts.push(level);
         if (order.indexOf(level) < order.indexOf(accepts)) {
-          throw new Error(`devices[0].features[0].type: unknown type`);
+          throw validationError(`devices[0].features[0].type: unknown type`);
         }
         return { success: true, count: devices.length };
       },
@@ -75,13 +86,57 @@ test('a Gladys refusing even the base catalog surfaces the error', async () => {
   // a broken integration behind an empty device list.
   const gladys = {
     async publishDiscoveredDevices() {
-      throw new Error('devices[0].name: must be a non-empty string');
+      throw validationError('devices[0].name: must be a non-empty string');
     },
   };
   await assert.rejects(
     () => publishWithBestCatalog(gladys, buildDevices, false),
     /must be a non-empty string/,
   );
+});
+
+test('a 422 from the database layer also steps the catalog down', async () => {
+  const attempts = [];
+  const gladys = {
+    async publishDiscoveredDevices(devices) {
+      attempts.push(devices[0].level);
+      if (devices[0].level === 'full') {
+        throw validationError('t_device_feature.type: invalid value', 422);
+      }
+    },
+  };
+  const capabilities = await publishWithBestCatalog(gladys, buildDevices, false);
+  assert.deepEqual(attempts, ['full', 'fan']);
+  assert.equal(capabilities.level, 'fan');
+});
+
+test('a timeout or a Gladys error never trades the catalog for a poorer one', async () => {
+  // A hiccup says nothing about what this Gladys accepts: stepping down on it
+  // used to leave the whole connection without the fan and the louvers.
+  for (const failure of [
+    Object.assign(new Error('The operation was aborted due to timeout'), { name: 'TimeoutError' }),
+    Object.assign(new Error('fetch failed'), { cause: { code: 'ECONNREFUSED' } }),
+    validationError('Internal server error', 500),
+    validationError('Service unavailable', 503),
+  ]) {
+    const attempts = [];
+    const gladys = {
+      async publishDiscoveredDevices(devices) {
+        attempts.push(devices[0].level);
+        throw failure;
+      },
+    };
+    await assert.rejects(() => publishWithBestCatalog(gladys, buildDevices, false), failure);
+    assert.deepEqual(attempts, ['full'], `${failure.message}: no smaller catalog was tried`);
+  }
+});
+
+test('only a 400 or a 422 counts as a catalog refusal', () => {
+  assert.equal(isCatalogRefusal(validationError('bad', 400)), true);
+  assert.equal(isCatalogRefusal(validationError('bad', 422)), true);
+  assert.equal(isCatalogRefusal(validationError('down', 502)), false);
+  assert.equal(isCatalogRefusal(new Error('fetch failed')), false);
+  assert.equal(isCatalogRefusal(undefined), false);
 });
 
 test('the fallback never depends on reading a version', async () => {
