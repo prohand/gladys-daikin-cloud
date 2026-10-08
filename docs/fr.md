@@ -318,7 +318,7 @@ lendemain). Exemple : _« Une unité Daikin est perdue » → Envoyer un message
 | -------------------------------------- | ------------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------- |
 | Régler un climatiseur Daikin           | Marche/arrêt, mode, consigne et vitesse en une seule étape. Le mode est toujours envoyé avant la consigne.               | `power`, `mode`, `temperature`, `commands_sent`, `api_calls_left`                                  |
 | Lire la consommation Daikin            | Énergie d'aujourd'hui, d'hier, du mois, du mois dernier, de l'année et de l'an dernier, pour une unité ou tout le compte | `today_kwh`, `yesterday_kwh`, `this_month_kwh`, `last_month_kwh`, `this_year_kwh`, `last_year_kwh` |
-| Actualiser le compte Daikin maintenant | Relit toutes les unités tout de suite (1 appel, au plus une fois par minute)                                             | `units_total`, `units_online`, `units_running`, `api_calls_left`                                   |
+| Actualiser le compte Daikin maintenant | Relit toutes les unités tout de suite (1 appel, au plus toutes les 10 minutes, aucun à 20 appels restants ou moins)      | `units_total`, `units_online`, `units_running`, `api_calls_left`, `data_age_seconds`               |
 
 **Pourquoi « Régler un climatiseur » plutôt que plusieurs cartes ?** Chez
 Daikin, la consigne et la ventilation dépendent du mode. Une scène qui règle
@@ -327,6 +327,13 @@ envoie toujours le mode d'abord, et saute ce qui est déjà réglé (chaque envo
 coûte un appel d'API). Un champ laissé vide ne change rien. Si un réglage est
 impossible (mode absent de l'unité, pas de consigne dans ce mode…), l'action
 échoue **avant** le premier envoi.
+
+« Actualiser le compte Daikin maintenant » dépense au plus un appel toutes les
+10 minutes, quelle que soit la fréquence de la scène, et aucun dès que le quota
+du jour descend à 20 appels : ceux-là reviennent au rafraîchissement planifié
+et à vos commandes. Quand elle ne lit pas, elle répond depuis la dernière
+lecture, et `data_age_seconds` indique l'âge de cette lecture (0 juste après
+une lecture fraîche).
 
 « Lire la consommation » répond depuis la dernière lecture, sans appel d'API.
 Exemple : _chaque matin à 8 h → Lire la consommation → Envoyer un message :
@@ -342,6 +349,10 @@ qu'il reste du quota Daikin du jour :
 Le compteur est celui que Daikin renvoie lui-même à chaque appel, et il est
 rafraîchi à chaque lecture du cloud — donc au moins une fois par intervalle de
 rafraîchissement, et immédiatement après un clic sur _Tester la connexion_.
+
+Quand une lecture échoue — le rafraîchissement planifié compris — le même
+emplacement en donne la raison (l'un des messages de la section _Dépannage_),
+puis revient au compteur à la lecture suivante qui réussit.
 
 ## Badge d'état des appareils
 

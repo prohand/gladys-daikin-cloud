@@ -296,7 +296,7 @@ is not answering"_.
 | ------------------------------ | ---------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------- |
 | Set a Daikin air conditioner   | Power, mode, setpoint and fan speed in one step. The mode is always sent before the setpoint.              | `power`, `mode`, `temperature`, `commands_sent`, `api_calls_left`                                  |
 | Read the Daikin consumption    | Energy used today, yesterday, this month, last month, this year and last year, for one unit or the account | `today_kwh`, `yesterday_kwh`, `this_month_kwh`, `last_month_kwh`, `this_year_kwh`, `last_year_kwh` |
-| Refresh the Daikin account now | Reads every unit right away (1 call, at most once a minute)                                                | `units_total`, `units_online`, `units_running`, `api_calls_left`                                   |
+| Refresh the Daikin account now | Reads every unit right away (1 call, at most once every 10 minutes, none at 20 calls left or fewer)        | `units_total`, `units_online`, `units_running`, `api_calls_left`, `data_age_seconds`               |
 
 **Why "Set a Daikin air conditioner" rather than several cards?** At Daikin,
 the setpoint and the fan belong to the mode. A scene that sets 21 °C and then
@@ -305,6 +305,12 @@ the mode first, and skips what is already set (every write costs one API
 call). An empty field changes nothing. When a setting is impossible (a mode the
 unit lacks, no setpoint in that mode…), the action fails **before** the first
 write.
+
+"Refresh the Daikin account now" spends at most one call every 10 minutes,
+however often the scene runs, and none once the daily quota is down to 20
+calls: those belong to the scheduled refresh and to your commands. When it does
+not read, it answers from the last read, and `data_age_seconds` says how old
+that read is (0 right after a fresh one).
 
 "Read the consumption" answers from the last read, with no API call. Example:
 _every morning at 8 → Read the consumption → Send a message: "Yesterday:
@@ -320,6 +326,10 @@ left of today's Daikin quota:
 The count is the one Daikin returns on every call, refreshed each time the cloud
 is read — so at least once per refresh interval, and immediately after clicking
 _Test the connection_.
+
+When a read fails — the scheduled refresh included — the same place shows why
+(one of the messages under _Troubleshooting_), and goes back to the counter at
+the next read that works.
 
 ## Device status badge
 
