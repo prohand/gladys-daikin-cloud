@@ -3,7 +3,16 @@ import assert from 'node:assert/strict';
 import { parseUnits } from '../src/daikin/model.js';
 import { FEATURE, buildCommands } from '../src/devices/index.js';
 import { AC_MODE } from '../src/mapping.js';
-import { accountOutputs, consumptionOutputs, setClimate } from '../src/sceneActions.js';
+import { readFileSync } from 'node:fs';
+import {
+  MIN_FORCED_REFRESH_MS,
+  SCENE_ACTION,
+  accountOutputs,
+  consumptionOutputs,
+  forcedRefreshVerdict,
+  refreshAccount,
+  setClimate,
+} from '../src/sceneActions.js';
 import { DaikinStore } from '../src/store.js';
 import {
   ALL_DEVICES,
@@ -146,4 +155,82 @@ test('the account counts what is reachable and what runs', () => {
     units_online: 2,
     units_running: units.filter((unit) => unit.online && unit.power === 'on').length,
   });
+});
+
+/**
+ * A store already holding the account, read `age` ms ago, and a Daikin client
+ * reporting `remainingDay` calls left today.
+ * @param {{ age?: number, remainingDay?: number|null, now?: number }} [options] the situation
+ * @returns {object} the store, the api, the clock and the read counter
+ */
+function refreshSetup({ age = 0, remainingDay = 150, now = 1_000_000_000 } = {}) {
+  const units = parseUnits(structuredClone(ALL_DEVICES));
+  const store = { units, lastRefreshAt: age === null ? 0 : now - age };
+  const api = { rateLimits: { remainingDay } };
+  const reads = { count: 0 };
+  const refresh = async () => {
+    reads.count += 1;
+    store.lastRefreshAt = now;
+    api.rateLimits = { remainingDay: remainingDay === null ? null : remainingDay - 1 };
+  };
+  return { store, api, refresh, reads, now: () => now };
+}
+
+test('refresh_account reads at most once every 10 minutes', async () => {
+  assert.equal(MIN_FORCED_REFRESH_MS, 600_000);
+  // A scene every minute: the read of 9 minutes ago is served, not renewed.
+  const recent = refreshSetup({ age: 9 * 60_000 });
+  const { verdict, outputs } = await refreshAccount(recent);
+  assert.equal(verdict, 'recent');
+  assert.equal(recent.reads.count, 0, 'no call spent');
+  assert.equal(outputs.data_age_seconds, 540, 'the scene learns how old the data is');
+  assert.equal(outputs.api_calls_left, 150);
+  assert.equal(outputs.units_total, 3);
+
+  const stale = refreshSetup({ age: 10 * 60_000 });
+  const fresh = await refreshAccount(stale);
+  assert.equal(fresh.verdict, 'read');
+  assert.equal(stale.reads.count, 1);
+  assert.equal(fresh.outputs.data_age_seconds, 0);
+  assert.equal(fresh.outputs.api_calls_left, 149, 'the quota after the read');
+});
+
+test('refresh_account leaves the last calls of the day to the schedule', async () => {
+  const low = refreshSetup({ age: 60 * 60_000, remainingDay: 20 });
+  const { verdict, outputs } = await refreshAccount(low);
+  assert.equal(verdict, 'quota_low');
+  assert.equal(low.reads.count, 0);
+  assert.equal(outputs.data_age_seconds, 3600);
+  assert.equal(outputs.api_calls_left, 20);
+
+  assert.equal(
+    forcedRefreshVerdict({ lastRefreshAt: 1, remainingDay: 21, now: MIN_FORCED_REFRESH_MS + 1 }),
+    'read',
+  );
+  assert.equal(
+    forcedRefreshVerdict({ lastRefreshAt: 1, remainingDay: null, now: MIN_FORCED_REFRESH_MS + 1 }),
+    'read',
+    'a quota Daikin never reported does not block the read',
+  );
+});
+
+test('refresh_account reads when nothing was ever read, whatever the quota', async () => {
+  // There is no snapshot to answer with: one read is the only answer.
+  const empty = refreshSetup({ age: null, remainingDay: 3 });
+  const { verdict, outputs } = await refreshAccount(empty);
+  assert.equal(verdict, 'read');
+  assert.equal(empty.reads.count, 1);
+  assert.equal(outputs.data_age_seconds, 0);
+});
+
+test('refresh_account returns exactly the outputs the manifest declares', async () => {
+  const manifest = JSON.parse(
+    readFileSync(new URL('../gladys-assistant-integration.json', import.meta.url), 'utf8'),
+  );
+  const declared = manifest.scene_actions
+    .find((action) => action.key === SCENE_ACTION.REFRESH_ACCOUNT)
+    .outputs.map((output) => output.key)
+    .sort();
+  const { outputs } = await refreshAccount(refreshSetup({ age: 0 }));
+  assert.deepEqual(Object.keys(outputs).sort(), declared);
 });

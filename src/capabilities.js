@@ -69,6 +69,15 @@ export async function publishWithBestCatalog(gladys, buildDevices, supportedOpti
       logger.info(`Publishing the "${candidate.level}" catalog (Gladys accepted it)`);
       return capabilities;
     } catch (err) {
+      // Only a validation refusal says anything about the catalog. A timeout,
+      // a disconnection or a 5xx says nothing about what this Gladys accepts:
+      // stepping down on those would publish (and then keep using) a poorer
+      // catalog for the whole connection — no fan, no louvers — because of a
+      // network hiccup. Those are rethrown as they are, and the next publish
+      // starts again from the richest catalog.
+      if (!isCatalogRefusal(err)) {
+        throw err;
+      }
       lastError = err;
       logger.warn(
         `Gladys refused the "${candidate.level}" catalog (${err.message}), trying a smaller one`,
@@ -76,6 +85,21 @@ export async function publishWithBestCatalog(gladys, buildDevices, supportedOpti
     }
   }
   throw lastError;
+}
+
+/**
+ * Whether Gladys refused the payload itself. The SDK throws a GladysApiError
+ * carrying the HTTP status of the host API: the core answers 400 when its
+ * discovery validation rejects a field (an unknown feature type, an invalid
+ * poll frequency) and 422 when the database layer does. Anything else — no
+ * status at all (a fetch timeout, a dropped connection) or a 5xx — is not an
+ * answer about the catalog.
+ * @param {unknown} err what publishDiscoveredDevices threw
+ * @returns {boolean} true when stepping down the catalog may help
+ */
+export function isCatalogRefusal(err) {
+  const status = Number(err?.status);
+  return status === 400 || status === 422;
 }
 
 /**

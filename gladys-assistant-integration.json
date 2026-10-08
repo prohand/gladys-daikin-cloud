@@ -644,8 +644,8 @@
         "fr": "Actualiser le compte Daikin maintenant"
       },
       "description": {
-        "en": "Reads every unit now (1 API call, at most once a minute) before the next steps of the scene.",
-        "fr": "Lit toutes les unités maintenant (1 appel d'API, au plus une fois par minute) avant la suite de la scène."
+        "en": "Reads every unit (1 API call, at most every 10 min, none when 20 or fewer calls are left).",
+        "fr": "Lit toutes les unités (1 appel d'API, au plus toutes les 10 min, aucun s'il en reste 20 ou moins)."
       },
       "timeout_seconds": 30,
       "outputs": [
@@ -679,6 +679,14 @@
           "label": {
             "en": "API calls left today",
             "fr": "Appels d'API restants aujourd'hui"
+          }
+        },
+        {
+          "key": "data_age_seconds",
+          "type": "number",
+          "label": {
+            "en": "Age of the data (s)",
+            "fr": "Âge des données (s)"
           }
         }
       ]

@@ -13,7 +13,11 @@
 //   - `read_consumption` answers with numbers Gladys does not store: yesterday
 //     and last month are Daikin buckets, not device features.
 //   - `refresh_account` forces a read before a scene checks a condition, and
-//     reports what is left of the quota.
+//     reports what is left of the quota. A scene can run it every minute, and
+//     1 440 reads a day against a quota of 200 would blind the integration by
+//     breakfast: it reads at most once every 10 minutes, never when the daily
+//     quota is nearly spent, and otherwise answers from the snapshot with its
+//     age, so the scene can tell a fresh read from an old one.
 //
 // Everything is validated BEFORE the first write: a mode the unit does not
 // have must fail the action, not leave the unit switched on in its old mode.
@@ -25,6 +29,7 @@
 
 import { FEATURE } from './devices/index.js';
 import { fanLevelToDaikin, modeToGladys, roundToStep } from './mapping.js';
+import { QUOTA_LOW_THRESHOLD } from './sceneEvents.js';
 
 // The keys the scenes store: never renamed once published.
 export const SCENE_ACTION = {
@@ -150,6 +155,63 @@ export function accountOutputs(units) {
     units_total: units.length,
     units_online: online.length,
     units_running: online.filter((unit) => unit.power === 'on').length,
+  };
+}
+
+// The shortest gap between two reads `refresh_account` may cause. Ten minutes
+// cap a scene running every minute at 144 calls a day — still a lot, and more
+// than what is left once the schedule took its share, hence the quota check
+// below on top of it.
+export const MIN_FORCED_REFRESH_MS = 10 * 60_000;
+
+/**
+ * Whether `refresh_account` may read the Daikin cloud now.
+ * @param {{ lastRefreshAt: number, remainingDay: number|null, now: number }} params when the
+ * snapshot was read (0: never), what Daikin says is left of the daily quota, the current time
+ * @returns {'read'|'recent'|'quota_low'} `read`, or why the snapshot is served instead
+ */
+export function forcedRefreshVerdict({ lastRefreshAt, remainingDay, now }) {
+  // Nothing to answer with yet: one read is the only way to answer at all.
+  if (!lastRefreshAt) {
+    return 'read';
+  }
+  if (now - lastRefreshAt < MIN_FORCED_REFRESH_MS) {
+    return 'recent';
+  }
+  // The last calls of the day belong to the schedule and to the commands: a
+  // scene spending them would leave the dashboard frozen until midnight UTC.
+  if (typeof remainingDay === 'number' && remainingDay <= QUOTA_LOW_THRESHOLD) {
+    return 'quota_low';
+  }
+  return 'read';
+}
+
+/**
+ * Run `refresh_account`: read the account when the verdict allows it, then
+ * describe the snapshot, its age included.
+ * @param {{ store: object, api: object, refresh: () => Promise<unknown>, now?: () => number }} params
+ * the store (`units`, `lastRefreshAt`), the Daikin client (`rateLimits`), the read to run and a clock
+ * @returns {Promise<{ verdict: string, outputs: object }>} the verdict and the scene outputs
+ */
+export async function refreshAccount({ store, api, refresh, now = Date.now }) {
+  const verdict = forcedRefreshVerdict({
+    lastRefreshAt: store.lastRefreshAt,
+    remainingDay: api.rateLimits.remainingDay,
+    now: now(),
+  });
+  if (verdict === 'read') {
+    await refresh();
+  }
+  return {
+    verdict,
+    outputs: {
+      ...accountOutputs(store.units),
+      api_calls_left: api.rateLimits.remainingDay,
+      data_age_seconds:
+        store.lastRefreshAt > 0
+          ? Math.max(0, Math.round((now() - store.lastRefreshAt) / 1000))
+          : null,
+    },
   };
 }
 

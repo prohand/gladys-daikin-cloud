@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What this is
 
-An **external Gladys Assistant integration** (a container the Gladys supervisor runs, not code inside Gladys) that drives Daikin air conditioners through the public [Onecta cloud API](https://developer.cloud.daikineurope.com/). ESM-only, Node >= 20, one runtime dependency: `@gladysassistant/integration-sdk`.
+An **external Gladys Assistant integration** (a container the Gladys supervisor runs, not code inside Gladys) that drives Daikin air conditioners through the public [Onecta cloud API](https://developer.cloud.daikineurope.com/). ESM-only, Node >= 22, one runtime dependency: `@gladysassistant/integration-sdk`.
 
 ## Commands
 
@@ -18,7 +18,7 @@ npm run format                        # prettier --write .
 npm run format:check                  # what CI gates on
 ```
 
-CI (`.github/workflows/ci.yml`) runs `format:check`, `lint`, `test` on Node 24 — the version the Docker image ships. All three must pass.
+CI (`.github/workflows/ci.yml`) runs `format:check`, `lint`, `test` on Node 22 and 24 (24 is the version the Docker image ships), and builds the image on pull requests. All of it must pass.
 
 Running against a real Gladys needs the three variables the supervisor injects; the SDK reads them itself:
 
@@ -47,6 +47,9 @@ src/devices/index.js        catalog, transport badges, device->unit routing
 src/widgets.js              dashboard widget content (Gladys 5.1, pure)
 src/sceneEvents.js          scene triggers: transitions between two reads (pure)
 src/sceneActions.js         scene actions: set_climate, consumption, refresh (pure)
+src/connectionStatus.js     Configuration-screen status: failed scheduled reads, recovery
+src/tokenPersistence.js     rotated refresh tokens kept pending until Gladys stores them
+src/commands.js             multi-write commands: reflect the writes Daikin accepted
 ```
 
 Data flows one way: `api` → `model.parseUnits()` → the store's `units` snapshot → `devices/` builds discovery/state/command payloads → SDK. `index.js` holds no protocol logic, `src/mapping.js` and `src/devices/climateUnit.js` are pure and never touch the network.
@@ -85,7 +88,7 @@ That timer is the only thing keeping Gladys up to date, and on a first install i
 
 **Offline units are not published.** Stale values would draw flat lines that look like measurements; the transport badge (`cloud`, `cloud + degraded` on `isInErrorState`, `unreachable` on `isCloudConnectionUp: false`) carries the information instead.
 
-**Gladys 5.1 capabilities ride on the snapshot, never on a read of their own.** Widgets are built from `store.units` (a dashboard left open must cost zero calls) and nudged with `requestWidgetRefresh` after every read (the store's `onRead` hook) and every command; their temperature/energy tiles are `device_feature` bindings the core keeps live on its own. **Widgets do not drive the unit**, not even on/off (the `daikin_unit` pair was removed as a duplicate): the vocabulary has no toggle, select or slider, only buttons (four per content, eight components in all). Two attempts were dropped after use — pages of buttons in `daikin_unit` (PR #9, reverted: it pushed the tiles out) and a `daikin_controls` widget, first paged (a jumble), then one setting per instance — because the core's Devices box already renders every feature with its native control (mode selector, setpoint −/+, fan slider, per-axis swing, toggles). Controls belong there. Scene triggers are TRANSITIONS computed by `SceneEventTracker` between two reads: the first read after a start is a silent baseline, a new unit starts silently, the fault flag is only compared while the unit is reachable on both reads, the quota event fires once on the way down (≤ 20 left) and re-arms when the counter climbs back, and a 401 without a linked account is not an expired session. Scene actions go through `sendCommand` in `index.js` — the same write path as `onSetValue` — and `set_climate` validates everything before its first write, then sends power → mode → setpoint → fan so the setpoint lands in the NEW mode (Daikin keeps one per mode), skipping what the unit already does. `refresh_account` reuses a read younger than 60 s. The keys of widgets, triggers and actions are stored by the dashboards and scenes: never rename one.
+**Gladys 5.1 capabilities ride on the snapshot, never on a read of their own.** Widgets are built from `store.units` (a dashboard left open must cost zero calls) and nudged with `requestWidgetRefresh` after every read (the store's `onRead` hook) and every command; their temperature/energy tiles are `device_feature` bindings the core keeps live on its own. **Widgets do not drive the unit**, not even on/off (the `daikin_unit` pair was removed as a duplicate): the vocabulary has no toggle, select or slider, only buttons (four per content, eight components in all). Two attempts were dropped after use — pages of buttons in `daikin_unit` (PR #9, reverted: it pushed the tiles out) and a `daikin_controls` widget, first paged (a jumble), then one setting per instance — because the core's Devices box already renders every feature with its native control (mode selector, setpoint −/+, fan slider, per-axis swing, toggles). Controls belong there. Scene triggers are TRANSITIONS computed by `SceneEventTracker` between two reads: the first read after a start is a silent baseline, a new unit starts silently, the fault flag is only compared while the unit is reachable on both reads, the quota event fires once on the way down (≤ 20 left) and re-arms when the counter climbs back, and a 401 without a linked account is not an expired session. Scene actions go through `sendCommand` in `index.js` — the same write path as `onSetValue` — and `set_climate` validates everything before its first write, then sends power → mode → setpoint → fan so the setpoint lands in the NEW mode (Daikin keeps one per mode), skipping what the unit already does. `refresh_account` reads the cloud at most once every 10 min, and never with 20 calls or fewer left for the day: otherwise it returns the snapshot with its age (`data_age_seconds`). The keys of widgets, triggers and actions are stored by the dashboards and scenes: never rename one.
 
 **OAuth tokens live in the config store, outside `config_schema`** (`src/config.js`, `TOKEN_KEYS`): keys the schema does not declare are private storage and never reach the frontend. Every refresh is persisted immediately via `onTokensRefreshed` so a restart never costs another consent screen. `src/daikin/api.js` serializes all requests through a promise chain — parallel calls with an expired token would each refresh, and the second refresh invalidates the first.
 

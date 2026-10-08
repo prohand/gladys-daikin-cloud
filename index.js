@@ -35,6 +35,8 @@ import {
 import { DaikinApi } from './src/daikin/api.js';
 import { buildAuthorizeUrl, exchangeCodeForTokens } from './src/daikin/oauth.js';
 import { DaikinStore } from './src/store.js';
+import { sendWrites } from './src/commands.js';
+import { TokenPersistence } from './src/tokenPersistence.js';
 import {
   buildAllStates,
   buildCommands,
@@ -49,10 +51,11 @@ import {
 } from './src/devices/index.js';
 import {
   SCENE_ACTION,
-  accountOutputs,
   consumptionOutputs,
+  refreshAccount,
   setClimate,
 } from './src/sceneActions.js';
+import { ConnectionStatus } from './src/connectionStatus.js';
 import { SceneEventTracker } from './src/sceneEvents.js';
 import { WIDGET, buildAccountWidget, buildUnitWidget } from './src/widgets.js';
 
@@ -78,14 +81,15 @@ let discoveryPending = true;
 // clicks "Connect" and verified when the provider redirects back.
 let oauthState = null;
 
+// Every token renewal is persisted immediately: a container restart must
+// never cost the user another trip through the Daikin consent screen. A save
+// that fails is retried at the next operation (see src/tokenPersistence.js).
+const tokenPersistence = new TokenPersistence({
+  save: (partialConfig) => gladys.setConfig(partialConfig),
+});
+
 const api = new DaikinApi({
-  // Every token renewal is persisted immediately: a container restart must
-  // never cost the user another trip through the Daikin consent screen.
-  onTokensRefreshed: async (tokens) => {
-    await gladys.setConfig(tokensToConfig(tokens)).catch((err) => {
-      logger.error('Could not persist the refreshed Daikin tokens', err);
-    });
-  },
+  onTokensRefreshed: (tokens) => tokenPersistence.persist(tokens),
 });
 
 // What happened between two reads (a unit lost, a fault, the quota running
@@ -93,9 +97,9 @@ const api = new DaikinApi({
 // store, whoever asked for it, so that is where the comparison hooks in.
 const sceneEvents = new SceneEventTracker();
 
-// A scene asking for a fresh read this soon after the last one gets that one:
-// a scene run every minute must not be able to spend the daily quota.
-const MIN_FORCED_REFRESH_MS = 60_000;
+// What the Configuration screen says about the link with Daikin, kept right
+// by every read whoever asked for it (see src/connectionStatus.js).
+const connectionStatus = new ConnectionStatus({ gladys, api });
 
 const store = new DaikinStore({
   api,
@@ -110,6 +114,9 @@ const store = new DaikinStore({
     // The widgets are built from this snapshot: have the open dashboards
     // pull the new one rather than wait for their TTL.
     nudgeWidgets();
+    // A failure shown by an earlier read is over.
+    void connectionStatus.readSucceeded();
+    void tokenPersistence.flush();
   },
   onReadFailed: (err) => {
     publishSceneEvents([
@@ -118,6 +125,10 @@ const store = new DaikinStore({
       ...(api.isConnected ? sceneEvents.refreshFailed(err) : []),
       ...sceneEvents.quotaRead(api.rateLimits),
     ]);
+    // The scheduled read has no caller to tell: without this, a revoked token
+    // or a spent quota left the Configuration screen on "Connected".
+    void connectionStatus.readFailed(err);
+    void tokenPersistence.flush();
   },
 });
 
@@ -150,6 +161,9 @@ gladys.onOAuthCallback(async (key, { code, state, redirectUri }) => {
 
   api.setCredentials({ clientId: config.client_id, clientSecret: config.client_secret });
   api.setTokens(tokens);
+  // A renewal of the previous session still waiting to be saved must not land
+  // after this one and overwrite it.
+  tokenPersistence.discard();
   await gladys.setConfig(tokensToConfig(tokens));
 
   // The account is linked: read it right away so the units show up in the
@@ -286,18 +300,29 @@ gladys.onSceneAction(SCENE_ACTION.READ_CONSUMPTION, async (fields) => {
 });
 
 gladys.onSceneAction(SCENE_ACTION.REFRESH_ACCOUNT, async () => {
-  let units = store.units;
-  if (store.lastRefreshAt === 0 || Date.now() - store.lastRefreshAt >= MIN_FORCED_REFRESH_MS) {
-    logger.info('Scene action refresh_account -> live request to the Daikin cloud');
-    try {
-      units = await refreshAndPublish();
-      await reportConnected();
-    } catch (err) {
-      await reportFailure(err);
-      throw err;
-    }
+  // At most one read every 10 minutes, none when the daily quota is nearly
+  // spent: a scene run every minute must not be able to spend it. Otherwise
+  // the snapshot is served with its age (see src/sceneActions.js).
+  const { verdict, outputs } = await refreshAccount({
+    store,
+    api,
+    refresh: async () => {
+      logger.info('Scene action refresh_account -> live request to the Daikin cloud');
+      try {
+        await refreshAndPublish();
+        await reportConnected();
+      } catch (err) {
+        await reportFailure(err);
+        throw err;
+      }
+    },
+  });
+  if (verdict !== 'read') {
+    logger.info(
+      `Scene action refresh_account -> snapshot of ${outputs.data_age_seconds} s served (${verdict})`,
+    );
   }
-  return { ...accountOutputs(units), api_calls_left: api.rateLimits.remainingDay };
+  return outputs;
 });
 
 // --- Dashboard widgets (Gladys 5.1) -------------------------------------------
@@ -331,7 +356,10 @@ gladys.onConfigUpdated(async (newConfig) => {
   api.setCredentials({ clientId: config.client_id, clientSecret: config.client_secret });
   // Only take the session from a payload that actually carries one, otherwise
   // saving the form would unlink a perfectly working account (see config.js).
-  if (hasStoredTokens(newConfig)) {
+  // Nor while a renewed session has not reached Gladys yet: the payload then
+  // carries the refresh token Daikin already rotated away.
+  await tokenPersistence.flush();
+  if (hasStoredTokens(newConfig) && !tokenPersistence.hasPending) {
     api.setTokens(readTokens(newConfig));
   }
 
@@ -353,10 +381,16 @@ gladys.on('connected', async () => {
     // 1) The one thing still worth asking the version about, then the config
     // filled in by the user.
     capabilities = { ...capabilities, supportedOptions: await detectSupportedOptions(gladys) };
+    // A renewal that could not be saved while Gladys was away is saved now,
+    // BEFORE the config is read back: the stored refresh token is the one
+    // Daikin already rotated away.
+    await tokenPersistence.flush();
     const rawConfig = await gladys.getConfig();
     config = normalizeConfig(rawConfig);
     api.setCredentials({ clientId: config.client_id, clientSecret: config.client_secret });
-    api.setTokens(readTokens(rawConfig));
+    if (!tokenPersistence.hasPending) {
+      api.setTokens(readTokens(rawConfig));
+    }
 
     // 2) Nothing to read until the user linked their Daikin account: say so in
     // the Configuration screen instead of failing silently.
@@ -455,38 +489,22 @@ async function sendCommand(unit, featureKey, value) {
   }
 
   const { writes, states } = buildCommands(unit, featureKey, value);
-  // Before the first write, not after the last: a scheduled read starting in
-  // between must wait for the quiet period too.
-  store.markCommandSent();
   try {
-    for (const write of writes) {
-      await api.setCharacteristic({
-        deviceId: unit.deviceId,
-        // Most characteristics belong to the climate control point, but a few
-        // (the indoor unit's "keep dry") live on another one and carry it.
-        embeddedId: write.embeddedId ?? unit.embeddedId,
-        characteristic: write.characteristic,
-        path: write.path,
-        value: write.value,
-      });
-    }
+    // The writes, then the snapshot patched with what Daikin accepted — even
+    // when a later write of the same command failed (see src/commands.js).
+    await sendWrites({ api, store, unit, writes });
   } finally {
     // Every write spends quota, accepted or not.
     publishSceneEvents(sceneEvents.quotaRead(api.rateLimits));
+    void tokenPersistence.flush();
   }
 
   // The Daikin cloud serves the previous values for a few seconds after a
-  // write: reflect the change locally and publish it now, the next scheduled
-  // refresh will confirm it. A command can move more than the feature it was
-  // sent to — the unit's power answers to two of them — so what is published
-  // back is the list the command produced, not just the one Gladys named.
-  store.markCommandSent();
-  // A read already queued when the command was sent replaces the snapshot with
-  // the values from BEFORE it (the API serializes requests, so it answers
-  // first). Patching the object captured above would then change a unit no
-  // longer in the snapshot, and widgets, republishes and set_climate would see
-  // the old values until the next read: patch the unit the snapshot holds now.
-  store.applyWrites(store.getUnit(unit.platformId) ?? unit, writes);
+  // write: the snapshot was patched above, publish the change now, the next
+  // scheduled refresh will confirm it. A command can move more than the
+  // feature it was sent to — the unit's power answers to two of them — so what
+  // is published back is the list the command produced, not just the one
+  // Gladys named.
   await gladys.publishStates(
     states.map((published) => ({
       device_feature_external_id: featureExternalId(gladys, unit, published.featureKey),
@@ -659,51 +677,17 @@ function startPolling() {
   });
 }
 
-/**
- * Report the integration as connected, and show what is left of the Daikin
- * daily quota under the Connect button. The Configuration screen renders the
- * status message whether the integration is up or down, which makes it the one
- * place a live counter can live without inventing a UI for it — and the quota
- * is the number that actually decides how this integration behaves.
- */
+/** Report the integration as connected (see src/connectionStatus.js). */
 async function reportConnected() {
-  const { remainingDay, limitDay } = api.rateLimits;
-  if (remainingDay === null) {
-    await gladys.setConnectionStatus(true).catch(() => {});
-    return;
-  }
-  const total = limitDay === null ? '' : `/${limitDay}`;
-  await gladys
-    .setConnectionStatus(true, {
-      en: `Connected. ${remainingDay}${total} Daikin API calls left today.`,
-      fr: `Connecté. ${remainingDay}${total} appels d'API Daikin restants aujourd'hui.`,
-    })
-    .catch(() => {});
+  await connectionStatus.connected();
 }
 
 /**
- * Surface a failure in the Configuration screen. A cloud integration can be
- * RUNNING and still unable to talk to its provider — without this channel the
- * user only sees an integration that quietly stopped updating.
- * @param {Error & { isAuthError?: boolean, isRateLimited?: boolean }} err what went wrong
+ * Surface a failure in the Configuration screen (see src/connectionStatus.js).
+ * @param {Error} err what went wrong
  */
 async function reportFailure(err) {
-  let message = {
-    en: 'Could not reach the Daikin cloud, check the integration logs.',
-    fr: "Impossible de joindre le cloud Daikin, consultez les logs de l'intégration.",
-  };
-  if (err?.isAuthError) {
-    message = {
-      en: 'The Daikin session expired, please reconnect your account.',
-      fr: 'La session Daikin a expiré, reconnectez votre compte.',
-    };
-  } else if (err?.isRateLimited) {
-    message = {
-      en: 'Daikin API quota reached, increase the refresh interval.',
-      fr: "Quota de l'API Daikin atteint, augmentez l'intervalle de rafraîchissement.",
-    };
-  }
-  await gladys.setConnectionStatus(false, message).catch(() => {});
+  await connectionStatus.failed(err);
 }
 
 /**
@@ -718,6 +702,17 @@ function chunk(items, size) {
   }
   return chunks;
 }
+
+// --- Safety net --------------------------------------------------------------
+// Several paths start work they do not wait for (scene events, widget nudges,
+// status updates fired from the store hooks). A rejection one of them forgot
+// to catch would otherwise END the process — Node's default since v15 — and
+// with it the only schedule keeping Gladys up to date. Log it and keep running;
+// an uncaught synchronous exception still crashes, on purpose: the state is
+// then unknown, and the supervisor restarts the container.
+process.on('unhandledRejection', (reason) => {
+  logger.error('Unhandled promise rejection', reason);
+});
 
 // --- Startup -----------------------------------------------------------------
 logger.info('Starting the Daikin Cloud integration...');

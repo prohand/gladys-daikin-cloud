@@ -6,9 +6,42 @@ All notable changes to this integration are documented here. The format follows
 
 ## [Unreleased]
 
+### Fixed
+
+- The _Refresh the Daikin account now_ scene action reads at most once every 10 minutes (was once a
+  minute: a scene run every minute could spend 1,440 calls a day for a quota of 200), and never
+  when 20 calls or fewer are left today. It then answers from the last read, with its age in the
+  new `data_age_seconds` output.
+- A scheduled read that fails (session revoked, quota spent, cloud unreachable) now shows in the
+  Configuration screen instead of leaving it on "Connected", and the status comes back at the next
+  read that works.
+- A timeout or a Gladys server error while publishing the devices no longer downgrades the feature
+  catalog (fan and louvers lost for the whole connection): only a validation refusal steps it down.
+- A renewed Daikin session that could not be saved to Gladys is saved again at the next operation,
+  instead of being lost — which asked for a new Daikin login after the next restart.
+- When the second write of a command fails, the first one, already applied by Daikin, is kept in
+  the snapshot instead of being shown with its old value until the next read.
+
+### Changed
+
+- Node.js 22 or later is required (`engines`); CI tests on Node 22 and 24, and builds the Docker
+  image on pull requests.
+- The Docker image installs strictly from the lock file and drops the npm cache.
+- Dependabot also follows the Docker base image.
+
 ## [4.2.0] - 2026-10-07
 
-- Maintenance release, no functional change.
+### Fixed
+
+- Keep the snapshot right when a command crosses a read: a read queued just before a command
+  replaced the values the command had just set, and widgets, republishes and `set_climate` showed
+  the old values until the next read.
+
+### Changed
+
+- CI runs the store admission checks on pull requests; Dependabot keeps the dependencies and the
+  GitHub Actions up to date.
+- A GitHub Release is published for every version.
 
 ## [4.1.0] - 2026-10-06
 
