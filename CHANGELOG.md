@@ -6,6 +6,10 @@ All notable changes to this integration are documented here. The format follows
 
 ## [Unreleased]
 
+## [4.3.1] - 2026-10-08
+
+- Maintenance release, no functional change.
+
 ## [4.3.0] - 2026-10-08
 
 ### Fixed
@@ -205,7 +209,8 @@ First public release.
 
 - Publish min/max on the On/Off feature, and warn to save before connecting
 
-[Unreleased]: https://github.com/prohand/gladys-daikin-cloud/compare/v4.3.0...HEAD
+[Unreleased]: https://github.com/prohand/gladys-daikin-cloud/compare/v4.3.1...HEAD
+[4.3.1]: https://github.com/prohand/gladys-daikin-cloud/compare/v4.3.0...v4.3.1
 [4.3.0]: https://github.com/prohand/gladys-daikin-cloud/compare/v4.2.0...v4.3.0
 [4.2.0]: https://github.com/prohand/gladys-daikin-cloud/compare/v4.1.0...v4.2.0
 [4.1.0]: https://github.com/prohand/gladys-daikin-cloud/compare/v4.0.5...v4.1.0
