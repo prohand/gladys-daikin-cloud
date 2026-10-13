@@ -14,24 +14,30 @@
 /**
  * The message for a failure, by what the user can do about it.
  * @param {Error & { isAuthError?: boolean, isRateLimited?: boolean }} err what went wrong
- * @returns {{ en: string, fr: string }} the message for the Configuration screen
+ * @returns {{ en: string, fr: string, de: string, es: string }} the message for the Configuration screen
  */
 export function failureMessage(err) {
   if (err?.isAuthError) {
     return {
       en: 'The Daikin session expired, please reconnect your account.',
       fr: 'La session Daikin a expiré, reconnectez votre compte.',
+      de: 'Die Daikin-Sitzung ist abgelaufen, bitte verbinden Sie Ihr Konto erneut.',
+      es: 'La sesión de Daikin ha caducado, vuelva a conectar su cuenta.',
     };
   }
   if (err?.isRateLimited) {
     return {
       en: 'Daikin API quota reached, increase the refresh interval.',
       fr: "Quota de l'API Daikin atteint, augmentez l'intervalle de rafraîchissement.",
+      de: 'Daikin-API-Kontingent erreicht, erhöhen Sie das Aktualisierungsintervall.',
+      es: 'Cuota de la API de Daikin alcanzada, aumente el intervalo de actualización.',
     };
   }
   return {
     en: 'Could not reach the Daikin cloud, check the integration logs.',
     fr: "Impossible de joindre le cloud Daikin, consultez les logs de l'intégration.",
+    de: 'Die Daikin-Cloud ist nicht erreichbar, prüfen Sie die Protokolle der Integration.',
+    es: 'No se puede contactar con la nube de Daikin, consulte los registros de la integración.',
   };
 }
 
@@ -66,6 +72,8 @@ export class ConnectionStatus {
       .setConnectionStatus(true, {
         en: `Connected. ${remainingDay}${total} Daikin API calls left today.`,
         fr: `Connecté. ${remainingDay}${total} appels d'API Daikin restants aujourd'hui.`,
+        de: `Verbunden. Heute noch ${remainingDay}${total} Daikin-API-Aufrufe übrig.`,
+        es: `Conectado. Quedan ${remainingDay}${total} llamadas a la API de Daikin hoy.`,
       })
       .catch(() => {});
   }

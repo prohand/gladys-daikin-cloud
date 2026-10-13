@@ -19,6 +19,9 @@ const manifest = JSON.parse(
 
 const packageJson = JSON.parse(await readFile(new URL('../package.json', import.meta.url), 'utf8'));
 
+// The languages of the Gladys interface: every user-facing text carries all four.
+const LANGUAGES = ['en', 'fr', 'de', 'es'];
+
 // Every action key registered through `gladys.onAction()` in index.js.
 const REGISTERED_ACTIONS = ['test_connection'];
 
@@ -28,6 +31,7 @@ test('the manifest declares a device integration with the required fields', () =
   // Bounds enforced by the core manifest validator: a manifest outside them
   // is refused at install time, with no way to fix it from the UI.
   assert.ok(manifest.name.length >= 3 && manifest.name.length <= 30);
+  assert.deepEqual(Object.keys(manifest.description), LANGUAGES);
   for (const [language, text] of Object.entries(manifest.description)) {
     assert.ok(
       text.length >= 10 && text.length <= 100,
@@ -222,7 +226,7 @@ test('section fields are purely presentational', () => {
   }
 });
 
-test('every user-facing text is translated in English and French', () => {
+test('every user-facing text is translated in English, French, German and Spanish', () => {
   const texts = [manifest.description];
   for (const field of manifest.config_schema) {
     texts.push(field.label);
@@ -264,8 +268,30 @@ test('every user-facing text is translated in English and French', () => {
     }
   }
   for (const text of texts) {
-    assert.ok(text.en, `missing English text in ${JSON.stringify(text)}`);
-    assert.ok(text.fr, `missing French text in ${JSON.stringify(text)}`);
+    for (const language of LANGUAGES) {
+      assert.ok(text[language], `missing "${language}" text in ${JSON.stringify(text)}`);
+    }
+  }
+});
+
+test('the widget texts fit the store bounds in every language', () => {
+  for (const widget of manifest.widgets ?? []) {
+    for (const language of LANGUAGES) {
+      const label = widget.label[language];
+      assert.ok(label.length >= 3 && label.length <= 30, `${widget.key}.label.${language}: 3-30`);
+      assert.ok(
+        widget.description[language].length <= 100,
+        `${widget.key}.description.${language}: at most 100 characters`,
+      );
+    }
+  }
+  for (const section of manifest.config_schema.filter((field) => field.type === 'section')) {
+    for (const language of LANGUAGES) {
+      assert.ok(
+        (section.description?.[language] ?? '').length <= 1000,
+        `${section.key}.description.${language}: at most 1000 characters`,
+      );
+    }
   }
 });
 

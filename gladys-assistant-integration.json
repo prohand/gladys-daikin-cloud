@@ -4,7 +4,9 @@
   "name": "Daikin Cloud",
   "description": {
     "en": "Control your Daikin air conditioners through the official Onecta cloud API.",
-    "fr": "Pilotez vos climatiseurs Daikin via l'API cloud officielle Daikin Onecta."
+    "fr": "Pilotez vos climatiseurs Daikin via l'API cloud officielle Daikin Onecta.",
+    "de": "Steuern Sie Ihre Daikin-Klimaanlagen über die offizielle Onecta-Cloud-API.",
+    "es": "Controle sus aires acondicionados Daikin con la API cloud oficial de Onecta."
   },
   "version": "4.3.3",
   "docker_image": "ghcr.io/prohand/gladys-daikin-cloud:4.3.3",
@@ -18,18 +20,24 @@
       "type": "section",
       "label": {
         "en": "Create your Daikin application",
-        "fr": "Créez votre application Daikin"
+        "fr": "Créez votre application Daikin",
+        "de": "Erstellen Sie Ihre Daikin-Anwendung",
+        "es": "Cree su aplicación Daikin"
       },
       "description": {
         "en": "The Onecta API is free but personal: create an account on the Daikin developer portal, add an application, and copy its Client ID and Client secret below. The portal asks for a Redirect URI: paste there the address displayed under the Connect button.",
-        "fr": "L'API Onecta est gratuite mais personnelle : créez un compte sur le portail développeur Daikin, ajoutez une application, puis copiez son Client ID et son Client secret ci-dessous. Le portail demande une Redirect URI : collez-y l'adresse affichée sous le bouton Connecter."
+        "fr": "L'API Onecta est gratuite mais personnelle : créez un compte sur le portail développeur Daikin, ajoutez une application, puis copiez son Client ID et son Client secret ci-dessous. Le portail demande une Redirect URI : collez-y l'adresse affichée sous le bouton Connecter.",
+        "de": "Die Onecta-API ist kostenlos, aber persönlich: Erstellen Sie ein Konto im Daikin-Entwicklerportal, fügen Sie eine Anwendung hinzu und kopieren Sie deren Client ID und Client secret unten. Das Portal fragt nach einer Redirect URI: Fügen Sie dort die Adresse ein, die unter der Schaltfläche „Verbinden“ angezeigt wird.",
+        "es": "La API Onecta es gratuita pero personal: cree una cuenta en el portal para desarrolladores de Daikin, añada una aplicación y copie su Client ID y su Client secret a continuación. El portal pide una Redirect URI: pegue ahí la dirección que aparece bajo el botón Conectar."
       },
       "links": [
         {
           "url": "https://developer.cloud.daikineurope.com/",
           "label": {
             "en": "Daikin developer portal",
-            "fr": "Portail développeur Daikin"
+            "fr": "Portail développeur Daikin",
+            "de": "Daikin-Entwicklerportal",
+            "es": "Portal para desarrolladores de Daikin"
           }
         }
       ]
@@ -39,11 +47,15 @@
       "type": "string",
       "label": {
         "en": "Client ID",
-        "fr": "Client ID"
+        "fr": "Client ID",
+        "de": "Client ID",
+        "es": "Client ID"
       },
       "description": {
         "en": "The Client ID of your application on the Daikin developer portal.",
-        "fr": "Le Client ID de votre application sur le portail développeur Daikin."
+        "fr": "Le Client ID de votre application sur le portail développeur Daikin.",
+        "de": "Die Client ID Ihrer Anwendung im Daikin-Entwicklerportal.",
+        "es": "El Client ID de su aplicación en el portal para desarrolladores de Daikin."
       },
       "required": true
     },
@@ -52,11 +64,15 @@
       "type": "secret",
       "label": {
         "en": "Client secret",
-        "fr": "Client secret"
+        "fr": "Client secret",
+        "de": "Client secret",
+        "es": "Client secret"
       },
       "description": {
         "en": "The Client secret of your application. Save the configuration before connecting your account.",
-        "fr": "Le Client secret de votre application. Enregistrez la configuration avant de connecter votre compte."
+        "fr": "Le Client secret de votre application. Enregistrez la configuration avant de connecter votre compte.",
+        "de": "Das Client secret Ihrer Anwendung. Speichern Sie die Konfiguration, bevor Sie Ihr Konto verbinden.",
+        "es": "El Client secret de su aplicación. Guarde la configuración antes de conectar su cuenta."
       },
       "required": true
     },
@@ -65,11 +81,15 @@
       "type": "section",
       "label": {
         "en": "Link your Daikin account",
-        "fr": "Liez votre compte Daikin"
+        "fr": "Liez votre compte Daikin",
+        "de": "Verknüpfen Sie Ihr Daikin-Konto",
+        "es": "Vincule su cuenta Daikin"
       },
       "description": {
         "en": "Click Save BEFORE clicking Connect: the integration reads the client ID and the secret from the SAVED configuration, so connecting with an unsaved form fails. Then sign in with the Daikin account your air conditioners are paired with in the Onecta app. The address displayed under the button is the Redirect URI to declare on the developer portal.",
-        "fr": "Cliquez sur Enregistrer AVANT de cliquer sur Connecter : l'intégration lit le client ID et le secret dans la configuration ENREGISTRÉE, se connecter avec un formulaire non enregistré échoue donc. Identifiez-vous ensuite avec le compte Daikin auquel vos climatiseurs sont associés dans l'application Onecta. L'adresse affichée sous le bouton est la Redirect URI à déclarer sur le portail développeur."
+        "fr": "Cliquez sur Enregistrer AVANT de cliquer sur Connecter : l'intégration lit le client ID et le secret dans la configuration ENREGISTRÉE, se connecter avec un formulaire non enregistré échoue donc. Identifiez-vous ensuite avec le compte Daikin auquel vos climatiseurs sont associés dans l'application Onecta. L'adresse affichée sous le bouton est la Redirect URI à déclarer sur le portail développeur.",
+        "de": "Klicken Sie auf „Konfiguration speichern“, BEVOR Sie auf „Verbinden“ klicken: Die Integration liest die Client ID und das Secret aus der GESPEICHERTEN Konfiguration, eine Verbindung mit einem nicht gespeicherten Formular schlägt daher fehl. Melden Sie sich anschließend mit dem Daikin-Konto an, mit dem Ihre Klimaanlagen in der Onecta-App gekoppelt sind. Die unter der Schaltfläche angezeigte Adresse ist die Redirect URI, die im Entwicklerportal einzutragen ist.",
+        "es": "Pulse Guardar configuración ANTES de pulsar Conectar: la integración lee el Client ID y el secret de la configuración GUARDADA, por lo que conectar con un formulario sin guardar falla. Después, inicie sesión con la cuenta Daikin a la que están vinculados sus aires acondicionados en la app Onecta. La dirección que aparece bajo el botón es la Redirect URI que debe declarar en el portal para desarrolladores."
       }
     },
     {
@@ -77,7 +97,9 @@
       "type": "oauth2",
       "label": {
         "en": "Daikin account",
-        "fr": "Compte Daikin"
+        "fr": "Compte Daikin",
+        "de": "Daikin-Konto",
+        "es": "Cuenta Daikin"
       },
       "required": true
     },
@@ -86,11 +108,15 @@
       "type": "section",
       "label": {
         "en": "Refresh rate and API quota",
-        "fr": "Rafraîchissement et quota d'API"
+        "fr": "Rafraîchissement et quota d'API",
+        "de": "Aktualisierung und API-Kontingent",
+        "es": "Actualización y cuota de la API"
       },
       "description": {
         "en": "Daikin allows 200 API calls per day and 20 per minute. Every refresh reads all your units in a single call, and each command you send costs one more call. 900 seconds (15 minutes) uses 96 calls a day and leaves room for commands; lower it only if you rarely control your units from Gladys.",
-        "fr": "Daikin autorise 200 appels d'API par jour et 20 par minute. Chaque rafraîchissement lit toutes vos unités en un seul appel, et chaque commande envoyée coûte un appel de plus. 900 secondes (15 minutes) consomment 96 appels par jour et laissent de la marge pour les commandes ; ne le baissez que si vous pilotez peu vos unités depuis Gladys."
+        "fr": "Daikin autorise 200 appels d'API par jour et 20 par minute. Chaque rafraîchissement lit toutes vos unités en un seul appel, et chaque commande envoyée coûte un appel de plus. 900 secondes (15 minutes) consomment 96 appels par jour et laissent de la marge pour les commandes ; ne le baissez que si vous pilotez peu vos unités depuis Gladys.",
+        "de": "Daikin erlaubt 200 API-Aufrufe pro Tag und 20 pro Minute. Jede Aktualisierung liest alle Ihre Einheiten mit einem einzigen Aufruf, und jeder gesendete Befehl kostet einen weiteren Aufruf. 900 Sekunden (15 Minuten) verbrauchen 96 Aufrufe pro Tag und lassen Spielraum für Befehle; senken Sie den Wert nur, wenn Sie Ihre Einheiten selten über Gladys steuern.",
+        "es": "Daikin permite 200 llamadas a la API al día y 20 por minuto. Cada actualización lee todas sus unidades en una sola llamada, y cada orden que envíe cuesta una llamada más. 900 segundos (15 minutos) consumen 96 llamadas al día y dejan margen para las órdenes; redúzcalo solo si rara vez controla sus unidades desde Gladys."
       }
     },
     {
@@ -98,11 +124,15 @@
       "type": "number",
       "label": {
         "en": "Refresh interval (s)",
-        "fr": "Intervalle de rafraîchissement (s)"
+        "fr": "Intervalle de rafraîchissement (s)",
+        "de": "Aktualisierungsintervall (s)",
+        "es": "Intervalo de actualización (s)"
       },
       "description": {
         "en": "How often the Daikin cloud is read, in seconds.",
-        "fr": "Fréquence de lecture du cloud Daikin, en secondes."
+        "fr": "Fréquence de lecture du cloud Daikin, en secondes.",
+        "de": "Wie oft die Daikin-Cloud gelesen wird, in Sekunden.",
+        "es": "Frecuencia de lectura de la nube de Daikin, en segundos."
       },
       "required": false,
       "default": 900,
@@ -115,11 +145,15 @@
       "key": "test_connection",
       "label": {
         "en": "Test the connection",
-        "fr": "Tester la connexion"
+        "fr": "Tester la connexion",
+        "de": "Verbindung testen",
+        "es": "Probar la conexión"
       },
       "description": {
         "en": "Read your Daikin account now: lists the units found and the API calls left for today.",
-        "fr": "Lit votre compte Daikin maintenant : affiche les unités trouvées et les appels d'API restants pour aujourd'hui."
+        "fr": "Lit votre compte Daikin maintenant : affiche les unités trouvées et les appels d'API restants pour aujourd'hui.",
+        "de": "Liest Ihr Daikin-Konto sofort: zeigt die gefundenen Einheiten und die heute verbleibenden API-Aufrufe.",
+        "es": "Lee su cuenta Daikin ahora: muestra las unidades encontradas y las llamadas a la API que quedan hoy."
       },
       "timeout_seconds": 30
     }
@@ -129,11 +163,15 @@
       "key": "daikin_unit",
       "label": {
         "en": "Daikin air conditioner",
-        "fr": "Climatiseur Daikin"
+        "fr": "Climatiseur Daikin",
+        "de": "Daikin-Klimaanlage",
+        "es": "Aire acondicionado Daikin"
       },
       "description": {
         "en": "One unit at a glance: temperatures, energy, state, fan, louvers and comfort modes.",
-        "fr": "Une unité d'un coup d'œil : températures, énergie, état, ventilation, volets et modes confort."
+        "fr": "Une unité d'un coup d'œil : températures, énergie, état, ventilation, volets et modes confort.",
+        "de": "Eine Einheit auf einen Blick: Temperaturen, Energie, Zustand, Lüfter, Lamellen, Komfortmodi.",
+        "es": "Una unidad de un vistazo: temperaturas, energía, estado, ventilador, lamas y modos confort."
       },
       "icon": "wind",
       "settings": [
@@ -143,7 +181,9 @@
           "source": "devices",
           "label": {
             "en": "Unit",
-            "fr": "Unité"
+            "fr": "Unité",
+            "de": "Einheit",
+            "es": "Unidad"
           },
           "required": true
         },
@@ -152,7 +192,9 @@
           "type": "select",
           "label": {
             "en": "Chart",
-            "fr": "Graphique"
+            "fr": "Graphique",
+            "de": "Diagramm",
+            "es": "Gráfico"
           },
           "default": "temperature",
           "options": [
@@ -160,21 +202,27 @@
               "value": "temperature",
               "label": {
                 "en": "Temperatures, last 24 h",
-                "fr": "Températures sur 24 h"
+                "fr": "Températures sur 24 h",
+                "de": "Temperaturen, letzte 24 h",
+                "es": "Temperaturas, últimas 24 h"
               }
             },
             {
               "value": "consumption",
               "label": {
                 "en": "Energy per 2 h, today and yesterday",
-                "fr": "Énergie par 2 h, aujourd'hui et hier"
+                "fr": "Énergie par 2 h, aujourd'hui et hier",
+                "de": "Energie pro 2 h, heute und gestern",
+                "es": "Energía cada 2 h, hoy y ayer"
               }
             },
             {
               "value": "none",
               "label": {
                 "en": "No chart",
-                "fr": "Aucun graphique"
+                "fr": "Aucun graphique",
+                "de": "Kein Diagramm",
+                "es": "Sin gráfico"
               }
             }
           ]
@@ -185,11 +233,15 @@
       "key": "daikin_account",
       "label": {
         "en": "Daikin account",
-        "fr": "Compte Daikin"
+        "fr": "Compte Daikin",
+        "de": "Daikin-Konto",
+        "es": "Cuenta Daikin"
       },
       "description": {
         "en": "Every unit at a glance, energy per month and the API calls left today.",
-        "fr": "Toutes les unités, l'énergie par mois et les appels d'API restants du jour."
+        "fr": "Toutes les unités, l'énergie par mois et les appels d'API restants du jour.",
+        "de": "Alle Einheiten, Energie pro Monat und die heute verbleibenden API-Aufrufe.",
+        "es": "Todas las unidades, la energía por mes y las llamadas a la API que quedan hoy."
       },
       "icon": "cloud"
     }
@@ -199,11 +251,15 @@
       "key": "unit_connection_changed",
       "label": {
         "en": "A Daikin unit goes offline or back online",
-        "fr": "Une unité Daikin est perdue ou retrouvée"
+        "fr": "Une unité Daikin est perdue ou retrouvée",
+        "de": "Eine Daikin-Einheit geht offline oder wieder online",
+        "es": "Una unidad Daikin se desconecta o vuelve a conectarse"
       },
       "description": {
         "en": "The unit lost, or found again, its connection to the Daikin cloud. Checked at every refresh.",
-        "fr": "L'unité a perdu, ou retrouvé, sa connexion au cloud Daikin. Vérifié à chaque rafraîchissement."
+        "fr": "L'unité a perdu, ou retrouvé, sa connexion au cloud Daikin. Vérifié à chaque rafraîchissement.",
+        "de": "Die Einheit hat ihre Verbindung zur Daikin-Cloud verloren oder wiedergefunden. Bei jeder Aktualisierung geprüft.",
+        "es": "La unidad ha perdido, o recuperado, su conexión con la nube de Daikin. Se comprueba en cada actualización."
       },
       "fields": [
         {
@@ -212,11 +268,15 @@
           "source": "devices",
           "label": {
             "en": "Unit",
-            "fr": "Unité"
+            "fr": "Unité",
+            "de": "Einheit",
+            "es": "Unidad"
           },
           "description": {
             "en": "Empty: any unit.",
-            "fr": "Vide : n'importe quelle unité."
+            "fr": "Vide : n'importe quelle unité.",
+            "de": "Leer: beliebige Einheit.",
+            "es": "Vacío: cualquier unidad."
           }
         },
         {
@@ -224,25 +284,33 @@
           "type": "select",
           "label": {
             "en": "Connection",
-            "fr": "Connexion"
+            "fr": "Connexion",
+            "de": "Verbindung",
+            "es": "Conexión"
           },
           "description": {
             "en": "Empty: both.",
-            "fr": "Vide : les deux."
+            "fr": "Vide : les deux.",
+            "de": "Leer: beides.",
+            "es": "Vacío: ambos."
           },
           "options": [
             {
               "value": "offline",
               "label": {
                 "en": "Lost",
-                "fr": "Perdue"
+                "fr": "Perdue",
+                "de": "Verloren",
+                "es": "Perdida"
               }
             },
             {
               "value": "online",
               "label": {
                 "en": "Restored",
-                "fr": "Rétablie"
+                "fr": "Rétablie",
+                "de": "Wiederhergestellt",
+                "es": "Restablecida"
               }
             }
           ]
@@ -254,7 +322,9 @@
           "type": "string",
           "label": {
             "en": "Unit name",
-            "fr": "Nom de l'unité"
+            "fr": "Nom de l'unité",
+            "de": "Name der Einheit",
+            "es": "Nombre de la unidad"
           }
         },
         {
@@ -262,7 +332,9 @@
           "type": "string",
           "label": {
             "en": "Connection (online or offline)",
-            "fr": "Connexion (online ou offline)"
+            "fr": "Connexion (online ou offline)",
+            "de": "Verbindung (online oder offline)",
+            "es": "Conexión (online u offline)"
           }
         }
       ]
@@ -271,11 +343,15 @@
       "key": "unit_error_changed",
       "label": {
         "en": "A Daikin unit reports or clears an error",
-        "fr": "Une unité Daikin signale ou efface une erreur"
+        "fr": "Une unité Daikin signale ou efface une erreur",
+        "de": "Eine Daikin-Einheit meldet oder behebt einen Fehler",
+        "es": "Una unidad Daikin señala o borra un error"
       },
       "description": {
         "en": "The unit started, or stopped, reporting a fault. The error code is shown in the Onecta app.",
-        "fr": "L'unité a commencé, ou cessé, de signaler une panne. Le code d'erreur est visible dans l'application Onecta."
+        "fr": "L'unité a commencé, ou cessé, de signaler une panne. Le code d'erreur est visible dans l'application Onecta.",
+        "de": "Die Einheit hat begonnen oder aufgehört, eine Störung zu melden. Der Fehlercode wird in der Onecta-App angezeigt.",
+        "es": "La unidad ha empezado, o dejado, de señalar una avería. El código de error se muestra en la app Onecta."
       },
       "fields": [
         {
@@ -284,11 +360,15 @@
           "source": "devices",
           "label": {
             "en": "Unit",
-            "fr": "Unité"
+            "fr": "Unité",
+            "de": "Einheit",
+            "es": "Unidad"
           },
           "description": {
             "en": "Empty: any unit.",
-            "fr": "Vide : n'importe quelle unité."
+            "fr": "Vide : n'importe quelle unité.",
+            "de": "Leer: beliebige Einheit.",
+            "es": "Vacío: cualquier unidad."
           }
         },
         {
@@ -296,25 +376,33 @@
           "type": "select",
           "label": {
             "en": "Error",
-            "fr": "Erreur"
+            "fr": "Erreur",
+            "de": "Fehler",
+            "es": "Error"
           },
           "description": {
             "en": "Empty: both.",
-            "fr": "Vide : les deux."
+            "fr": "Vide : les deux.",
+            "de": "Leer: beides.",
+            "es": "Vacío: ambos."
           },
           "options": [
             {
               "value": "error",
               "label": {
                 "en": "Reported",
-                "fr": "Signalée"
+                "fr": "Signalée",
+                "de": "Gemeldet",
+                "es": "Señalado"
               }
             },
             {
               "value": "ok",
               "label": {
                 "en": "Cleared",
-                "fr": "Effacée"
+                "fr": "Effacée",
+                "de": "Behoben",
+                "es": "Borrado"
               }
             }
           ]
@@ -326,7 +414,9 @@
           "type": "string",
           "label": {
             "en": "Unit name",
-            "fr": "Nom de l'unité"
+            "fr": "Nom de l'unité",
+            "de": "Name der Einheit",
+            "es": "Nombre de la unidad"
           }
         },
         {
@@ -334,7 +424,9 @@
           "type": "string",
           "label": {
             "en": "State (error or ok)",
-            "fr": "État (error ou ok)"
+            "fr": "État (error ou ok)",
+            "de": "Zustand (error oder ok)",
+            "es": "Estado (error u ok)"
           }
         }
       ]
@@ -343,11 +435,15 @@
       "key": "api_quota_low",
       "label": {
         "en": "The Daikin API quota is almost spent",
-        "fr": "Le quota d'API Daikin est presque épuisé"
+        "fr": "Le quota d'API Daikin est presque épuisé",
+        "de": "Das Daikin-API-Kontingent ist fast aufgebraucht",
+        "es": "La cuota de la API de Daikin está casi agotada"
       },
       "description": {
         "en": "20 calls or fewer left today: refreshes and commands stop when it reaches 0.",
-        "fr": "20 appels ou moins restants aujourd'hui : rafraîchissements et commandes s'arrêtent à 0."
+        "fr": "20 appels ou moins restants aujourd'hui : rafraîchissements et commandes s'arrêtent à 0.",
+        "de": "Heute noch 20 Aufrufe oder weniger: Aktualisierungen und Befehle stoppen bei 0.",
+        "es": "Quedan 20 llamadas o menos hoy: actualizaciones y órdenes se detienen al llegar a 0."
       },
       "variables": [
         {
@@ -355,7 +451,9 @@
           "type": "number",
           "label": {
             "en": "Calls left today",
-            "fr": "Appels restants aujourd'hui"
+            "fr": "Appels restants aujourd'hui",
+            "de": "Heute verbleibende Aufrufe",
+            "es": "Llamadas restantes hoy"
           }
         },
         {
@@ -363,7 +461,9 @@
           "type": "number",
           "label": {
             "en": "Daily quota",
-            "fr": "Quota quotidien"
+            "fr": "Quota quotidien",
+            "de": "Tageskontingent",
+            "es": "Cuota diaria"
           }
         }
       ]
@@ -372,11 +472,15 @@
       "key": "daikin_session_expired",
       "label": {
         "en": "The Daikin session expired",
-        "fr": "La session Daikin a expiré"
+        "fr": "La session Daikin a expiré",
+        "de": "Die Daikin-Sitzung ist abgelaufen",
+        "es": "La sesión de Daikin ha caducado"
       },
       "description": {
         "en": "Daikin refused the account: reconnect it in the integration configuration.",
-        "fr": "Daikin refuse le compte : reconnectez-le dans la configuration de l'intégration."
+        "fr": "Daikin refuse le compte : reconnectez-le dans la configuration de l'intégration.",
+        "de": "Daikin lehnt das Konto ab: Verbinden Sie es in der Konfiguration der Integration erneut.",
+        "es": "Daikin rechaza la cuenta: vuelva a conectarla en la configuración de la integración."
       }
     }
   ],
@@ -385,11 +489,15 @@
       "key": "set_climate",
       "label": {
         "en": "Set a Daikin air conditioner",
-        "fr": "Régler un climatiseur Daikin"
+        "fr": "Régler un climatiseur Daikin",
+        "de": "Daikin-Klimaanlage einstellen",
+        "es": "Ajustar un aire acondicionado Daikin"
       },
       "description": {
         "en": "Power, mode, temperature and fan speed in one step: the mode lands first, what is already set is skipped.",
-        "fr": "Marche, mode, température et ventilation en une étape : le mode d'abord, ce qui est déjà réglé est ignoré."
+        "fr": "Marche, mode, température et ventilation en une étape : le mode d'abord, ce qui est déjà réglé est ignoré.",
+        "de": "Ein/Aus, Modus, Temperatur und Lüfterstufe in einem Schritt: zuerst der Modus, bereits Eingestelltes wird übersprungen.",
+        "es": "Encendido, modo, temperatura y velocidad del ventilador en un paso: primero el modo, lo ya ajustado se omite."
       },
       "timeout_seconds": 60,
       "fields": [
@@ -399,7 +507,9 @@
           "source": "devices",
           "label": {
             "en": "Unit",
-            "fr": "Unité"
+            "fr": "Unité",
+            "de": "Einheit",
+            "es": "Unidad"
           },
           "required": true
         },
@@ -408,7 +518,9 @@
           "type": "select",
           "label": {
             "en": "Power",
-            "fr": "Marche/arrêt"
+            "fr": "Marche/arrêt",
+            "de": "Ein/Aus",
+            "es": "Encendido/apagado"
           },
           "default": "on",
           "options": [
@@ -416,21 +528,27 @@
               "value": "on",
               "label": {
                 "en": "Turn on",
-                "fr": "Allumer"
+                "fr": "Allumer",
+                "de": "Einschalten",
+                "es": "Encender"
               }
             },
             {
               "value": "off",
               "label": {
                 "en": "Turn off (other settings ignored)",
-                "fr": "Éteindre (le reste est ignoré)"
+                "fr": "Éteindre (le reste est ignoré)",
+                "de": "Ausschalten (Rest wird ignoriert)",
+                "es": "Apagar (el resto se ignora)"
               }
             },
             {
               "value": "unchanged",
               "label": {
                 "en": "Leave as is",
-                "fr": "Ne pas changer"
+                "fr": "Ne pas changer",
+                "de": "Nicht ändern",
+                "es": "No cambiar"
               }
             }
           ]
@@ -440,7 +558,9 @@
           "type": "select",
           "label": {
             "en": "Mode",
-            "fr": "Mode"
+            "fr": "Mode",
+            "de": "Modus",
+            "es": "Modo"
           },
           "default": "unchanged",
           "options": [
@@ -448,42 +568,54 @@
               "value": "unchanged",
               "label": {
                 "en": "Leave as is",
-                "fr": "Ne pas changer"
+                "fr": "Ne pas changer",
+                "de": "Nicht ändern",
+                "es": "No cambiar"
               }
             },
             {
               "value": "auto",
               "label": {
                 "en": "Auto",
-                "fr": "Auto"
+                "fr": "Auto",
+                "de": "Auto",
+                "es": "Auto"
               }
             },
             {
               "value": "cooling",
               "label": {
                 "en": "Cooling",
-                "fr": "Froid"
+                "fr": "Froid",
+                "de": "Kühlen",
+                "es": "Frío"
               }
             },
             {
               "value": "heating",
               "label": {
                 "en": "Heating",
-                "fr": "Chauffage"
+                "fr": "Chauffage",
+                "de": "Heizen",
+                "es": "Calor"
               }
             },
             {
               "value": "dry",
               "label": {
                 "en": "Drying",
-                "fr": "Déshumidification"
+                "fr": "Déshumidification",
+                "de": "Entfeuchten",
+                "es": "Deshumidificación"
               }
             },
             {
               "value": "fan_only",
               "label": {
                 "en": "Fan only",
-                "fr": "Ventilation"
+                "fr": "Ventilation",
+                "de": "Nur Lüfter",
+                "es": "Solo ventilador"
               }
             }
           ]
@@ -493,11 +625,15 @@
           "type": "number",
           "label": {
             "en": "Target temperature (°C)",
-            "fr": "Température de consigne (°C)"
+            "fr": "Température de consigne (°C)",
+            "de": "Solltemperatur (°C)",
+            "es": "Temperatura de consigna (°C)"
           },
           "description": {
             "en": "Empty: keep the current one. Rounded to what the unit accepts in that mode.",
-            "fr": "Vide : garder l'actuelle. Arrondie à ce que l'unité accepte dans ce mode."
+            "fr": "Vide : garder l'actuelle. Arrondie à ce que l'unité accepte dans ce mode.",
+            "de": "Leer: aktuellen Wert beibehalten. Gerundet auf das, was die Einheit in diesem Modus akzeptiert.",
+            "es": "Vacío: se mantiene la actual. Redondeada a lo que la unidad acepta en ese modo."
           },
           "min": 10,
           "max": 32
@@ -507,11 +643,15 @@
           "type": "number",
           "label": {
             "en": "Fan speed (level)",
-            "fr": "Vitesse de ventilation (niveau)"
+            "fr": "Vitesse de ventilation (niveau)",
+            "de": "Lüfterstufe",
+            "es": "Velocidad del ventilador (nivel)"
           },
           "description": {
             "en": "Empty: keep the current one. A level switches the fan to manual.",
-            "fr": "Vide : garder l'actuelle. Un niveau passe la ventilation en manuel."
+            "fr": "Vide : garder l'actuelle. Un niveau passe la ventilation en manuel.",
+            "de": "Leer: aktuellen Wert beibehalten. Eine Stufe schaltet den Lüfter auf manuell.",
+            "es": "Vacío: se mantiene la actual. Un nivel pasa el ventilador a manual."
           },
           "min": 1,
           "max": 5
@@ -523,7 +663,9 @@
           "type": "string",
           "label": {
             "en": "Power (on or off)",
-            "fr": "Marche (on ou off)"
+            "fr": "Marche (on ou off)",
+            "de": "Ein/Aus (on oder off)",
+            "es": "Encendido (on u off)"
           }
         },
         {
@@ -531,7 +673,9 @@
           "type": "string",
           "label": {
             "en": "Mode",
-            "fr": "Mode"
+            "fr": "Mode",
+            "de": "Modus",
+            "es": "Modo"
           }
         },
         {
@@ -539,7 +683,9 @@
           "type": "number",
           "label": {
             "en": "Target temperature (°C)",
-            "fr": "Température de consigne (°C)"
+            "fr": "Température de consigne (°C)",
+            "de": "Solltemperatur (°C)",
+            "es": "Temperatura de consigna (°C)"
           }
         },
         {
@@ -547,7 +693,9 @@
           "type": "number",
           "label": {
             "en": "Commands sent",
-            "fr": "Commandes envoyées"
+            "fr": "Commandes envoyées",
+            "de": "Gesendete Befehle",
+            "es": "Órdenes enviadas"
           }
         },
         {
@@ -555,7 +703,9 @@
           "type": "number",
           "label": {
             "en": "API calls left today",
-            "fr": "Appels d'API restants aujourd'hui"
+            "fr": "Appels d'API restants aujourd'hui",
+            "de": "Heute verbleibende API-Aufrufe",
+            "es": "Llamadas a la API restantes hoy"
           }
         }
       ]
@@ -564,11 +714,15 @@
       "key": "read_consumption",
       "label": {
         "en": "Read the Daikin consumption",
-        "fr": "Lire la consommation Daikin"
+        "fr": "Lire la consommation Daikin",
+        "de": "Daikin-Verbrauch lesen",
+        "es": "Leer el consumo Daikin"
       },
       "description": {
         "en": "Energy used today, yesterday, this month, last month, this year and last year, in kWh.",
-        "fr": "Énergie consommée aujourd'hui, hier, ce mois-ci, le mois dernier, cette année et l'an dernier, en kWh."
+        "fr": "Énergie consommée aujourd'hui, hier, ce mois-ci, le mois dernier, cette année et l'an dernier, en kWh.",
+        "de": "Verbrauchte Energie heute, gestern, diesen Monat, letzten Monat, dieses Jahr und letztes Jahr, in kWh.",
+        "es": "Energía consumida hoy, ayer, este mes, el mes pasado, este año y el año pasado, en kWh."
       },
       "timeout_seconds": 30,
       "fields": [
@@ -578,11 +732,15 @@
           "source": "devices",
           "label": {
             "en": "Unit",
-            "fr": "Unité"
+            "fr": "Unité",
+            "de": "Einheit",
+            "es": "Unidad"
           },
           "description": {
             "en": "Empty: all the units added up.",
-            "fr": "Vide : toutes les unités additionnées."
+            "fr": "Vide : toutes les unités additionnées.",
+            "de": "Leer: alle Einheiten zusammengezählt.",
+            "es": "Vacío: todas las unidades sumadas."
           }
         }
       ],
@@ -592,7 +750,9 @@
           "type": "number",
           "label": {
             "en": "Today (kWh)",
-            "fr": "Aujourd'hui (kWh)"
+            "fr": "Aujourd'hui (kWh)",
+            "de": "Heute (kWh)",
+            "es": "Hoy (kWh)"
           }
         },
         {
@@ -600,7 +760,9 @@
           "type": "number",
           "label": {
             "en": "Yesterday (kWh)",
-            "fr": "Hier (kWh)"
+            "fr": "Hier (kWh)",
+            "de": "Gestern (kWh)",
+            "es": "Ayer (kWh)"
           }
         },
         {
@@ -608,7 +770,9 @@
           "type": "number",
           "label": {
             "en": "This month (kWh)",
-            "fr": "Ce mois-ci (kWh)"
+            "fr": "Ce mois-ci (kWh)",
+            "de": "Diesen Monat (kWh)",
+            "es": "Este mes (kWh)"
           }
         },
         {
@@ -616,7 +780,9 @@
           "type": "number",
           "label": {
             "en": "Last month (kWh)",
-            "fr": "Le mois dernier (kWh)"
+            "fr": "Le mois dernier (kWh)",
+            "de": "Letzten Monat (kWh)",
+            "es": "El mes pasado (kWh)"
           }
         },
         {
@@ -624,7 +790,9 @@
           "type": "number",
           "label": {
             "en": "This year (kWh)",
-            "fr": "Cette année (kWh)"
+            "fr": "Cette année (kWh)",
+            "de": "Dieses Jahr (kWh)",
+            "es": "Este año (kWh)"
           }
         },
         {
@@ -632,7 +800,9 @@
           "type": "number",
           "label": {
             "en": "Last year (kWh)",
-            "fr": "L'an dernier (kWh)"
+            "fr": "L'an dernier (kWh)",
+            "de": "Letztes Jahr (kWh)",
+            "es": "El año pasado (kWh)"
           }
         }
       ]
@@ -641,11 +811,15 @@
       "key": "refresh_account",
       "label": {
         "en": "Refresh the Daikin account now",
-        "fr": "Actualiser le compte Daikin maintenant"
+        "fr": "Actualiser le compte Daikin maintenant",
+        "de": "Daikin-Konto jetzt aktualisieren",
+        "es": "Actualizar la cuenta Daikin ahora"
       },
       "description": {
         "en": "Reads every unit (1 API call, at most every 10 min, none when 20 or fewer calls are left).",
-        "fr": "Lit toutes les unités (1 appel d'API, au plus toutes les 10 min, aucun s'il en reste 20 ou moins)."
+        "fr": "Lit toutes les unités (1 appel d'API, au plus toutes les 10 min, aucun s'il en reste 20 ou moins).",
+        "de": "Liest alle Einheiten (1 API-Aufruf, höchstens alle 10 min, keiner bei 20 oder weniger verbleibenden Aufrufen).",
+        "es": "Lee todas las unidades (1 llamada a la API, como mucho cada 10 min, ninguna si quedan 20 o menos)."
       },
       "timeout_seconds": 30,
       "outputs": [
@@ -654,7 +828,9 @@
           "type": "number",
           "label": {
             "en": "Units",
-            "fr": "Unités"
+            "fr": "Unités",
+            "de": "Einheiten",
+            "es": "Unidades"
           }
         },
         {
@@ -662,7 +838,9 @@
           "type": "number",
           "label": {
             "en": "Units reachable",
-            "fr": "Unités joignables"
+            "fr": "Unités joignables",
+            "de": "Erreichbare Einheiten",
+            "es": "Unidades accesibles"
           }
         },
         {
@@ -670,7 +848,9 @@
           "type": "number",
           "label": {
             "en": "Units running",
-            "fr": "Unités en marche"
+            "fr": "Unités en marche",
+            "de": "Laufende Einheiten",
+            "es": "Unidades en marcha"
           }
         },
         {
@@ -678,7 +858,9 @@
           "type": "number",
           "label": {
             "en": "API calls left today",
-            "fr": "Appels d'API restants aujourd'hui"
+            "fr": "Appels d'API restants aujourd'hui",
+            "de": "Heute verbleibende API-Aufrufe",
+            "es": "Llamadas a la API restantes hoy"
           }
         },
         {
@@ -686,7 +868,9 @@
           "type": "number",
           "label": {
             "en": "Age of the data (s)",
-            "fr": "Âge des données (s)"
+            "fr": "Âge des données (s)",
+            "de": "Alter der Daten (s)",
+            "es": "Antigüedad de los datos (s)"
           }
         }
       ]

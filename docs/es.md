@@ -1,0 +1,406 @@
+# Daikin Cloud
+
+Controle sus aires acondicionados Daikin desde Gladys, a través de la **API
+cloud oficial Daikin Onecta** — la misma nube con la que habla la app móvil
+Onecta. Sin hardware que añadir, sin ingeniería inversa: sus unidades siguen
+funcionando exactamente como hoy, Gladys simplemente se convierte en otro mando a
+distancia.
+
+> **Se requiere Gladys 5.1 o posterior** (widgets del panel, activadores y
+> acciones de escena). El store no ofrecerá la integración a una instancia más
+> antigua.
+
+## Qué obtiene
+
+Para cada aire acondicionado de su cuenta Daikin, Gladys crea un dispositivo con
+las funciones que su modelo admite realmente. En Gladys, las funciones llevan los
+siguientes nombres (en inglés):
+
+| Función                    | Qué hace                                                                       |
+| -------------------------- | ------------------------------------------------------------------------------ |
+| On/Off                     | Enciende y apaga la unidad                                                     |
+| On/Off (switch)            | El mismo encendido/apagado, como interruptor — es el que usan las escenas      |
+| Mode                       | Auto, Frío, Calor, Deshumidificación, Solo ventilador                          |
+| Target temperature         | La consigna del modo activo en este momento                                    |
+| Fan speed                  | La velocidad del ventilador, en la escala que declara su unidad (a menudo 1-5) |
+| Horizontal airflow         | La dirección del flujo de aire izquierda/derecha                               |
+| Vertical airflow           | La dirección del flujo de aire arriba/abajo                                    |
+| Powerful mode              | El modo «Powerful» de Daikin (encendido/apagado)                               |
+| Econo mode                 | El modo «Econo» de Daikin (encendido/apagado)                                  |
+| Streamer mode              | El modo de purificación de aire «Streamer» (encendido/apagado)                 |
+| Keep dry                   | La función avanzada «Keep dry» de la unidad interior                           |
+| Room temperature           | La temperatura que mide la unidad (sensor, con historial)                      |
+| Outdoor temperature        | La temperatura que mide la unidad exterior (sensor, con historial)             |
+| Energy today               | Consumo eléctrico del día, en kWh (sensor, con historial)                      |
+| Energy this month          | Consumo eléctrico del mes en curso, en kWh                                     |
+| Energy this year           | Consumo eléctrico del año en curso, en kWh                                     |
+| Energy today (consumption) | Lo que la unidad consumió en los últimos 30 minutos, calculado por Gladys      |
+| Energy today (cost)        | Lo que costaron esos 30 minutos, según su contrato de energía                  |
+
+Un modelo sin lamas no recibe dirección del flujo de aire, un modelo sin
+ventilador no recibe velocidad del ventilador, un modelo sin la función Streamer
+no recibe interruptor Streamer: solo se publica lo que el hardware informa. Las
+opciones ofrecidas en la interfaz también se limitan a lo que la unidad acepta —
+una unidad sin modo de deshumidificación nunca muestra uno.
+
+**Dos funciones de encendido/apagado, a propósito.** Las acciones de escena de
+Gladys _Encender los interruptores_ / _Apagar los interruptores_ actúan sobre una
+sola función por dispositivo: la primera clasificada en la categoría
+**Interruptor**. El encendido/apagado de un aire acondicionado es invisible para
+ellas, así que cada unidad publica también **On/Off (switch)** — el mismo botón,
+que escribe la misma característica Daikin, simplemente declarado donde una
+escena (y un asistente de voz) lo busca. Ambos se mantienen sincronizados, pulse
+el que pulse.
+
+Los modos confort (Powerful, Econo, Streamer, Keep dry) también son controles de
+encendido/apagado, pero deliberadamente **no** se declaran como interruptores.
+Cuando lo eran, una escena que pedía apagar la unidad apagaba en su lugar el
+primero de ellos y dejaba la unidad en marcha. Para controlar uno desde una
+escena, use la acción _Establecer valor del dispositivo_ y elija la función por
+su nombre.
+
+Un detalle sobre el ventilador: **Fan speed** solo muestra un valor mientras la
+unidad funciona realmente en un nivel manual. En Auto o Silencioso no hay ningún
+nivel que mostrar, así que el control queda vacío hasta que fije uno — y fijar
+uno pasa la unidad a manual.
+
+Los modos de flujo de aire Auto y Silencioso de Daikin no se ofrecen: la lista
+de modos de ventilador de Gladys propone cinco etiquetas fijas que no se pueden
+restringir, donde «Medio» habría tenido que significar «manual» — un control que
+no explica nada. Vuelva a poner el ventilador en Auto desde la app Onecta si lo
+necesita.
+
+Las funciones describen lo que su unidad puede hacer en **todos** sus modos de
+funcionamiento, no lo que puede hacer en este instante. Daikin no declara, por
+ejemplo, ningún nivel de ventilador manual en Deshumidificación: sin esta regla,
+un dispositivo descubierto mientras la unidad deshumidificaba habría perdido su
+control de velocidad para siempre. A cambio, una orden enviada en un modo que no
+puede aceptarla se rechaza con un mensaje claro en lugar de fallar en silencio.
+
+**El consumo eléctrico** procede de los contadores por periodo que lleva Daikin.
+Son totales que **se reinician**: el del día vuelve a cero a medianoche, el
+mensual el primer día del mes. Son sensores, no el índice siempre creciente de un
+contador de electricidad — no los conecte a un widget que espere un índice.
+Daikin divide esos contadores por modo (calor, frío…); la integración los suma,
+porque lo que quiere un panel es lo que consumió la unidad, no cómo se repartió.
+
+Su resolución es la de Daikin, no la del intervalo de actualización: Daikin
+divide el día en franjas de dos horas, y el contador diario — su total — avanza
+en **pasos de 0,1 kWh**, en cuanto se ha consumido esa décima de kWh adicional.
+Así que «Energy today» se queda plano un rato y luego salta: actualizar más a
+menudo no lo suaviza, solo gasta más rápido su cuota de la API. Ese contador
+diario es lo más fino que da la API, y por eso es el adecuado para alimentar la
+supervisión de energía de Gladys: su reinicio a medianoche casi no cuesta nada (el
+primer valor después de medianoche es 0, y Gladys ignora el paso negativo de un
+contador que vuelve a cero).
+
+Mientras la unidad funciona, supera esos 0,1 kWh cada pocas decenas de minutos:
+cada ventana de 30 minutos recibe entonces su valor, y la vista **Día** de la
+supervisión de energía parece una verdadera curva de consumo, que coincide con lo
+que muestra la app Onecta. El escalón solo se nota con un consumo muy bajo:
+algunas ventanas se quedan a cero y una posterior recupera el retraso. Es un
+desfase de unas decenas de minutos como mucho, y los totales diarios, mensuales y
+anuales siguen siendo correctos.
+
+Según el modelo y el firmware, Daikin informa algunas funciones como de solo
+lectura — «Keep dry» casi siempre. Esas se publican como sensores, sin un
+interruptor que la API rechazaría de todos modos.
+
+Las bombas de calor (Altherma…) son compatibles en parte: su encendido/apagado,
+su modo y su temperatura exterior funcionan, pero su consigna de temperatura del
+agua no se ofrece — esta integración está pensada para aires acondicionados.
+
+## Supervisión de energía
+
+Su aire acondicionado puede ocupar su lugar en la
+[supervisión de energía](https://gladysassistant.com/docs/integrations/energy-monitoring/)
+de Gladys, junto a su contador de electricidad y sus enchufes inteligentes: el
+panel de Energía muestra entonces, en pasos de treinta minutos, lo que consumió
+el aire acondicionado y lo que le costó.
+
+### Lo que la integración conecta por sí sola
+
+La integración publica las dos funciones que hacen posible ese cálculo —
+**Energy today (consumption)** y **Energy today (cost)** — y las encadena ella
+misma: el coste apunta al consumo, que apunta a **Energy today**. Gladys las
+rellena cada treinta minutos, a partir de la diferencia entre dos lecturas del
+contador diario y el precio del kWh de su contrato; nada las escribe aquí, y no
+hay nada que ajustar en esas dos filas. Si les elige otro padre en la pantalla de
+Energía, la integración volverá a poner el suyo en la siguiente publicación.
+
+### El único paso que le queda
+
+En **Configuración → Energía**, elija el padre de **Energy today**: la función
+de su contador principal (el consumo diario que informa su distribuidora, una
+pinza para toda la casa…). Eso le indica a Gladys que el aire acondicionado es
+una _parte_ de lo que el contador ya mide, y no un consumo adicional encima.
+
+La pantalla queda entonces así:
+
+```
+Main meter — Daily consumption                         level 0
+└── Air conditioner — Energy today                     level 1   ← the only row to set
+    └── Air conditioner — Energy today (consumption)   level 2   ← set by the integration
+        └── Air conditioner — Energy today (cost)      level 3   ← set by the integration
+
+Air conditioner — Energy this month                    level 0   ← normal, nothing to do
+Air conditioner — Energy this year                     level 0   ← normal, nothing to do
+```
+
+El nivel que se muestra delante de cada fila no es más que su profundidad en ese
+árbol: nivel 0 = raíz, es decir, una función que no es parte de ninguna otra. Su
+contador principal está ahí porque nada lo contiene; el aire acondicionado está
+debajo porque sus kWh forman parte de los del contador.
+
+Esa elección es suya y sigue siendo suya: la integración nunca envía el padre de
+**Energy today**, ni siquiera vacío, precisamente para no deshacer su ajuste en
+cada publicación.
+
+### Por qué «Energy this month» y «Energy this year» se quedan en el nivel 0
+
+Es intencionado: esas dos filas no tienen padre, y no hay nada que corregir.
+
+- **Son los mismos kWh.** El árbol es un desglose, no una lista: cada hijo
+  afirma «mi consumo es una parte del de mi padre». Los contadores mensual y
+  anual miden exactamente la misma electricidad que el diario, en una ventana más
+  amplia. Colgarlos bajo el contador principal haría aparecer los mismos kWh dos
+  veces más en el desglose.
+- **No alimentarían nada más.** Solo el contador diario lleva el par de 30
+  minutos, porque es lo más fino que da la API de Daikin. Un par colgado del
+  contador mensual sería un duplicado, y el contador anual — que solo se mueve
+  una vez al día — entregaría un único bloque diario: el panel no ganaría nada.
+- **Tampoco son hijos de «Energy today».** Un padre es un todo y un hijo es una
+  parte de él: un mes no es una parte de un día.
+- **Siguen siendo útiles en otros sitios**: un mosaico del panel, un gráfico de
+  historial, una condición de escena. Están ahí para leerse, no entran en el
+  cálculo de la supervisión de energía.
+
+Dicho de otro modo, una instalación bien configurada sí deja dos funciones del
+aire acondicionado en el nivel 0, junto al contador principal.
+
+## Antes de empezar: cree su aplicación Daikin
+
+La API Onecta es gratuita, pero cada usuario necesita su propia aplicación. Lleva
+dos minutos:
+
+1. Vaya al [portal para desarrolladores de Daikin](https://developer.cloud.daikineurope.com/)
+   y cree una cuenta (puede usar el mismo correo electrónico que su cuenta
+   Onecta).
+2. Abra **My apps** → **New app**.
+3. Dé un nombre a la app (por ejemplo `Gladys`).
+4. En **Redirect URIs**, pegue la dirección que le muestra Gladys. Abra la
+   pestaña **Configuración** de la integración Daikin Cloud en Gladys: la
+   dirección aparece justo debajo del botón **Conectar**, con un botón para
+   copiarla al lado. Por defecto es:
+
+   ```
+   https://my.gladysassistant.com/redirect/oauth
+   ```
+
+   Esta página está alojada por Gladys y simplemente devuelve el navegador a su
+   propia instancia — Daikin, como la mayoría de los proveedores, rechaza una
+   dirección `http://` simple, que es como la mayoría de la gente accede a su
+   Gladys en casa. Si ya sirve Gladys por HTTPS, puede marcar la opción «Usar en
+   su lugar la dirección de mi instancia (ya accedo a Gladys mediante HTTPS)» en
+   la pantalla de configuración y declarar su propia dirección; sea cual sea la
+   dirección mostrada, es la que debe pegar aquí, carácter por carácter.
+
+5. Guarde la app y copie su **Client ID** y su **Client secret**.
+
+## Configuración
+
+1. En Gladys, abra **Integraciones → Daikin Cloud → Configuración**.
+2. Pegue el **Client ID** y el **Client secret** de su app Daikin.
+3. **Guardar configuración** — las credenciales deben estar guardadas antes de
+   que pueda empezar la conexión.
+4. Pulse **Conectar** junto a _Cuenta Daikin_. Se abre una nueva pestaña con la
+   página de inicio de sesión de Daikin: inicie sesión con la cuenta a la que
+   están vinculados sus aires acondicionados en la app Onecta y acepte la
+   autorización.
+5. Volverá a Gladys, la integración lee su cuenta y sus unidades aparecen en la
+   pestaña **Descubrir**. Añada las que quiera con **Añadir a Gladys**.
+
+Gladys guarda los tokens obtenidos y los renueva automáticamente. No debería
+tener que repetir este proceso.
+
+## Intervalo de actualización y cuota de la API
+
+Daikin limita una cuenta de desarrollador a **200 llamadas a la API al día y 20
+por minuto**. Es la única restricción que debe tener en cuenta, y determina cómo
+se comporta la integración:
+
+- una actualización lee **todas** sus unidades en una sola llamada, así que el
+  número de unidades no cambia el coste;
+- cada orden que envía (encendido/apagado, una temperatura, una velocidad de
+  ventilador…) cuesta una llamada más — y pasar el ventilador a un nivel fijo
+  cuesta dos;
+- el intervalo por defecto de **900 segundos (15 minutos)** gasta 96 llamadas al
+  día y deja el resto para sus órdenes.
+
+Puede subir el intervalo hasta 6 horas, o bajarlo hasta 10 minutos si rara vez
+controla sus unidades desde Gladys. Bajar más gastaría todo el presupuesto diario
+antes de que acabe el día, por eso el campo se detiene ahí.
+
+Debido a esta cuota, la integración **no** usa el sondeo por dispositivo de
+Gladys (que es de un minuto en el caso más lento): ejecuta su propio calendario.
+
+## Acciones
+
+**Probar la conexión** lee su cuenta Daikin de inmediato e informa, para cada
+unidad, de cuántas funciones se publicaron **y qué características declara su
+unidad que esta integración no utiliza**. Eso es lo que distingue «la
+integración ignora esta función» de «su modelo no la informa a la API» — dos
+problemas con respuestas completamente distintas. Si falta una función que ve en
+Onecta, ejecute esta acción: cuando su nombre no aparece ni en las funciones
+publicadas ni en las características ignoradas, la API de Daikin no la ofrece
+para su modelo.
+
+## Widgets del panel
+
+Desde Gladys 5.1, la integración trae sus propios widgets. En el panel, pulse
+**Editar**, añada un widget y busque «Daikin»:
+
+- **Aire acondicionado Daikin** — una unidad (elegida en la configuración del
+  widget): temperaturas interior, exterior y de consigna, energía del día,
+  estado, modo, ventilador, lamas y modos confort activos — solo visualización.
+  Un ajuste elige el gráfico: temperaturas en 24 h, **energía por franja de dos
+  horas (hoy junto a ayer)**, o ninguno.
+- **Cuenta Daikin** — todas las unidades de un vistazo (en marcha, apagada, con
+  error, inaccesible), la energía del día de toda la cuenta, **la energía por
+  mes de este año frente al año pasado**, un indicador de las **llamadas a la API
+  que quedan hoy**, y la antigüedad de la última lectura.
+
+Los widgets no cuestan **ninguna llamada a la API**: leen los valores ya
+recibidos. Los mosaicos de temperatura y energía siguen los valores en directo;
+el resto se actualiza en cada actualización y después de cada orden.
+
+Para **controlar** la unidad (modo, consigna, ventilador, lamas, Powerful…),
+añada al lado el widget **Dispositivos** propio de Gladys y elija la unidad
+Daikin: muestra cada función con su control adecuado (selector de modo, consigna
+− / +, control deslizante del ventilador, interruptores). Un widget de
+integración no puede hacerlo: Gladys solo le permite contener botones.
+
+## Escenas
+
+### Activadores
+
+En el editor de escenas aparecen cuatro activadores. Cada uno se dispara **una
+vez por cambio**, detectado entre dos lecturas de la nube (es decir, al ritmo del
+intervalo de actualización). La primera lectura tras un reinicio no dispara nada:
+es la referencia.
+
+| Activador                                             | Filtros                                   | Variables                 |
+| ----------------------------------------------------- | ----------------------------------------- | ------------------------- |
+| Una unidad Daikin se desconecta o vuelve a conectarse | Unidad, Conexión (perdida / restablecida) | `unit_name`, `connection` |
+| Una unidad Daikin señala o borra un error             | Unidad, Error (señalado / borrado)        | `unit_name`, `state`      |
+| La cuota de la API de Daikin está casi agotada        | —                                         | `remaining`, `limit`      |
+| La sesión de Daikin ha caducado                       | —                                         | —                         |
+
+Un filtro vacío coincide con cualquier cosa. La cuota está «casi agotada» con 20
+llamadas restantes o menos; el activador se rearma cuando el contador vuelve a
+subir (al día siguiente). Ejemplo: _«Una unidad Daikin se desconecta» → Enviar
+mensaje: «{{triggerEvent.data.unit_name}} no responde»_.
+
+### Acciones
+
+| Acción                               | Qué hace                                                                                                              | Salidas                                                                                            |
+| ------------------------------------ | --------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------- |
+| Ajustar un aire acondicionado Daikin | Encendido, modo, consigna y velocidad del ventilador en un paso. El modo siempre se envía antes que la consigna.      | `power`, `mode`, `temperature`, `commands_sent`, `api_calls_left`                                  |
+| Leer el consumo Daikin               | Energía consumida hoy, ayer, este mes, el mes pasado, este año y el año pasado, para una unidad o para toda la cuenta | `today_kwh`, `yesterday_kwh`, `this_month_kwh`, `last_month_kwh`, `this_year_kwh`, `last_year_kwh` |
+| Actualizar la cuenta Daikin ahora    | Lee todas las unidades de inmediato (1 llamada, como mucho una vez cada 10 minutos, ninguna con 20 llamadas o menos)  | `units_total`, `units_online`, `units_running`, `api_calls_left`, `data_age_seconds`               |
+
+**¿Por qué «Ajustar un aire acondicionado Daikin» en lugar de varias tarjetas?**
+En Daikin, la consigna y el ventilador pertenecen al modo. Una escena que fija
+21 °C y luego pasa a Calor escribe la consigna del modo **Frío**. La acción
+siempre envía primero el modo y omite lo que ya está ajustado (cada escritura
+cuesta una llamada a la API). Un campo vacío no cambia nada. Cuando un ajuste es
+imposible (un modo que la unidad no tiene, ninguna consigna en ese modo…), la
+acción falla **antes** de la primera escritura.
+
+«Actualizar la cuenta Daikin ahora» gasta como mucho una llamada cada 10 minutos,
+por muy a menudo que se ejecute la escena, y ninguna cuando la cuota diaria ha
+bajado a 20 llamadas: esas pertenecen a la actualización programada y a sus
+órdenes. Cuando no lee, responde con la última lectura, y `data_age_seconds`
+indica su antigüedad (0 justo después de una nueva).
+
+«Leer el consumo Daikin» responde con la última lectura, sin llamada a la API.
+Ejemplo: _cada mañana a las 8 → Leer el consumo Daikin → Enviar mensaje: «Ayer:
+{{…yesterday_kwh}} kWh»_.
+
+## Cuota de la API restante
+
+Bajo el botón **Conectar**, la pantalla de configuración muestra en todo momento
+lo que queda de la cuota de Daikin de hoy:
+
+> Conectado. Quedan 184/200 llamadas a la API de Daikin hoy.
+
+La cifra es la que Daikin devuelve en cada llamada, actualizada cada vez que se
+lee la nube — así que al menos una vez por intervalo de actualización, e
+inmediatamente después de pulsar _Probar la conexión_.
+
+Cuando una lectura falla — incluida la actualización programada —, el mismo lugar
+muestra el motivo (uno de los mensajes de _Solución de problemas_) y vuelve al
+contador en la siguiente lectura que funcione.
+
+## Insignia de estado del dispositivo
+
+Cada dispositivo lleva una insignia que muestra cómo lo alcanza Gladys:
+
+- **Cloud** — funcionamiento normal.
+- **Cloud con un punto naranja** — la unidad es accesible pero señala una
+  avería; revísela en la app Onecta.
+- **Inaccesible** — Daikin no llega a la unidad (su adaptador Wi-Fi está
+  desconectado, un corte de luz, un cambio de router…). Las órdenes se rechazan
+  con un mensaje claro y no se publica ningún estado, para que sus gráficos no
+  muestren una línea plana que parezca una medición real.
+
+## Solución de problemas
+
+**«Fill in the client ID and the client secret first, then save.»**
+Las credenciales están vacías o no se guardaron. Rellene ambos campos, pulse
+Guardar configuración y luego Conectar.
+
+**La página de Daikin dice que la Redirect URI no es válida.**
+La dirección declarada en su app Daikin no coincide con la que usa Gladys.
+Cópiela de nuevo de debajo del botón Conectar — incluido el protocolo y sin barra
+final.
+
+**«La sesión de Daikin ha caducado, vuelva a conectar su cuenta.»**
+El refresh token se revocó (contraseña cambiada, app eliminada en el portal,
+acceso a la cuenta retirado). Pulse Conectar de nuevo.
+
+**«Cuota de la API de Daikin alcanzada, aumente el intervalo de actualización.»**
+Ha llegado a las 200 llamadas al día, probablemente por combinar un intervalo
+corto con muchas órdenes, o por usar varias integraciones con la misma app
+Daikin. La cuota se reinicia sola; suba el intervalo de actualización para no
+volver a alcanzarla.
+
+**Un cambio hecho en la app Onecta tarda en aparecer en Gladys.**
+Es lo esperado: la API de Daikin no tiene notificaciones push, así que Gladys
+solo ve un cambio en la siguiente actualización. Baje el intervalo, o use la
+acción _Probar la conexión_ para forzar una lectura.
+
+**Falta una función que uso en la app Onecta (Econo, Streamer, Keep dry…).**
+La app Onecta habla con la API interna de Daikin. Esta integración habla con la
+API **pública** de Onecta, a través del scope `onecta:basic.integration`, y ese
+scope devuelve menos datos: una función puede simplemente no estar en lo que la
+API envía para su unidad. Cuando está, esta integración la publica; cuando no
+está, nada puede controlarla — ninguna integración basada en la API pública
+puede, y no es una limitación de esta. Depende del modelo y del firmware, así que
+compruébelo en lugar de suponerlo: ejecute **Probar la conexión**. Un nombre que
+no aparece ni en las funciones publicadas ni en las características ignoradas es
+uno que la API no ofrece para su unidad.
+
+**Las filas «Energy today (consumption)» y «(cost)» no aparecen en
+Configuración → Energía.**
+El dispositivo se creó antes de que existieran: ejecute _Probar la conexión_, que
+vuelve a publicar el descubrimiento y completa los dispositivos ya creados.
+Llegan ya encadenadas entre sí; solo queda darle un padre a **Energy today**.
+
+**No aparece nada en la pestaña Descubrir.**
+Asegúrese de que las unidades son visibles en la app Onecta con la misma cuenta y
+luego ejecute _Probar la conexión_: el mensaje le indica cuántas unidades
+devolvió la API.
+
+La integración registra cada llamada que hace: consulte los **Registros** de la
+integración en la interfaz de Gladys para ver todos los detalles.

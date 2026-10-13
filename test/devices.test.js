@@ -494,8 +494,13 @@ test('a reachable unit reporting a fault is flagged degraded', () => {
   const [entry] = buildTransportEntries(gladys, [unit]);
   assert.equal(entry.transport, DEVICE_TRANSPORTS.CLOUD);
   assert.equal(entry.degraded, true);
-  assert.ok(entry.message.en.length <= 200, 'tooltip messages are capped at 200 characters');
-  assert.ok(entry.message.fr);
+  for (const language of ['en', 'fr', 'de', 'es']) {
+    assert.ok(entry.message[language], `missing "${language}" tooltip`);
+    assert.ok(
+      entry.message[language].length <= 200,
+      'tooltip messages are capped at 200 characters',
+    );
+  }
 });
 
 test('turning a unit on and off writes onOffMode', () => {

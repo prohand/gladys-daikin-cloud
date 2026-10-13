@@ -9,7 +9,7 @@ and started from the
 
 ![Cover](./cover.png)
 
-> User documentation: [English](./docs/en.md) · [Français](./docs/fr.md)
+> User documentation: [English](./docs/en.md) · [Français](./docs/fr.md) · [Deutsch](./docs/de.md) · [Español](./docs/es.md)
 
 Requires **Gladys 5.1 or later**: the manifest declares dashboard `widgets`,
 `scene_triggers` and `scene_actions` (and the store catalog `categories`),
