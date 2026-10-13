@@ -93,7 +93,7 @@ export function buildUnitWidget(gladys, unit, options = {}) {
         ? {
             en: 'This unit is no longer in the Daikin account. Pick another one in the widget settings.',
             fr: "Cette unité n'est plus dans le compte Daikin. Choisissez-en une autre dans les réglages du widget.",
-            de: 'Diese Einheit ist nicht mehr im Daikin-Konto. Wählen Sie in den Widget-Einstellungen eine andere.',
+            de: 'Diese Einheit ist nicht mehr im Daikin-Konto. Wähle in den Widget-Einstellungen eine andere.',
             es: 'Esta unidad ya no está en la cuenta Daikin. Elija otra en la configuración del widget.',
           }
         : READING_ACCOUNT,
@@ -197,7 +197,7 @@ export function buildAccountWidget(units, options = {}) {
       {
         en: 'No Daikin account linked yet: connect it in the integration configuration.',
         fr: "Aucun compte Daikin lié : connectez-le dans la configuration de l'intégration.",
-        de: 'Noch kein Daikin-Konto verknüpft: Verbinden Sie es in der Konfiguration der Integration.',
+        de: 'Noch kein Daikin-Konto verknüpft: Verbinde es in der Konfiguration der Integration.',
         es: 'Aún no hay ninguna cuenta Daikin vinculada: conéctela en la configuración de la integración.',
       },
       ACCOUNT_TTL_SECONDS,

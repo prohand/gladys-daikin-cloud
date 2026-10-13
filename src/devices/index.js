@@ -102,7 +102,7 @@ export function buildTransportEntries(gladys, units) {
         message: {
           en: 'The unit reports an error, check it in the Onecta app.',
           fr: "L'unité signale une erreur, vérifiez-la dans l'application Onecta.",
-          de: 'Die Einheit meldet einen Fehler, prüfen Sie sie in der Onecta-App.',
+          de: 'Die Einheit meldet einen Fehler, prüfe sie in der Onecta-App.',
           es: 'La unidad señala un error, revísela en la app Onecta.',
         },
       };

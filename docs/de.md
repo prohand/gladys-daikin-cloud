@@ -1,18 +1,18 @@
 # Daikin Cloud
 
-Steuern Sie Ihre Daikin-Klimaanlagen von Gladys aus, über die **offizielle
+Steuere deine Daikin-Klimaanlagen von Gladys aus, über die **offizielle
 Daikin-Onecta-Cloud-API** — dieselbe Cloud, mit der auch die Onecta-App spricht.
-Keine zusätzliche Hardware, kein Reverse Engineering: Ihre Geräte funktionieren
+Keine zusätzliche Hardware, kein Reverse Engineering: Deine Geräte funktionieren
 genau wie bisher, Gladys wird einfach zu einer weiteren Fernbedienung.
 
 > **Gladys 5.1 oder neuer ist erforderlich** (Dashboard-Widgets, Szenen-Auslöser
 > und Szenen-Aktionen). Der Store bietet die Integration einer älteren Instanz
 > nicht an.
 
-## Was Sie erhalten
+## Was du erhältst
 
-Für jede Klimaanlage Ihres Daikin-Kontos legt Gladys ein Gerät mit den
-Funktionen an, die Ihr Modell tatsächlich unterstützt. Die Funktionen tragen in
+Für jede Klimaanlage deines Daikin-Kontos legt Gladys ein Gerät mit den
+Funktionen an, die dein Modell tatsächlich unterstützt. Die Funktionen tragen in
 Gladys die folgenden (englischen) Namen:
 
 | Funktion                   | Was sie tut                                                          |
@@ -21,7 +21,7 @@ Gladys die folgenden (englischen) Namen:
 | On/Off (switch)            | Dasselbe Ein/Aus, als Schalter — auf diesen wirken die Szenen        |
 | Mode                       | Auto, Kühlen, Heizen, Entfeuchten, Nur Lüfter                        |
 | Target temperature         | Der Sollwert des gerade aktiven Modus                                |
-| Fan speed                  | Die Lüfterstufe, auf der Skala, die Ihre Einheit angibt (oft 1-5)    |
+| Fan speed                  | Die Lüfterstufe, auf der Skala, die deine Einheit angibt (oft 1-5)   |
 | Horizontal airflow         | Die Luftrichtung links/rechts                                        |
 | Vertical airflow           | Die Luftrichtung oben/unten                                          |
 | Powerful mode              | Der „Powerful“-Modus von Daikin (ein/aus)                            |
@@ -34,7 +34,7 @@ Gladys die folgenden (englischen) Namen:
 | Energy this month          | Stromverbrauch des laufenden Monats, in kWh                          |
 | Energy this year           | Stromverbrauch des laufenden Jahres, in kWh                          |
 | Energy today (consumption) | Was die Einheit in den letzten 30 Minuten verbraucht hat, von Gladys |
-| Energy today (cost)        | Was diese 30 Minuten gekostet haben, laut Ihrem Energievertrag       |
+| Energy today (cost)        | Was diese 30 Minuten gekostet haben, laut deinem Energievertrag      |
 
 Ein Modell ohne Lamellen erhält keine Luftrichtung, ein Modell ohne Lüfter keine
 Lüfterstufe, ein Modell ohne Streamer-Funktion keinen Streamer-Schalter: Nur was
@@ -48,27 +48,27 @@ pro Gerät: die erste, die in der Kategorie **Schalter** abgelegt ist. Ein
 Ein/Aus einer Klimaanlage ist für sie unsichtbar, deshalb veröffentlicht jede
 Einheit zusätzlich **On/Off (switch)** — dieselbe Taste, die dieselbe
 Daikin-Eigenschaft schreibt, nur dort deklariert, wo eine Szene (und ein
-Sprachassistent) danach sucht. Beide bleiben synchron, egal welche Sie drücken.
+Sprachassistent) danach sucht. Beide bleiben synchron, egal welche du drückst.
 
 Die Komfortmodi (Powerful, Econo, Streamer, Keep dry) sind ebenfalls
 Ein/Aus-Steuerungen, aber bewusst **nicht** als Schalter deklariert. Als sie es
 waren, schaltete eine Szene, die die Einheit ausschalten sollte, stattdessen den
 ersten von ihnen aus und ließ die Einheit laufen. Um einen davon aus einer Szene
-zu steuern, verwenden Sie die Aktion _Gerätewert setzen_ und wählen Sie die
+zu steuern, verwende die Aktion _Gerätewert setzen_ und wähle die
 Funktion nach ihrem Namen.
 
 Ein Detail zum Lüfter: **Fan speed** zeigt nur dann einen Wert, wenn die Einheit
 tatsächlich auf einer manuellen Stufe läuft. In Auto oder Leise gibt es keine
-Stufe anzuzeigen, also bleibt die Steuerung leer, bis Sie eine einstellen — und
+Stufe anzuzeigen, also bleibt die Steuerung leer, bis du eine einstellst — und
 das Einstellen einer Stufe schaltet die Einheit auf manuell.
 
 Die Luftstrommodi Auto und Leise von Daikin werden nicht angeboten: Die
 Lüftermodus-Liste von Gladys bietet fünf feste Bezeichnungen, die sich nicht
 einschränken lassen, wobei „Mittel“ „manuell“ hätte bedeuten müssen — eine
-Steuerung, die nichts erklärt. Stellen Sie den Lüfter bei Bedarf in der
+Steuerung, die nichts erklärt. Stelle den Lüfter bei Bedarf in der
 Onecta-App wieder auf Auto.
 
-Die Funktionen beschreiben, was Ihre Einheit über **alle** ihre Betriebsmodi
+Die Funktionen beschreiben, was deine Einheit über **alle** ihre Betriebsmodi
 hinweg kann, nicht was sie in diesem Augenblick kann. Daikin gibt zum Beispiel
 im Entfeuchtungsmodus keine manuelle Lüfterstufe an: Ohne diese Regel hätte ein
 Gerät, das beim Entfeuchten erkannt wurde, seine Lüftersteuerung dauerhaft
@@ -79,7 +79,7 @@ zu scheitern.
 **Der Stromverbrauch** stammt aus den Zählern pro Zeitraum, die Daikin führt.
 Es sind Summen, die sich **zurücksetzen**: Der des Tages geht um Mitternacht auf
 null, der des Monats am Ersten des Monats. Es sind Sensoren, nicht der stetig
-wachsende Zählerstand eines Stromzählers — verbinden Sie sie nicht mit einem
+wachsende Zählerstand eines Stromzählers — verbinde sie nicht mit einem
 Widget, das einen Zählerstand erwartet. Daikin teilt diese Zähler nach Modus auf
 (Heizen, Kühlen…); die Integration summiert sie, weil ein Dashboard wissen will,
 was die Einheit verbraucht hat, nicht wie es aufgeteilt war.
@@ -89,7 +89,7 @@ Daikin teilt den Tag in Zwei-Stunden-Abschnitte, und der Tageszähler — ihre
 Summe — bewegt sich in **Schritten von 0,1 kWh**, sobald dieses zusätzliche
 Zehntel kWh verbraucht wurde. „Energy today“ bleibt also eine Weile flach und
 springt dann: Häufigeres Aktualisieren macht ihn nicht glatter, es verbraucht
-nur schneller Ihr API-Kontingent. Dieser Tageszähler ist das Feinste, was die API
+nur schneller dein API-Kontingent. Dieser Tageszähler ist das Feinste, was die API
 liefert, und genau deshalb der richtige für die Energieüberwachung von Gladys:
 Sein Zurücksetzen um Mitternacht kostet fast nichts (der erste Wert nach
 Mitternacht ist 0, und Gladys ignoriert den negativen Schritt eines Zählers, der
@@ -97,7 +97,7 @@ auf null zurückgeht).
 
 Solange die Einheit läuft, überschreitet sie diese 0,1 kWh alle paar Dutzend
 Minuten: Jedes 30-Minuten-Fenster erhält dann seinen Wert, und die Ansicht
-**Tag** der Energieüberwachung sieht wie eine echte Verbrauchskurve aus,
+**Tag** des Widgets **Energieverbrauch** sieht wie eine echte Verbrauchskurve aus,
 passend zu dem, was die Onecta-App zeigt. Die Stufen werden erst bei sehr
 geringer Leistungsaufnahme sichtbar: Einige Fenster bleiben bei null, dann holt
 ein späteres auf. Das ist schlimmstenfalls eine Verschiebung um ein paar Dutzend
@@ -113,11 +113,11 @@ angeboten — diese Integration richtet sich an Klimaanlagen.
 
 ## Energieüberwachung
 
-Ihre Klimaanlage kann ihren Platz in der
+Deine Klimaanlage kann ihren Platz in der
 [Energieüberwachung](https://gladysassistant.com/docs/integrations/energy-monitoring/)
-von Gladys einnehmen, neben Ihrem Stromzähler und Ihren smarten Steckdosen: Das
-Energie-Dashboard zeigt dann in Dreißig-Minuten-Schritten, was die Klimaanlage
-verbraucht und was sie Sie gekostet hat.
+von Gladys einnehmen, neben deinem Stromzähler und deinen smarten Steckdosen: Das
+Dashboard-Widget **Energieverbrauch** zeigt dann in Dreißig-Minuten-Schritten, was die Klimaanlage
+verbraucht und was sie dich gekostet hat.
 
 ### Was die Integration selbst verknüpft
 
@@ -125,15 +125,15 @@ Die Integration veröffentlicht die beiden Funktionen, die diese Berechnung
 ermöglichen — **Energy today (consumption)** und **Energy today (cost)** — und
 verkettet sie selbst: Die Kosten zeigen auf den Verbrauch, der auf **Energy
 today** zeigt. Gladys füllt sie alle dreißig Minuten aus der Differenz zwischen
-zwei Ablesungen des Tageszählers und dem kWh-Preis Ihres Vertrags; nichts hier
-schreibt sie, und an diesen beiden Zeilen ist nichts einzustellen. Wenn Sie ihnen
-im Energie-Bildschirm einen anderen Elternteil zuweisen, setzt die Integration
+zwei Ablesungen des Tageszählers und dem kWh-Preis deines Vertrags; nichts hier
+schreibt sie, und an diesen beiden Zeilen ist nichts einzustellen. Wenn du ihnen
+im Tab **Meine Geräte** der Energieüberwachung einen anderen Elternteil zuweisen, setzt die Integration
 beim nächsten Veröffentlichen ihren eigenen wieder.
 
-### Der einzige Schritt, der Ihnen bleibt
+### Der einzige Schritt, der dir bleibt
 
-Wählen Sie unter **Einstellungen → Energie** den Elternteil von **Energy today**:
-die Funktion Ihres Hauptzählers (der von Ihrem Netzbetreiber gemeldete
+Wähle in der Integration **Energieüberwachung**, Tab **Meine Geräte**, den Elternteil von **Energy today**:
+die Funktion deines Hauptzählers (der von deinem Netzbetreiber gemeldete
 Tagesverbrauch, eine Messzange für das ganze Haus…). Das sagt Gladys, dass die
 Klimaanlage ein _Teil_ dessen ist, was der Zähler bereits misst, und kein
 zusätzlicher Verbrauch obendrauf.
@@ -152,11 +152,11 @@ Air conditioner — Energy this year                     level 0   ← normal, n
 
 Die vor jeder Zeile angezeigte Ebene ist nichts anderes als ihre Tiefe in diesem
 Baum: Ebene 0 = Wurzel, also eine Funktion, die kein Teil von etwas anderem ist.
-Ihr Hauptzähler steht dort, weil nichts ihn enthält; die Klimaanlage steht
+Dein Hauptzähler steht dort, weil nichts ihn enthält; die Klimaanlage steht
 darunter, weil ihre kWh Teil der des Zählers sind.
 
-Diese Wahl liegt bei Ihnen und bleibt bei Ihnen: Die Integration sendet den
-Elternteil von **Energy today** nie, nicht einmal leer, gerade damit sie Ihre
+Diese Wahl liegt bei dir und bleibt bei dir: Die Integration sendet den
+Elternteil von **Energy today** nie, nicht einmal leer, gerade damit sie deine
 Einstellung nicht bei jedem Veröffentlichen rückgängig machen kann.
 
 ### Warum „Energy this month“ und „Energy this year“ auf Ebene 0 bleiben
@@ -183,18 +183,18 @@ nichts zu korrigieren.
 Mit anderen Worten: Eine korrekt eingerichtete Konfiguration lässt sehr wohl zwei
 Funktionen der Klimaanlage auf Ebene 0 stehen, neben dem Hauptzähler.
 
-## Bevor Sie beginnen: Erstellen Sie Ihre Daikin-Anwendung
+## Bevor du beginnst: Erstelle deine Daikin-Anwendung
 
 Die Onecta-API ist kostenlos, aber jeder Benutzer braucht seine eigene
 Anwendung. Das dauert zwei Minuten:
 
-1. Gehen Sie zum [Daikin-Entwicklerportal](https://developer.cloud.daikineurope.com/)
-   und erstellen Sie ein Konto (Sie können dieselbe E-Mail-Adresse wie für Ihr
+1. Geh zum [Daikin-Entwicklerportal](https://developer.cloud.daikineurope.com/)
+   und erstelle ein Konto (du kannst dieselbe E-Mail-Adresse wie für dein
    Onecta-Konto verwenden).
-2. Öffnen Sie **My apps** → **New app**.
-3. Geben Sie der App einen Namen (zum Beispiel `Gladys`).
-4. Fügen Sie unter **Redirect URIs** die Adresse ein, die Gladys Ihnen anzeigt.
-   Öffnen Sie in Gladys den Tab **Konfiguration** der Integration Daikin Cloud:
+2. Öffne **My apps** → **New app**.
+3. Gib der App einen Namen (zum Beispiel `Gladys`).
+4. Füge unter **Redirect URIs** die Adresse ein, die Gladys dir anzeigt.
+   Öffne in Gladys den Tab **Konfiguration** der Integration Daikin Cloud:
    Die Adresse wird direkt unter der Schaltfläche **Verbinden** angezeigt, mit
    einer Schaltfläche zum Kopieren daneben. Standardmäßig lautet sie:
 
@@ -202,51 +202,51 @@ Anwendung. Das dauert zwei Minuten:
    https://my.gladysassistant.com/redirect/oauth
    ```
 
-   Diese Seite wird von Gladys gehostet und leitet den Browser einfach zu Ihrer
+   Diese Seite wird von Gladys gehostet und leitet den Browser einfach zu deiner
    eigenen Instanz zurück — Daikin lehnt, wie die meisten Anbieter, eine
    einfache `http://`-Adresse ab, und so erreichen die meisten ihr Gladys zu
-   Hause. Wenn Sie Gladys bereits über HTTPS bereitstellen, können Sie im
-   Konfigurationsbildschirm die Option „Stattdessen die Adresse meiner Instanz
-   verwenden (ich erreiche Gladys bereits per HTTPS)“ aktivieren und Ihre eigene
+   Hause. Wenn du Gladys bereits über HTTPS bereitstellst, kannst du im
+   Tab „Konfiguration“ die Option „Stattdessen die Adresse meiner Instanz
+   verwenden (ich erreiche Gladys bereits per HTTPS)“ aktivieren und deine eigene
    Adresse eintragen; welche Adresse auch immer angezeigt wird, sie ist hier
    Zeichen für Zeichen einzufügen.
 
-5. Speichern Sie die App und kopieren Sie dann ihre **Client ID** und ihr
+5. Speichere die App und kopiere dann ihre **Client ID** und ihr
    **Client secret**.
 
 ## Konfiguration
 
-1. Öffnen Sie in Gladys **Integrationen → Daikin Cloud → Konfiguration**.
-2. Fügen Sie die **Client ID** und das **Client secret** Ihrer Daikin-App ein.
+1. Öffne in Gladys **Integrationen → Daikin Cloud → Konfiguration**.
+2. Füge die **Client ID** und das **Client secret** deiner Daikin-App ein.
 3. **Konfiguration speichern** — die Zugangsdaten müssen gespeichert sein, bevor
    die Verbindung beginnen kann.
-4. Klicken Sie neben _Daikin-Konto_ auf **Verbinden**. Ein neuer Tab öffnet die
-   Daikin-Anmeldeseite: Melden Sie sich mit dem Konto an, mit dem Ihre
-   Klimaanlagen in der Onecta-App gekoppelt sind, und bestätigen Sie die
+4. Klicke neben _Daikin-Konto_ auf **Verbinden**. Ein neuer Tab öffnet die
+   Daikin-Anmeldeseite: Melde dich mit dem Konto an, mit dem deine
+   Klimaanlagen in der Onecta-App gekoppelt sind, und bestätige die
    Autorisierung.
-5. Sie kehren zu Gladys zurück, die Integration liest Ihr Konto, und Ihre
-   Einheiten erscheinen im Tab **Entdecken**. Fügen Sie die gewünschten mit
+5. Du kehrst zu Gladys zurück, die Integration liest dein Konto, und deine
+   Einheiten erscheinen im Tab **Entdecken**. Füge die gewünschten mit
    **Zu Gladys hinzufügen** hinzu.
 
-Gladys speichert die erhaltenen Token selbst und erneuert sie automatisch. Sie
-sollten diesen Ablauf nicht noch einmal durchlaufen müssen.
+Gladys speichert die erhaltenen Token selbst und erneuert sie automatisch. Du
+solltest diesen Ablauf nicht noch einmal durchlaufen müssen.
 
 ## Aktualisierungsintervall und API-Kontingent
 
 Daikin begrenzt ein Entwicklerkonto auf **200 API-Aufrufe pro Tag und 20 pro
-Minute**. Das ist die eine Einschränkung, die Sie im Kopf behalten sollten, und
+Minute**. Das ist die eine Einschränkung, die du im Kopf behalten solltest, und
 sie bestimmt, wie sich die Integration verhält:
 
-- eine Aktualisierung liest **alle** Ihre Einheiten mit einem einzigen Aufruf,
+- eine Aktualisierung liest **alle** deine Einheiten mit einem einzigen Aufruf,
   die Anzahl der Einheiten ändert die Kosten also nicht;
 - jeder gesendete Befehl (Ein/Aus, eine Temperatur, eine Lüfterstufe…) kostet
   einen weiteren Aufruf — und das Umstellen des Lüfters auf eine feste Stufe
   kostet zwei;
 - das Standardintervall von **900 Sekunden (15 Minuten)** verbraucht 96 Aufrufe
-  pro Tag und lässt den Rest für Ihre Befehle.
+  pro Tag und lässt den Rest für deine Befehle.
 
-Sie können das Intervall auf bis zu 6 Stunden erhöhen oder auf bis zu 10 Minuten
-senken, wenn Sie Ihre Einheiten selten über Gladys steuern. Noch weiter
+Du kannst das Intervall auf bis zu 6 Stunden erhöhen oder auf bis zu 10 Minuten
+senken, wenn du deine Einheiten selten über Gladys steuern. Noch weiter
 herunterzugehen würde das gesamte Tagesbudget vor Tagesende verbrauchen, deshalb
 endet das Feld dort.
 
@@ -256,19 +256,19 @@ Sie führt ihren eigenen Zeitplan aus.
 
 ## Aktionen
 
-**Verbindung testen** liest Ihr Daikin-Konto sofort und meldet für jede Einheit,
-wie viele Funktionen veröffentlicht wurden **und welche Eigenschaften Ihre
+**Verbindung testen** liest dein Daikin-Konto sofort und meldet für jede Einheit,
+wie viele Funktionen veröffentlicht wurden **und welche Eigenschaften deine
 Einheit angibt, die diese Integration nicht nutzt**. Das unterscheidet „die
-Integration ignoriert diese Funktion“ von „Ihr Modell meldet sie nicht an die
+Integration ignoriert diese Funktion“ von „dein Modell meldet sie nicht an die
 API“ — zwei Probleme mit völlig unterschiedlichen Antworten. Wenn eine Funktion,
-die Sie in Onecta sehen, fehlt, führen Sie diese Aktion aus: Erscheint ihr Name
+die du in Onecta siehst, fehlt, führe diese Aktion aus: Erscheint ihr Name
 weder in den veröffentlichten Funktionen noch in den ignorierten Eigenschaften,
-stellt die Daikin-API sie für Ihr Modell nicht bereit.
+stellt die Daikin-API sie für dein Modell nicht bereit.
 
 ## Dashboard-Widgets
 
-Seit Gladys 5.1 bringt die Integration eigene Widgets mit. Klicken Sie auf dem
-Dashboard auf **Bearbeiten**, fügen Sie ein Widget hinzu und suchen Sie nach
+Seit Gladys 5.1 bringt die Integration eigene Widgets mit. Suche unter
+**Dashboard → Bearbeiten → Neues Widget** bei den **Integrations-Widgets** nach
 „Daikin“:
 
 - **Daikin-Klimaanlage** — eine Einheit (in den Widget-Einstellungen gewählt):
@@ -286,7 +286,7 @@ Werte. Die Temperatur- und Energiekacheln folgen den Werten live; der Rest
 aktualisiert sich bei jeder Aktualisierung und nach jedem Befehl.
 
 Um die Einheit zu **steuern** (Modus, Sollwert, Lüfter, Lamellen, Powerful…),
-fügen Sie daneben das Gladys-eigene Widget **Geräte** hinzu und wählen Sie die
+füge daneben das Gladys-eigene Widget **Geräte** hinzu und wähle die
 Daikin-Einheit: Es zeigt jede Funktion mit ihrer passenden Steuerung
 (Modusauswahl, Sollwert − / +, Lüfterregler, Schalter). Ein Integrations-Widget
 kann das nicht: Gladys erlaubt ihm nur Schaltflächen.
@@ -295,7 +295,7 @@ kann das nicht: Gladys erlaubt ihm nur Schaltflächen.
 
 ### Auslöser
 
-Vier Auslöser erscheinen im Szenen-Editor. Jeder löst **einmal pro Änderung**
+Vier Auslöser erscheinen im Szenen-Editor, unter **Integrationen**. Jeder löst **einmal pro Änderung**
 aus, festgestellt zwischen zwei Ablesungen der Cloud (also im Takt des
 Aktualisierungsintervalls). Die erste Ablesung nach einem Neustart löst nichts
 aus: Sie ist die Ausgangsbasis.
@@ -332,7 +332,7 @@ diesem Modus…), schlägt die Aktion **vor** dem ersten Schreibvorgang fehl.
 „Daikin-Konto jetzt aktualisieren“ verbraucht höchstens einen Aufruf alle 10
 Minuten, egal wie oft die Szene läuft, und keinen mehr, sobald das
 Tageskontingent auf 20 Aufrufe gesunken ist: Diese gehören der geplanten
-Aktualisierung und Ihren Befehlen. Wenn sie nicht liest, antwortet sie aus der
+Aktualisierung und deinen Befehlen. Wenn sie nicht liest, antwortet sie aus der
 letzten Ablesung, und `data_age_seconds` gibt an, wie alt diese ist (0 direkt
 nach einer frischen).
 
@@ -342,7 +342,7 @@ Beispiel: _jeden Morgen um 8 Uhr → Daikin-Verbrauch lesen → Nachricht senden
 
 ## Verbleibendes API-Kontingent
 
-Unter der Schaltfläche **Verbinden** zeigt der Konfigurationsbildschirm ständig
+Unter der Schaltfläche **Verbinden** zeigt der Tab **Konfiguration** ständig
 an, was vom heutigen Daikin-Kontingent übrig ist:
 
 > Verbunden. Heute noch 184/200 Daikin-API-Aufrufe übrig.
@@ -361,64 +361,64 @@ Jedes Gerät trägt ein Abzeichen, das zeigt, wie Gladys es erreicht:
 
 - **Cloud** — normaler Betrieb.
 - **Cloud mit orangefarbenem Punkt** — die Einheit ist erreichbar, meldet aber
-  eine Störung; prüfen Sie sie in der Onecta-App.
+  eine Störung; prüfe sie in der Onecta-App.
 - **Nicht erreichbar** — Daikin erreicht die Einheit nicht (ihr WLAN-Adapter ist
   offline, ein Stromausfall, ein Routerwechsel…). Befehle werden mit einer klaren
-  Meldung abgelehnt und es wird kein Zustand veröffentlicht, damit Ihre
+  Meldung abgelehnt und es wird kein Zustand veröffentlicht, damit deine
   Diagramme keine flache Linie erhalten, die wie eine echte Messung aussieht.
 
 ## Fehlerbehebung
 
 **„Fill in the client ID and the client secret first, then save.“**
-Die Zugangsdaten sind leer oder wurden nicht gespeichert. Füllen Sie beide Felder
-aus, klicken Sie auf „Konfiguration speichern“ und dann auf „Verbinden“.
+Die Zugangsdaten sind leer oder wurden nicht gespeichert. Fülle beide Felder
+aus, klicke auf „Konfiguration speichern“ und dann auf „Verbinden“.
 
 **Die Daikin-Seite meldet, dass die Redirect URI ungültig ist.**
-Die in Ihrer Daikin-App eingetragene Adresse stimmt nicht mit der überein, die
-Gladys verwendet. Kopieren Sie sie erneut unter der Schaltfläche „Verbinden“ —
+Die in deiner Daikin-App eingetragene Adresse stimmt nicht mit der überein, die
+Gladys verwendet. Kopiere sie erneut unter der Schaltfläche „Verbinden“ —
 mit dem Protokoll und ohne abschließenden Schrägstrich.
 
-**„Die Daikin-Sitzung ist abgelaufen, bitte verbinden Sie Ihr Konto erneut.“**
+**„Die Daikin-Sitzung ist abgelaufen, bitte verbinde dein Konto erneut.“**
 Das Refresh-Token wurde widerrufen (Passwort geändert, App im Portal gelöscht,
-Kontozugriff entzogen). Klicken Sie erneut auf „Verbinden“.
+Kontozugriff entzogen). Klicke erneut auf „Verbinden“.
 
-**„Daikin-API-Kontingent erreicht, erhöhen Sie das Aktualisierungsintervall.“**
-Sie haben die 200 Aufrufe pro Tag erreicht, höchstwahrscheinlich durch ein kurzes
+**„Daikin-API-Kontingent erreicht, erhöhe das Aktualisierungsintervall.“**
+Du hast die 200 Aufrufe pro Tag erreicht, höchstwahrscheinlich durch ein kurzes
 Intervall in Kombination mit vielen Befehlen oder durch mehrere Integrationen,
 die dieselbe Daikin-App nutzen. Das Kontingent setzt sich von selbst zurück;
-erhöhen Sie das Aktualisierungsintervall, um es nicht erneut zu erreichen.
+erhöhe das Aktualisierungsintervall, um es nicht erneut zu erreichen.
 
 **Eine in der Onecta-App vorgenommene Änderung erscheint erst nach einer Weile in
 Gladys.**
 Erwartet: Die Daikin-API hat keine Push-Benachrichtigungen, Gladys sieht eine
-Änderung also erst bei der nächsten Aktualisierung. Senken Sie das Intervall oder
-verwenden Sie die Aktion _Verbindung testen_, um eine Ablesung zu erzwingen.
+Änderung also erst bei der nächsten Aktualisierung. Senke das Intervall oder
+verwende die Aktion _Verbindung testen_, um eine Ablesung zu erzwingen.
 
 **Eine Funktion, die ich in der Onecta-App nutze, fehlt (Econo, Streamer, Keep
 dry…).**
 Die Onecta-App spricht mit der internen API von Daikin. Diese Integration
 spricht mit der **öffentlichen** Onecta-API, über den Scope
 `onecta:basic.integration`, und dieser Scope liefert weniger Daten: Eine Funktion
-kann in dem, was die API für Ihre Einheit sendet, schlicht fehlen. Ist sie
+kann in dem, was die API für deine Einheit sendet, schlicht fehlen. Ist sie
 vorhanden, veröffentlicht diese Integration sie; ist sie es nicht, kann nichts
 sie steuern — keine Integration, die auf der öffentlichen API aufbaut, und das
 ist keine Einschränkung dieser hier. Es hängt vom Modell und der Firmware ab,
-also prüfen Sie, statt anzunehmen: Führen Sie **Verbindung testen** aus. Ein
+also prüfe, statt anzunehmen: Führe **Verbindung testen** aus. Ein
 Name, der weder in den veröffentlichten Funktionen noch in den ignorierten
-Eigenschaften erscheint, wird von der API für Ihre Einheit nicht bereitgestellt.
+Eigenschaften erscheint, wird von der API für deine Einheit nicht bereitgestellt.
 
-**Die Zeilen „Energy today (consumption)“ und „(cost)“ erscheinen nicht unter
-Einstellungen → Energie.**
-Das Gerät wurde angelegt, bevor es sie gab: Führen Sie _Verbindung testen_ aus,
+**Die Zeilen „Energy today (consumption)“ und „(cost)“ erscheinen nicht im
+Tab „Meine Geräte“ der Energieüberwachung.**
+Das Gerät wurde angelegt, bevor es sie gab: Führe _Verbindung testen_ aus,
 das die Erkennung erneut veröffentlicht und die bereits angelegten Geräte
 ergänzt. Sie kommen bereits miteinander verkettet an; es bleibt nur, **Energy
 today** einen Elternteil zu geben.
 
 **Im Tab „Entdecken“ erscheint nichts.**
-Stellen Sie sicher, dass die Einheiten in der Onecta-App mit demselben Konto
-sichtbar sind, und führen Sie dann _Verbindung testen_ aus: Die Meldung sagt
-Ihnen, wie viele Einheiten die API zurückgegeben hat.
+Stelle sicher, dass die Einheiten in der Onecta-App mit demselben Konto
+sichtbar sind, und führe dann _Verbindung testen_ aus: Die Meldung sagt
+dir, wie viele Einheiten die API zurückgegeben hat.
 
-Die Integration protokolliert jeden Aufruf, den sie macht: Sehen Sie sich in der
-Gladys-Oberfläche die **Protokolle** der Integration an, um alle Details zu
+Die Integration protokolliert jeden Aufruf, den sie macht: Sieh dir in Gladys den Tab
+**Protokolle** der Integration an, um alle Details zu
 erhalten.

@@ -95,8 +95,8 @@ primer valor después de medianoche es 0, y Gladys ignora el paso negativo de un
 contador que vuelve a cero).
 
 Mientras la unidad funciona, supera esos 0,1 kWh cada pocas decenas de minutos:
-cada ventana de 30 minutos recibe entonces su valor, y la vista **Día** de la
-supervisión de energía parece una verdadera curva de consumo, que coincide con lo
+cada ventana de 30 minutos recibe entonces su valor, y la vista **Día** del
+widget **Consumo de energía** parece una verdadera curva de consumo, que coincide con lo
 que muestra la app Onecta. El escalón solo se nota con un consumo muy bajo:
 algunas ventanas se quedan a cero y una posterior recupera el retraso. Es un
 desfase de unas decenas de minutos como mucho, y los totales diarios, mensuales y
@@ -115,7 +115,7 @@ agua no se ofrece — esta integración está pensada para aires acondicionados.
 Su aire acondicionado puede ocupar su lugar en la
 [supervisión de energía](https://gladysassistant.com/docs/integrations/energy-monitoring/)
 de Gladys, junto a su contador de electricidad y sus enchufes inteligentes: el
-panel de Energía muestra entonces, en pasos de treinta minutos, lo que consumió
+widget de panel **Consumo de energía** muestra entonces, en pasos de treinta minutos, lo que consumió
 el aire acondicionado y lo que le costó.
 
 ### Lo que la integración conecta por sí sola
@@ -125,12 +125,12 @@ La integración publica las dos funciones que hacen posible ese cálculo —
 misma: el coste apunta al consumo, que apunta a **Energy today**. Gladys las
 rellena cada treinta minutos, a partir de la diferencia entre dos lecturas del
 contador diario y el precio del kWh de su contrato; nada las escribe aquí, y no
-hay nada que ajustar en esas dos filas. Si les elige otro padre en la pantalla de
-Energía, la integración volverá a poner el suyo en la siguiente publicación.
+hay nada que ajustar en esas dos filas. Si les elige otro padre en la pestaña
+**Mis dispositivos** de la Supervisión de energía, la integración volverá a poner el suyo en la siguiente publicación.
 
 ### El único paso que le queda
 
-En **Configuración → Energía**, elija el padre de **Energy today**: la función
+En la integración **Supervisión de energía**, pestaña **Mis dispositivos**, elija el padre de **Energy today**: la función
 de su contador principal (el consumo diario que informa su distribuidora, una
 pinza para toda la casa…). Eso le indica a Gladys que el aire acondicionado es
 una _parte_ de lo que el contador ya mide, y no un consumo adicional encima.
@@ -202,7 +202,7 @@ dos minutos:
    dirección `http://` simple, que es como la mayoría de la gente accede a su
    Gladys en casa. Si ya sirve Gladys por HTTPS, puede marcar la opción «Usar en
    su lugar la dirección de mi instancia (ya accedo a Gladys mediante HTTPS)» en
-   la pantalla de configuración y declarar su propia dirección; sea cual sea la
+   la pestaña **Configuración** y declarar su propia dirección; sea cual sea la
    dirección mostrada, es la que debe pegar aquí, carácter por carácter.
 
 5. Guarde la app y copie su **Client ID** y su **Client secret**.
@@ -257,8 +257,8 @@ para su modelo.
 
 ## Widgets del panel
 
-Desde Gladys 5.1, la integración trae sus propios widgets. En el panel, pulse
-**Editar**, añada un widget y busque «Daikin»:
+Desde Gladys 5.1, la integración trae sus propios widgets. En **Panel → Editar →
+Nuevo widget**, busque «Daikin» en **Widgets de integraciones**:
 
 - **Aire acondicionado Daikin** — una unidad (elegida en la configuración del
   widget): temperaturas interior, exterior y de consigna, energía del día,
@@ -284,7 +284,7 @@ integración no puede hacerlo: Gladys solo le permite contener botones.
 
 ### Activadores
 
-En el editor de escenas aparecen cuatro activadores. Cada uno se dispara **una
+En el editor de escenas, en **Integraciones**, aparecen cuatro activadores. Cada uno se dispara **una
 vez por cambio**, detectado entre dos lecturas de la nube (es decir, al ritmo del
 intervalo de actualización). La primera lectura tras un reinicio no dispara nada:
 es la referencia.
@@ -329,7 +329,7 @@ Ejemplo: _cada mañana a las 8 → Leer el consumo Daikin → Enviar mensaje: «
 
 ## Cuota de la API restante
 
-Bajo el botón **Conectar**, la pantalla de configuración muestra en todo momento
+Bajo el botón **Conectar**, la pestaña **Configuración** muestra en todo momento
 lo que queda de la cuota de Daikin de hoy:
 
 > Conectado. Quedan 184/200 llamadas a la API de Daikin hoy.
@@ -391,8 +391,8 @@ compruébelo en lugar de suponerlo: ejecute **Probar la conexión**. Un nombre q
 no aparece ni en las funciones publicadas ni en las características ignoradas es
 uno que la API no ofrece para su unidad.
 
-**Las filas «Energy today (consumption)» y «(cost)» no aparecen en
-Configuración → Energía.**
+**Las filas «Energy today (consumption)» y «(cost)» no aparecen en la
+pestaña «Mis dispositivos» de la Supervisión de energía.**
 El dispositivo se creó antes de que existieran: ejecute _Probar la conexión_, que
 vuelve a publicar el descubrimiento y completa los dispositivos ya creados.
 Llegan ya encadenadas entre sí; solo queda darle un padre a **Energy today**.
@@ -402,5 +402,5 @@ Asegúrese de que las unidades son visibles en la app Onecta con la misma cuenta
 luego ejecute _Probar la conexión_: el mensaje le indica cuántas unidades
 devolvió la API.
 
-La integración registra cada llamada que hace: consulte los **Registros** de la
-integración en la interfaz de Gladys para ver todos los detalles.
+La integración registra cada llamada que hace: consulte la pestaña **Registros** de la
+integración en Gladys para ver todos los detalles.

@@ -405,7 +405,7 @@ gladys.on('connected', async () => {
       await gladys.setConnectionStatus(false, {
         en: 'No Daikin account linked yet: fill in your credentials and click Connect.',
         fr: 'Aucun compte Daikin lié : renseignez vos identifiants puis cliquez sur Connecter.',
-        de: 'Noch kein Daikin-Konto verknüpft: Geben Sie Ihre Zugangsdaten ein und klicken Sie auf „Verbinden“.',
+        de: 'Noch kein Daikin-Konto verknüpft: Gib deine Zugangsdaten ein und klicke auf „Verbinden“.',
         es: 'Aún no hay ninguna cuenta Daikin vinculada: introduzca sus credenciales y pulse Conectar.',
       });
       return;

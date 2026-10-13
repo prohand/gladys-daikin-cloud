@@ -21,7 +21,7 @@ export function failureMessage(err) {
     return {
       en: 'The Daikin session expired, please reconnect your account.',
       fr: 'La session Daikin a expiré, reconnectez votre compte.',
-      de: 'Die Daikin-Sitzung ist abgelaufen, bitte verbinden Sie Ihr Konto erneut.',
+      de: 'Die Daikin-Sitzung ist abgelaufen, bitte verbinde dein Konto erneut.',
       es: 'La sesión de Daikin ha caducado, vuelva a conectar su cuenta.',
     };
   }
@@ -29,14 +29,14 @@ export function failureMessage(err) {
     return {
       en: 'Daikin API quota reached, increase the refresh interval.',
       fr: "Quota de l'API Daikin atteint, augmentez l'intervalle de rafraîchissement.",
-      de: 'Daikin-API-Kontingent erreicht, erhöhen Sie das Aktualisierungsintervall.',
+      de: 'Daikin-API-Kontingent erreicht, erhöhe das Aktualisierungsintervall.',
       es: 'Cuota de la API de Daikin alcanzada, aumente el intervalo de actualización.',
     };
   }
   return {
     en: 'Could not reach the Daikin cloud, check the integration logs.',
     fr: "Impossible de joindre le cloud Daikin, consultez les logs de l'intégration.",
-    de: 'Die Daikin-Cloud ist nicht erreichbar, prüfen Sie die Protokolle der Integration.',
+    de: 'Die Daikin-Cloud ist nicht erreichbar, prüfe die Protokolle der Integration.',
     es: 'No se puede contactar con la nube de Daikin, consulte los registros de la integración.',
   };
 }
