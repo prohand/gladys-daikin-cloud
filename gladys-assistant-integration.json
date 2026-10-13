@@ -8,10 +8,10 @@
     "de": "Steuere deine Daikin-Klimaanlagen über die offizielle Onecta-Cloud-API.",
     "es": "Controle sus aires acondicionados Daikin con la API cloud oficial de Onecta."
   },
-  "version": "4.3.3",
-  "docker_image": "ghcr.io/prohand/gladys-daikin-cloud:4.3.3",
+  "version": "4.4.0",
+  "docker_image": "ghcr.io/prohand/gladys-daikin-cloud:4.4.0",
   "gladys_version": ">=5.1.0",
-  "cover_image": "https://raw.githubusercontent.com/prohand/gladys-daikin-cloud/v4.3.3/cover.png",
+  "cover_image": "https://raw.githubusercontent.com/prohand/gladys-daikin-cloud/v4.4.0/cover.png",
   "categories": ["climate"],
   "transports": ["cloud"],
   "config_schema": [
