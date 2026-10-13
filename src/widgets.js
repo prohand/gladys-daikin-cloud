@@ -15,7 +15,7 @@
 //     day, the months of this year against last year's, and the one number
 //     that governs this integration: the API calls left today.
 //
-// Every text is an `{ en, fr }` pair the core picks from, except the numbers
+// Every text is an `{ en, fr, de, es }` object the core picks from, except the numbers
 // woven into a sentence, which are formatted per language (22.5 / 22,5) and
 // per unit system: a tile bound to a feature is converted by the core, an
 // inline temperature is converted here.
@@ -53,21 +53,29 @@ const MAX_STATUS_ROWS = 10;
 // Daikin's documented developer quota, when the headers have not said yet.
 const DEFAULT_DAILY_QUOTA = 200;
 
-const LANGUAGES = ['en', 'fr'];
+// The languages of the Gladys interface: the core shows `en` for any other.
+export const LANGUAGES = ['en', 'fr', 'de', 'es'];
 
 const MODE_LABELS = {
-  auto: { en: 'Auto', fr: 'Auto' },
-  cooling: { en: 'Cooling', fr: 'Froid' },
-  heating: { en: 'Heating', fr: 'Chauffage' },
-  dry: { en: 'Drying', fr: 'Déshumidification' },
-  fanOnly: { en: 'Fan only', fr: 'Ventilation' },
+  auto: { en: 'Auto', fr: 'Auto', de: 'Auto', es: 'Auto' },
+  cooling: { en: 'Cooling', fr: 'Froid', de: 'Kühlen', es: 'Frío' },
+  heating: { en: 'Heating', fr: 'Chauffage', de: 'Heizen', es: 'Calor' },
+  dry: { en: 'Drying', fr: 'Déshumidification', de: 'Entfeuchten', es: 'Deshumidificación' },
+  fanOnly: { en: 'Fan only', fr: 'Ventilation', de: 'Nur Lüfter', es: 'Solo ventilador' },
+};
+
+const READING_ACCOUNT = {
+  en: 'Reading the Daikin account, this widget fills in a moment.',
+  fr: 'Lecture du compte Daikin en cours, ce widget se remplit dans un instant.',
+  de: 'Das Daikin-Konto wird gelesen, dieses Widget füllt sich gleich.',
+  es: 'Leyendo la cuenta Daikin, este widget se completará en un momento.',
 };
 
 const TOGGLE_LABELS = {
-  powerful: { en: 'Powerful', fr: 'Powerful' },
-  econo: { en: 'Econo', fr: 'Econo' },
-  streamer: { en: 'Streamer', fr: 'Streamer' },
-  dryKeep: { en: 'Keep dry', fr: 'Maintien au sec' },
+  powerful: { en: 'Powerful', fr: 'Powerful', de: 'Powerful', es: 'Powerful' },
+  econo: { en: 'Econo', fr: 'Econo', de: 'Econo', es: 'Econo' },
+  streamer: { en: 'Streamer', fr: 'Streamer', de: 'Streamer', es: 'Streamer' },
+  dryKeep: { en: 'Keep dry', fr: 'Maintien au sec', de: 'Trocken halten', es: 'Mantener seco' },
 };
 
 /**
@@ -85,11 +93,10 @@ export function buildUnitWidget(gladys, unit, options = {}) {
         ? {
             en: 'This unit is no longer in the Daikin account. Pick another one in the widget settings.',
             fr: "Cette unité n'est plus dans le compte Daikin. Choisissez-en une autre dans les réglages du widget.",
+            de: 'Diese Einheit ist nicht mehr im Daikin-Konto. Wähle in den Widget-Einstellungen eine andere.',
+            es: 'Esta unidad ya no está en la cuenta Daikin. Elija otra en la configuración del widget.',
           }
-        : {
-            en: 'Reading the Daikin account, this widget fills in a moment.',
-            fr: 'Lecture du compte Daikin en cours, ce widget se remplit dans un instant.',
-          },
+        : READING_ACCOUNT,
       ready ? UNIT_TTL_SECONDS : WAITING_TTL_SECONDS,
     );
   }
@@ -99,16 +106,44 @@ export function buildUnitWidget(gladys, unit, options = {}) {
 
   // Live tiles: the core follows the published states on its own.
   if (unit.roomTemperature !== null) {
-    components.push(tile(feature(FEATURE.ROOM_TEMPERATURE), 'thermometer', 'Room', 'Pièce'));
+    components.push(
+      tile(feature(FEATURE.ROOM_TEMPERATURE), 'thermometer', {
+        en: 'Room',
+        fr: 'Pièce',
+        de: 'Raum',
+        es: 'Habitación',
+      }),
+    );
   }
   if (Object.keys(unit.setpoints).length > 0) {
-    components.push(tile(feature(FEATURE.TARGET_TEMPERATURE), 'target', 'Setpoint', 'Consigne'));
+    components.push(
+      tile(feature(FEATURE.TARGET_TEMPERATURE), 'target', {
+        en: 'Setpoint',
+        fr: 'Consigne',
+        de: 'Sollwert',
+        es: 'Consigna',
+      }),
+    );
   }
   if (unit.outdoorTemperature !== null) {
-    components.push(tile(feature(FEATURE.OUTDOOR_TEMPERATURE), 'sun', 'Outdoor', 'Extérieur'));
+    components.push(
+      tile(feature(FEATURE.OUTDOOR_TEMPERATURE), 'sun', {
+        en: 'Outdoor',
+        fr: 'Extérieur',
+        de: 'Außen',
+        es: 'Exterior',
+      }),
+    );
   }
   if (unit.energy) {
-    components.push(tile(feature(FEATURE.ENERGY_TODAY), 'zap', 'Today', "Aujourd'hui"));
+    components.push(
+      tile(feature(FEATURE.ENERGY_TODAY), 'zap', {
+        en: 'Today',
+        fr: "Aujourd'hui",
+        de: 'Heute',
+        es: 'Hoy',
+      }),
+    );
   }
 
   if (!unit.online) {
@@ -118,6 +153,8 @@ export function buildUnitWidget(gladys, unit, options = {}) {
       text: {
         en: 'Unreachable: the values are the last ones known.',
         fr: 'Injoignable : les valeurs sont les dernières connues.',
+        de: 'Nicht erreichbar: Die Werte sind die zuletzt bekannten.',
+        es: 'Inaccesible: los valores son los últimos conocidos.',
       },
     });
   }
@@ -160,24 +197,22 @@ export function buildAccountWidget(units, options = {}) {
       {
         en: 'No Daikin account linked yet: connect it in the integration configuration.',
         fr: "Aucun compte Daikin lié : connectez-le dans la configuration de l'intégration.",
+        de: 'Noch kein Daikin-Konto verknüpft: Verbinde es in der Konfiguration der Integration.',
+        es: 'Aún no hay ninguna cuenta Daikin vinculada: conéctela en la configuración de la integración.',
       },
       ACCOUNT_TTL_SECONDS,
     );
   }
   if (!ready) {
-    return message(
-      {
-        en: 'Reading the Daikin account, this widget fills in a moment.',
-        fr: 'Lecture du compte Daikin en cours, ce widget se remplit dans un instant.',
-      },
-      WAITING_TTL_SECONDS,
-    );
+    return message(READING_ACCOUNT, WAITING_TTL_SECONDS);
   }
   if (units.length === 0) {
     return message(
       {
         en: 'The Daikin account holds no air conditioner.',
         fr: 'Le compte Daikin ne contient aucun climatiseur.',
+        de: 'Das Daikin-Konto enthält keine Klimaanlage.',
+        es: 'La cuenta Daikin no contiene ningún aire acondicionado.',
       },
       ACCOUNT_TTL_SECONDS,
     );
@@ -188,7 +223,12 @@ export function buildAccountWidget(units, options = {}) {
   components.push({
     type: 'value',
     value: `${running}/${units.length}`,
-    label: { en: 'Units running', fr: 'Unités en marche' },
+    label: {
+      en: 'Units running',
+      fr: 'Unités en marche',
+      de: 'Laufende Einheiten',
+      es: 'Unidades en marcha',
+    },
     icon: 'wind',
     color: running > 0 ? WIDGET_COLORS.SUCCESS : WIDGET_COLORS.NEUTRAL,
   });
@@ -202,7 +242,12 @@ export function buildAccountWidget(units, options = {}) {
         1,
       ),
       unit: 'kWh',
-      label: { en: 'Energy today', fr: 'Énergie du jour' },
+      label: {
+        en: 'Energy today',
+        fr: 'Énergie du jour',
+        de: 'Energie heute',
+        es: 'Energía de hoy',
+      },
       icon: 'zap',
     });
   }
@@ -214,7 +259,12 @@ export function buildAccountWidget(units, options = {}) {
       value: remainingDay,
       min: 0,
       max: Math.max(limitDay ?? DEFAULT_DAILY_QUOTA, remainingDay, 1),
-      label: { en: 'API calls left', fr: 'Appels API restants' },
+      label: {
+        en: 'API calls left',
+        fr: 'Appels API restants',
+        de: 'API-Aufrufe übrig',
+        es: 'Llamadas API restantes',
+      },
       color: quotaColor(remainingDay),
     });
   }
@@ -226,10 +276,17 @@ export function buildAccountWidget(units, options = {}) {
       variant: 'caption',
       text:
         minutes === 0
-          ? { en: 'Read from the Daikin cloud just now', fr: "Lu sur le cloud Daikin à l'instant" }
+          ? {
+              en: 'Read from the Daikin cloud just now',
+              fr: "Lu sur le cloud Daikin à l'instant",
+              de: 'Gerade eben aus der Daikin-Cloud gelesen',
+              es: 'Leído de la nube de Daikin hace un momento',
+            }
           : {
               en: `Read from the Daikin cloud ${minutes} min ago`,
               fr: `Lu sur le cloud Daikin il y a ${minutes} min`,
+              de: `Vor ${minutes} min aus der Daikin-Cloud gelesen`,
+              es: `Leído de la nube de Daikin hace ${minutes} min`,
             },
     });
   }
@@ -253,30 +310,40 @@ export function buildAccountWidget(units, options = {}) {
  * @returns {Array<object>} the rows
  */
 function unitStatusItems(unit) {
-  const items = [{ label: { en: 'State', fr: 'État' }, ...stateOf(unit) }];
+  const items = [
+    { label: { en: 'State', fr: 'État', de: 'Zustand', es: 'Estado' }, ...stateOf(unit) },
+  ];
   if (unit.operationMode) {
     items.push({
-      label: { en: 'Mode', fr: 'Mode' },
+      label: { en: 'Mode', fr: 'Mode', de: 'Modus', es: 'Modo' },
       value: MODE_LABELS[unit.operationMode] ?? unit.operationMode,
       icon: 'sliders',
     });
   }
   const fan = fanLabel(unit.fan?.current?.speed);
   if (fan) {
-    items.push({ label: { en: 'Fan', fr: 'Ventilation' }, value: fan, icon: 'wind' });
+    items.push({
+      label: { en: 'Fan', fr: 'Ventilation', de: 'Lüfter', es: 'Ventilador' },
+      value: fan,
+      icon: 'wind',
+    });
   }
   const swing = swingLabel(unit.fan?.current?.direction);
   if (swing) {
-    items.push({ label: { en: 'Louvers', fr: 'Volets' }, value: swing, icon: 'move' });
+    items.push({
+      label: { en: 'Louvers', fr: 'Volets', de: 'Lamellen', es: 'Lamas' },
+      value: swing,
+      icon: 'move',
+    });
   }
   const toggles = Object.entries(unit.toggles ?? {}).filter(([, toggle]) => toggle);
   if (toggles.length > 0) {
     const active = toggles.filter(([, toggle]) => toggle.on).map(([key]) => TOGGLE_LABELS[key]);
     items.push({
-      label: { en: 'Comfort modes', fr: 'Modes confort' },
+      label: { en: 'Comfort modes', fr: 'Modes confort', de: 'Komfortmodi', es: 'Modos confort' },
       value:
         active.length === 0
-          ? { en: 'None', fr: 'Aucun' }
+          ? { en: 'None', fr: 'Aucun', de: 'Keine', es: 'Ninguno' }
           : perLanguage((language) => active.map((label) => label[language]).join(', ')),
       icon: 'star',
       color: active.length > 0 ? WIDGET_COLORS.PRIMARY : WIDGET_COLORS.NEUTRAL,
@@ -296,10 +363,7 @@ function accountStatusItem(unit, unitSystem) {
   if (!unit.online || unit.inErrorState || unit.power !== 'on') {
     return { label: unit.name, ...state };
   }
-  const mode = MODE_LABELS[unit.operationMode] ?? {
-    en: unit.operationMode ?? '—',
-    fr: unit.operationMode ?? '—',
-  };
+  const mode = MODE_LABELS[unit.operationMode] ?? perLanguage(() => unit.operationMode ?? '—');
   return {
     label: unit.name,
     value: perLanguage((language) => {
@@ -321,15 +385,27 @@ function accountStatusItem(unit, unitSystem) {
  */
 function stateOf(unit) {
   if (!unit.online) {
-    return { value: { en: 'Unreachable', fr: 'Injoignable' }, color: WIDGET_COLORS.DANGER };
+    return {
+      value: { en: 'Unreachable', fr: 'Injoignable', de: 'Nicht erreichbar', es: 'Inaccesible' },
+      color: WIDGET_COLORS.DANGER,
+    };
   }
   if (unit.inErrorState) {
-    return { value: { en: 'Error', fr: 'En erreur' }, color: WIDGET_COLORS.WARNING };
+    return {
+      value: { en: 'Error', fr: 'En erreur', de: 'Fehler', es: 'Con error' },
+      color: WIDGET_COLORS.WARNING,
+    };
   }
   if (unit.power === 'on') {
-    return { value: { en: 'Running', fr: 'En marche' }, color: WIDGET_COLORS.SUCCESS };
+    return {
+      value: { en: 'Running', fr: 'En marche', de: 'In Betrieb', es: 'En marcha' },
+      color: WIDGET_COLORS.SUCCESS,
+    };
   }
-  return { value: { en: 'Off', fr: 'Arrêtée' }, color: WIDGET_COLORS.NEUTRAL };
+  return {
+    value: { en: 'Off', fr: 'Arrêtée', de: 'Aus', es: 'Apagada' },
+    color: WIDGET_COLORS.NEUTRAL,
+  };
 }
 
 /**
@@ -341,15 +417,21 @@ function fanLabel(speed) {
     return null;
   }
   if (speed.currentMode === 'fixed' && speed.fixed) {
-    return { en: `Level ${speed.fixed.value}`, fr: `Niveau ${speed.fixed.value}` };
+    const level = speed.fixed.value;
+    return {
+      en: `Level ${level}`,
+      fr: `Niveau ${level}`,
+      de: `Stufe ${level}`,
+      es: `Nivel ${level}`,
+    };
   }
   if (speed.currentMode === 'quiet') {
-    return { en: 'Quiet', fr: 'Silencieux' };
+    return { en: 'Quiet', fr: 'Silencieux', de: 'Leise', es: 'Silencioso' };
   }
   if (speed.currentMode === 'auto') {
-    return { en: 'Auto', fr: 'Auto' };
+    return { en: 'Auto', fr: 'Auto', de: 'Auto', es: 'Auto' };
   }
-  return { en: speed.currentMode, fr: speed.currentMode };
+  return perLanguage(() => speed.currentMode);
 }
 
 /**
@@ -363,15 +445,30 @@ function swingLabel(direction) {
   const horizontal = direction.horizontal?.value === 'swing';
   const vertical = direction.vertical?.value === 'swing';
   if (horizontal && vertical) {
-    return { en: 'Swinging both ways', fr: 'Balayage 3D' };
+    return {
+      en: 'Swinging both ways',
+      fr: 'Balayage 3D',
+      de: 'Schwenken in beide Richtungen',
+      es: 'Oscilación en ambos sentidos',
+    };
   }
   if (horizontal) {
-    return { en: 'Swinging left/right', fr: 'Balayage gauche/droite' };
+    return {
+      en: 'Swinging left/right',
+      fr: 'Balayage gauche/droite',
+      de: 'Schwenken links/rechts',
+      es: 'Oscilación izquierda/derecha',
+    };
   }
   if (vertical) {
-    return { en: 'Swinging up/down', fr: 'Balayage haut/bas' };
+    return {
+      en: 'Swinging up/down',
+      fr: 'Balayage haut/bas',
+      de: 'Schwenken oben/unten',
+      es: 'Oscilación arriba/abajo',
+    };
   }
-  return { en: 'Fixed', fr: 'Fixes' };
+  return { en: 'Fixed', fr: 'Fixes', de: 'Fest', es: 'Fijas' };
 }
 
 /**
@@ -397,7 +494,12 @@ function temperatureChart(unit, feature) {
   return {
     type: 'chart',
     chart_type: 'line',
-    title: { en: 'Temperatures, last 24 h', fr: 'Températures, 24 h' },
+    title: {
+      en: 'Temperatures, last 24 h',
+      fr: 'Températures, 24 h',
+      de: 'Temperaturen, letzte 24 h',
+      es: 'Temperaturas, últimas 24 h',
+    },
     device_features: bound,
     interval: 'last-day',
   };
@@ -425,11 +527,16 @@ function consumptionChart(unit, now) {
   return {
     type: 'chart',
     chart_type: 'bar',
-    title: { en: 'Energy per 2 h', fr: 'Énergie par tranche de 2 h' },
+    title: {
+      en: 'Energy per 2 h',
+      fr: 'Énergie par tranche de 2 h',
+      de: 'Energie pro 2 h',
+      es: 'Energía cada 2 h',
+    },
     unit: 'kWh',
     series: [
-      { name: { en: 'Today', fr: "Aujourd'hui" }, points: today },
-      { name: { en: 'Yesterday', fr: 'Hier' }, points: yesterday },
+      { name: { en: 'Today', fr: "Aujourd'hui", de: 'Heute', es: 'Hoy' }, points: today },
+      { name: { en: 'Yesterday', fr: 'Hier', de: 'Gestern', es: 'Ayer' }, points: yesterday },
     ],
     now_marker: true,
   };
@@ -463,7 +570,12 @@ function monthsChart(units, now) {
   return {
     type: 'chart',
     chart_type: 'bar',
-    title: { en: 'Energy per month', fr: 'Énergie par mois' },
+    title: {
+      en: 'Energy per month',
+      fr: 'Énergie par mois',
+      de: 'Energie pro Monat',
+      es: 'Energía por mes',
+    },
     unit: 'kWh',
     series: [
       { name: String(year), points: thisYear },
@@ -475,16 +587,15 @@ function monthsChart(units, now) {
 /**
  * @param {string} externalId the feature the tile follows
  * @param {string} icon a Feather icon name
- * @param {string} en the English label
- * @param {string} fr the French label
+ * @param {Record<string, string>} label the label, in every language
  * @returns {object} a live value tile
  */
-function tile(externalId, icon, en, fr) {
-  return { type: 'value', device_feature: externalId, label: { en, fr }, icon };
+function tile(externalId, icon, label) {
+  return { type: 'value', device_feature: externalId, label, icon };
 }
 
 /**
- * @param {{ en: string, fr: string }} text what to say
+ * @param {Record<string, string>} text what to say, in every language
  * @param {number} ttl how long the core may keep it
  * @returns {object} a content made of one paragraph
  */

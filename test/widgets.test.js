@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { validateWidgetContent } from '@gladysassistant/integration-sdk';
 import { parseUnits } from '../src/daikin/model.js';
 import { FEATURE, featureExternalId } from '../src/devices/index.js';
-import { UNIT_CHART, buildAccountWidget, buildUnitWidget } from '../src/widgets.js';
+import { LANGUAGES, UNIT_CHART, buildAccountWidget, buildUnitWidget } from '../src/widgets.js';
 import { createFakeGladys } from './helpers/fakeGladys.js';
 import {
   ALL_DEVICES,
@@ -20,6 +20,17 @@ const ofType = (content, type) => content.components.filter((component) => compo
 // The SDK ships the core's own checks: an empty list means the content is
 // rendered exactly as sent — nothing dropped by the budget, nothing truncated.
 const assertRenderedAsSent = (content) => assert.deepEqual(validateWidgetContent(content), []);
+
+// Every multi-language text of a content: the objects that carry an `en` string.
+const textsOf = (node) => {
+  if (Array.isArray(node)) {
+    return node.flatMap(textsOf);
+  }
+  if (node && typeof node === 'object') {
+    return typeof node.en === 'string' ? [node] : Object.values(node).flatMap(textsOf);
+  }
+  return [];
+};
 
 test('the unit widget fits the vocabulary for every unit shape and every chart', () => {
   for (const payload of [SPLIT_UNIT, OFFLINE_UNIT, HEAT_PUMP_UNIT]) {
@@ -109,6 +120,30 @@ test('the account widget sums the account and shows the quota', () => {
   );
 });
 
+test('every widget text speaks the four languages of Gladys', () => {
+  assert.deepEqual(LANGUAGES, ['en', 'fr', 'de', 'es']);
+  const contents = [
+    buildUnitWidget(gladys, undefined),
+    buildUnitWidget(gladys, undefined, { ready: false }),
+    buildAccountWidget([], { linked: false }),
+    buildAccountWidget([], { ready: false }),
+    buildAccountWidget([]),
+    buildAccountWidget(parseUnits(structuredClone(ALL_DEVICES)), {
+      rateLimits: { remainingDay: 120, limitDay: 200 },
+      lastRefreshAt: NOW.getTime() - 5 * 60_000,
+      now: NOW,
+    }),
+  ];
+  for (const payload of [SPLIT_UNIT, OFFLINE_UNIT, HEAT_PUMP_UNIT]) {
+    for (const chart of Object.values(UNIT_CHART)) {
+      contents.push(buildUnitWidget(gladys, unitOf(payload), { chart, now: NOW }));
+    }
+  }
+  for (const text of contents.flatMap(textsOf)) {
+    assert.deepEqual(Object.keys(text), LANGUAGES, JSON.stringify(text));
+  }
+});
+
 test('the account rows speak the language and the unit system of the user', () => {
   const unit = unitOf(SPLIT_UNIT);
   unit.roomTemperature = 22.5;
@@ -116,6 +151,8 @@ test('the account rows speak the language and the unit system of the user', () =
   assert.deepEqual(ofType(metric, 'status')[0].items[0].value, {
     en: 'Cooling · 22.5 °C',
     fr: 'Froid · 22,5 °C',
+    de: 'Kühlen · 22,5 °C',
+    es: 'Frío · 22,5 °C',
   });
   const us = buildAccountWidget([unit], { unitSystem: 'us', now: NOW });
   assert.equal(ofType(us, 'status')[0].items[0].value.en, 'Cooling · 72.5 °F');

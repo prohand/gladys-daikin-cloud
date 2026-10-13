@@ -41,8 +41,8 @@ only what the hardware reports is published. The choices offered in the
 interface are also restricted to what the unit accepts — a unit without a
 "Drying" mode never shows one.
 
-**Two On/Off features, on purpose.** Gladys' scene actions _Turn on the
-switches_ / _Turn off the switches_ act on a single feature per device: the
+**Two On/Off features, on purpose.** Gladys' scene actions _Turn On the
+Switches_ / _Turn Off the Switches_ act on a single feature per device: the
 first one filed under the **switch** category. An air conditioning on/off is
 invisible to them, so each unit also publishes **On/Off (switch)** — the same
 button, writing the same Daikin characteristic, simply declared where a scene
@@ -52,8 +52,8 @@ you press.
 The comfort modes (Powerful, Econo, Streamer, Keep dry) are on/off controls
 too, but they are deliberately **not** declared as switches. When they were, a
 scene asking to switch the unit off switched the first of them off instead and
-left the unit running. To drive one from a scene, use the _Change the value of a
-device_ action and pick the feature by name.
+left the unit running. To drive one from a scene, use the _Set device
+value_ action and pick the feature by name.
 
 One detail about the fan: **Fan speed** only shows a value while the unit is
 actually running on a manual level. In Auto or Quiet there is no level to show,
@@ -91,8 +91,8 @@ midnight is 0, and Gladys ignores the negative step of a counter going back to
 zero).
 
 While the unit runs, it crosses those 0.1 kWh every few tens of minutes: each
-30-minute window then gets its value, and the **Day** view of the energy
-monitoring looks like a real consumption curve, matching what the Onecta app
+30-minute window then gets its value, and the **Day** view of the **Energy
+Consumption** widget looks like a real consumption curve, matching what the Onecta app
 shows. The step only becomes visible at very low draw: a few windows stay at
 zero, then a later one catches up. That is a shift of a few tens of minutes at
 worst, and the daily, monthly and yearly totals stay correct.
@@ -109,8 +109,8 @@ integration targets air conditioners.
 
 Your air conditioner can take its place in the
 [energy monitoring](https://gladysassistant.com/docs/integrations/energy-monitoring/)
-of Gladys, next to your electricity meter and your smart plugs: the Energy
-dashboard then shows, in thirty-minute steps, what the air conditioner used and
+of Gladys, next to your electricity meter and your smart plugs: the **Energy
+Consumption** dashboard widget then shows, in thirty-minute steps, what the air conditioner used and
 what it cost you.
 
 ### What the integration wires up on its own
@@ -121,12 +121,12 @@ itself: the cost points at the consumption, which points at **Energy today**.
 Gladys fills them in every thirty minutes, from the difference between two
 readings of the daily counter and the price of a kWh in your contract; nothing
 writes them here, and there is nothing to set on those two rows. If you pick a
-different parent for them in the Energy screen, the integration will put its own
+different parent for them in the **My Devices** tab of Energy Monitoring, the integration will put its own
 back on the next publish.
 
 ### The one step left to you
 
-In **Settings → Energy**, pick the parent of **Energy today**: the feature of
+In the **Energy Monitoring** integration, **My Devices** tab, pick the parent of **Energy today**: the feature of
 your main meter (the daily consumption reported by your utility, a whole-house
 clamp…). That is what tells Gladys the air conditioner is a _part_ of what the
 meter already counts, rather than an extra consumption on top of it.
@@ -196,8 +196,8 @@ minutes:
    This page is hosted by Gladys and simply bounces the browser back to your
    own instance — Daikin, like most providers, refuses a plain `http://`
    address, which is how most people reach their Gladys at home. If you already
-   serve Gladys over HTTPS, you can untick the option in the Configuration
-   screen and declare your own address instead; whatever address is shown is
+   serve Gladys over HTTPS, you can tick "Use the address of my instance instead (I already access Gladys
+   over HTTPS)" in the **Configuration** tab and declare your own address; whatever address is shown is
    the one to paste here, character for character.
 
 5. Save the app, then copy its **Client ID** and its **Client secret**.
@@ -206,12 +206,12 @@ minutes:
 
 1. In Gladys, open **Integrations → Daikin Cloud → Configuration**.
 2. Paste the **Client ID** and the **Client secret** of your Daikin app.
-3. **Save** — the credentials must be stored before the connection can start.
+3. **Save configuration** — the credentials must be stored before the connection can start.
 4. Click **Connect** next to _Daikin account_. A new tab opens on the Daikin
    sign-in page: log in with the account your air conditioners are paired with
    in the Onecta app, and accept the authorization.
 5. You come back to Gladys, the integration reads your account, and your units
-   appear in the **Discovery** tab. Add the ones you want.
+   appear in the **Discover** tab. Add the ones you want with **Add to Gladys**.
 
 Gladys stores the resulting tokens itself and renews them automatically. You
 should not have to go through this flow again.
@@ -249,8 +249,8 @@ expose it for your model.
 
 ## Dashboard widgets
 
-Since Gladys 5.1 the integration brings its own widgets. On the dashboard,
-switch to edit mode, add a box and look for "Daikin":
+Since Gladys 5.1 the integration brings its own widgets. In **Dashboard →
+Edit → New widget**, look for "Daikin" under **Integration widgets**:
 
 - **Daikin air conditioner** — one unit (picked in the widget settings): room,
   outdoor and target temperatures, energy of the day, state, mode, fan,
@@ -266,7 +266,7 @@ temperature and energy tiles follow the values live; the rest updates at every
 refresh and after every command.
 
 To **drive** the unit (mode, setpoint, fan, louvers, Powerful…), add Gladys'
-own **Devices** box next to it and pick the Daikin unit: it shows every
+own **Devices** widget next to it and pick the Daikin unit: it shows every
 function with its proper control (mode selector, − / + setpoint, fan slider,
 switches). An integration widget cannot: Gladys only lets it hold buttons.
 
@@ -274,7 +274,7 @@ switches). An integration widget cannot: Gladys only lets it hold buttons.
 
 ### Triggers
 
-Four triggers show up in the scene editor. Each fires **once per change**,
+Four triggers show up in the scene editor, under **Integrations**. Each fires **once per change**,
 noticed between two reads of the cloud (so at the pace of the refresh
 interval). The first read after a restart fires nothing: it is the baseline.
 
@@ -287,7 +287,7 @@ interval). The first read after a restart fires nothing: it is the baseline.
 
 An empty filter matches anything. The quota is "almost spent" at 20 calls left
 or fewer; the trigger re-arms when the counter climbs back (the next day).
-Example: _"A Daikin unit goes offline" → Send a message: "{{triggerEvent.data.unit_name}}
+Example: _"A Daikin unit goes offline" → Send Message: "{{triggerEvent.data.unit_name}}
 is not answering"_.
 
 ### Actions
@@ -313,12 +313,12 @@ not read, it answers from the last read, and `data_age_seconds` says how old
 that read is (0 right after a fresh one).
 
 "Read the consumption" answers from the last read, with no API call. Example:
-_every morning at 8 → Read the consumption → Send a message: "Yesterday:
+_every morning at 8 → Read the consumption → Send Message: "Yesterday:
 {{…yesterday_kwh}} kWh"_.
 
 ## API quota left
 
-Under the **Connect** button, the Configuration screen permanently shows what is
+Under the **Connect** button, the **Configuration** tab permanently shows what is
 left of today's Daikin quota:
 
 > Connected. 184/200 Daikin API calls left today.
@@ -346,8 +346,8 @@ Each device carries a badge showing how Gladys reaches it:
 ## Troubleshooting
 
 **"Fill in the client ID and the client secret first, then save."**
-The credentials are empty or were not saved. Fill both fields, click Save, then
-Connect.
+The credentials are empty or were not saved. Fill both fields, click Save configuration,
+then Connect.
 
 **The Daikin page says the redirect URI is invalid.**
 The address declared in your Daikin app does not match the one Gladys uses.
@@ -380,16 +380,16 @@ appears neither in the published features nor in the ignored characteristics is
 one the API does not expose for your unit.
 
 **The "Energy today (consumption)" and "(cost)" rows do not show up in
-Settings → Energy.**
+the My Devices tab of Energy Monitoring.**
 The device was created before they existed: run _Test the connection_, which
 re-publishes the discovery and completes the devices already created. They
 arrive already chained to one another; all that is left is to give **Energy
 today** a parent.
 
-**Nothing appears in the Discovery tab.**
+**Nothing appears in the Discover tab.**
 Make sure the units are visible in the Onecta app with the same account, then
 run _Test the connection_: the message tells you how many units the API
 returned.
 
-The integration logs every call it makes: check the integration logs in the
-Gladys interface for the full detail.
+The integration logs every call it makes: check the integration's **Logs** tab in
+Gladys for the full detail.

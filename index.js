@@ -272,6 +272,12 @@ gladys.onAction('test_connection', async () => {
     fr:
       `${units.length} unité(s) Daikin, catalogue « ${capabilities.level} »${quota && `${quota}appels API restants aujourd'hui`}. ` +
       `Fonctionnalités publiées, puis ce que l'unité déclare et que l'intégration n'exploite pas — ${summary}`,
+    de:
+      `${units.length} Daikin-Einheit(en), Katalog „${capabilities.level}“${quota && `${quota}API-Aufrufe heute übrig`}. ` +
+      `Veröffentlichte Funktionen, dann was die Einheit meldet und diese Integration nicht nutzt — ${summary}`,
+    es:
+      `${units.length} unidad(es) Daikin, catálogo «${capabilities.level}»${quota && `${quota}llamadas a la API restantes hoy`}. ` +
+      `Funciones publicadas y, después, lo que la unidad declara y esta integración no utiliza — ${summary}`,
   };
 });
 
@@ -399,6 +405,8 @@ gladys.on('connected', async () => {
       await gladys.setConnectionStatus(false, {
         en: 'No Daikin account linked yet: fill in your credentials and click Connect.',
         fr: 'Aucun compte Daikin lié : renseignez vos identifiants puis cliquez sur Connecter.',
+        de: 'Noch kein Daikin-Konto verknüpft: Gib deine Zugangsdaten ein und klicke auf „Verbinden“.',
+        es: 'Aún no hay ninguna cuenta Daikin vinculada: introduzca sus credenciales y pulse Conectar.',
       });
       return;
     }

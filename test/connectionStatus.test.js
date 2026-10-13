@@ -75,7 +75,7 @@ test('without a linked account a failed read keeps the "no account" message', as
   assert.deepEqual(statuses, []);
 });
 
-test('every failure message is bilingual', () => {
+test('every failure message speaks the four languages of Gladys', () => {
   for (const err of [
     new DaikinApiError(401, 'x'),
     new DaikinApiError(429, 'x'),
@@ -83,6 +83,6 @@ test('every failure message is bilingual', () => {
     undefined,
   ]) {
     const message = failureMessage(err);
-    assert.ok(message.en && message.fr);
+    assert.ok(message.en && message.fr && message.de && message.es);
   }
 });
