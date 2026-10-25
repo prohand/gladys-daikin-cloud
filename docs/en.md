@@ -5,9 +5,9 @@ Onecta cloud API** — the same cloud the Onecta mobile app talks to. No hardwar
 to add, no reverse engineering: your units keep working exactly as they do
 today, Gladys just becomes another remote control.
 
-> **Gladys 5.1 or newer is required** (dashboard widgets, scene triggers and
-> scene actions). The store will not offer the integration to an older
-> instance.
+> **Gladys 5.3 or newer is required** (dashboard widgets, scene triggers and
+> scene actions, store search keywords). The store will not offer the
+> integration to an older instance.
 
 ## What you get
 

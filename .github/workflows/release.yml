@@ -10,7 +10,9 @@
 #      and the `cover_image` ref, so the indexer, the image and the artwork
 #      stay in lockstep);
 #   3. commits the bump and pushes the `vX.Y.Z` tag;
-#   4. calls build.yml to publish the multi-arch image (`:X.Y.Z` + `:latest`).
+#   4. calls build.yml to publish the multi-arch image (`:X.Y.Z` + `:latest`);
+#   5. once the image exists, runs the store admission checks in full (image
+#      check included), the one run the pull requests cannot do.
 #
 # Why call build.yml instead of relying on the tag push: a tag pushed with the
 # default GITHUB_TOKEN does NOT trigger other workflows, so we invoke the build
@@ -130,3 +132,25 @@ jobs:
     uses: ./.github/workflows/github-release.yml
     permissions:
       contents: write
+
+  # The store indexer's full admission checks on the released tag, image
+  # included: the pull request CI skips the image check (the tag did not exist
+  # yet), so this is the first run that can prove the indexer will accept it.
+  store:
+    needs: [prepare, build]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout the released tag
+        uses: actions/checkout@v7
+        with:
+          ref: v${{ needs.prepare.outputs.version }}
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24
+
+      - name: Validate like the store indexer
+        run: npx --yes github:GladysAssistant/integration-store .

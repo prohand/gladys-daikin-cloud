@@ -59,14 +59,14 @@ export const FEATURE = {
 };
 
 // The FAN category and its types exist since Gladys 4.79, the per-axis air
-// conditioning swing since 4.84.3, and neither is in the SDK constants
-// (v0.9): declared as literals, published only when the connected instance is
-// recent enough (see src/capabilities.js).
-const FAN_CATEGORY = 'fan';
-const FAN_SPEED_TYPE = 'speed';
-const FAN_ROCK_SETTING_TYPE = 'rock-setting';
-const AC_SWING_HORIZONTAL_TYPE = 'swing-horizontal';
-const AC_SWING_VERTICAL_TYPE = 'swing-vertical';
+// conditioning swing since 4.84.3. They were literals until the SDK exported
+// them (0.16 mirrors the core lists): same strings, still published only when
+// the connected instance accepts them (see src/capabilities.js).
+const FAN_CATEGORY = DEVICE_FEATURE_CATEGORIES.FAN;
+const FAN_SPEED_TYPE = DEVICE_FEATURE_TYPES.FAN.SPEED;
+const FAN_ROCK_SETTING_TYPE = DEVICE_FEATURE_TYPES.FAN.ROCK_SETTING;
+const AC_SWING_HORIZONTAL_TYPE = DEVICE_FEATURE_TYPES.AIR_CONDITIONING.SWING_HORIZONTAL;
+const AC_SWING_VERTICAL_TYPE = DEVICE_FEATURE_TYPES.AIR_CONDITIONING.SWING_VERTICAL;
 
 // Gladys reserves ONE feature per device for "is this appliance on?": the
 // scene actions "Turn on/off the switches" and the assistants all resolve a

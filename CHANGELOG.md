@@ -6,6 +6,19 @@ All notable changes to this integration are documented here. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- Store search keywords (Daikin model ranges such as Altherma, Emura, Perfera, Stylish, and "heat
+  pump" in four languages), so the integration is found by what users type.
+
+### Changed
+
+- Gladys 5.3.0 or later is now required (the store search keywords need it).
+- `@gladysassistant/integration-sdk` updated to 0.16.0; the fan and per-axis swing feature types
+  now come from its constants (same values, nothing changes for existing devices).
+- The pull request CI runs the store checks without the image check, and the Release workflow
+  re-runs them in full once the image is published.
+
 ## [4.4.1] - 2026-10-23
 
 - Maintenance release, no functional change.
