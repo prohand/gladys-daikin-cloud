@@ -10,9 +10,21 @@
   },
   "version": "4.4.1",
   "docker_image": "ghcr.io/prohand/gladys-daikin-cloud:4.4.1",
-  "gladys_version": ">=5.1.0",
+  "gladys_version": ">=5.3.0",
   "cover_image": "https://raw.githubusercontent.com/prohand/gladys-daikin-cloud/v4.4.1/cover.png",
   "categories": ["climate"],
+  "keywords": [
+    "altherma",
+    "emura",
+    "perfera",
+    "stylish",
+    "heat pump",
+    "pompe à chaleur",
+    "wärmepumpe",
+    "bomba de calor",
+    "hvac",
+    "clim"
+  ],
   "transports": ["cloud"],
   "config_schema": [
     {

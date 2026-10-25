@@ -88,13 +88,92 @@ test('the catalog categories are declared, and they require Gladys >= 4.86.0', (
   );
 });
 
+// The store's catalog vocabulary (Gladys 5.3 added transport, vehicles,
+// servers and leisure). An unknown key is only dropped by the indexer, with a
+// warning nobody reads: the integration would silently lose its shelf.
+const CATALOG_CATEGORIES = [
+  'climate',
+  'lighting',
+  'energy',
+  'security',
+  'multimedia',
+  'appliances',
+  'environment',
+  'protocols',
+  'network',
+  'notifications',
+  'assistants',
+  'services',
+  'transport',
+  'vehicles',
+  'servers',
+  'leisure',
+];
+
+/**
+ * The minimum Gladys version of the manifest range, as numbers.
+ * @returns {Array<number>} [major, minor, patch]
+ */
+function gladysFloor() {
+  const match = manifest.gladys_version.match(/>=\s*(\d+)\.(\d+)\.(\d+)/);
+  assert.ok(match, 'gladys_version must declare a minimum version');
+  return match.slice(1).map(Number);
+}
+
+/**
+ * Whether the manifest floor is at least the given version.
+ * @param {number} major the major version
+ * @param {number} minor the minor version
+ * @returns {boolean} true when the floor covers it
+ */
+function floorAtLeast(major, minor) {
+  const [floorMajor, floorMinor] = gladysFloor();
+  return floorMajor > major || (floorMajor === major && floorMinor >= minor);
+}
+
+test('the catalog categories come from the store vocabulary', () => {
+  for (const category of manifest.categories) {
+    assert.ok(CATALOG_CATEGORIES.includes(category), `unknown catalog category "${category}"`);
+  }
+});
+
+test('the search keywords follow the store rules, and they require Gladys >= 5.3.0', () => {
+  // Search-only terms (models, synonyms) the name and description do not carry.
+  assert.ok(Array.isArray(manifest.keywords));
+  assert.ok(manifest.keywords.length >= 1 && manifest.keywords.length <= 10);
+  const normalized = manifest.keywords.map((keyword) => keyword.trim().toLowerCase());
+  assert.equal(new Set(normalized).size, normalized.length, 'the keywords must be unique');
+  for (const keyword of manifest.keywords) {
+    assert.equal(typeof keyword, 'string');
+    assert.ok(
+      keyword.trim().length >= 2 && keyword.trim().length <= 30,
+      `keyword "${keyword}" must be 2-30 characters`,
+    );
+  }
+  // A core older than 5.3 rejects the unknown top-level field.
+  assert.ok(
+    floorAtLeast(5, 3),
+    `keywords requires gladys_version >= 5.3.0, got "${manifest.gladys_version}"`,
+  );
+});
+
+test('the integration is not restricted to some countries', () => {
+  // Onecta serves Daikin units wherever they are sold: no `countries`, which
+  // would hide the integration from every other country's catalog.
+  assert.equal(manifest.countries, undefined);
+});
+
+test('the integration requires Gladys >= 5.3.0', () => {
+  // Pinned on its own too: `keywords` (and `countries`, `music`) need 5.3.0.
+  assert.deepEqual(gladysFloor(), [5, 3, 0]);
+});
+
 test('the widgets and the scene declarations require Gladys >= 5.1.0', () => {
   // Same coupling as `categories`, one release later: a Gladys older than
   // 5.1 rejects the unknown top-level fields, and the store indexer refuses a
   // manifest whose range claims otherwise.
-  const [, major, minor] = manifest.gladys_version.match(/>=\s*(\d+)\.(\d+)\.\d+/).map(Number);
   assert.ok(
-    major > 5 || (major === 5 && minor >= 1),
+    floorAtLeast(5, 1),
     `widgets, scene_triggers and scene_actions require gladys_version >= 5.1.0, got "${manifest.gladys_version}"`,
   );
 });

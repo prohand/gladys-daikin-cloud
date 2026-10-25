@@ -6,9 +6,9 @@ Onecta. Aucun matériel à ajouter, aucun bricolage : vos unités continuent de
 fonctionner exactement comme aujourd'hui, Gladys devient simplement une
 télécommande de plus.
 
-> **Gladys 5.1 ou plus récent est nécessaire** (widgets du tableau de bord,
-> déclencheurs et actions de scène). Le store ne propose pas l'intégration à
-> une instance plus ancienne.
+> **Gladys 5.3 ou plus récent est nécessaire** (widgets du tableau de bord,
+> déclencheurs et actions de scène, mots-clés de recherche du store). Le store
+> ne propose pas l'intégration à une instance plus ancienne.
 
 ## Ce que vous obtenez
 

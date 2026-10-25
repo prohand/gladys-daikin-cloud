@@ -17,8 +17,10 @@
 // the tricky parts (the louver bitmap both ways) can be unit tested.
 // -----------------------------------------------------------------------------
 
-// Mirrors of the Gladys core enums (server/utils/constants.js). The SDK does
-// not export them, and hardcoding them here keeps the integration readable.
+// Mirrors of the Gladys core VALUE enums (server/utils/constants.js). The SDK
+// exports the feature categories, types and units (used by the device builder)
+// but not these value enums, even in 0.16: hardcoding them here keeps the
+// integration readable.
 export const AC_MODE = {
   AUTO: 0,
   COOLING: 1,

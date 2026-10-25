@@ -6,9 +6,9 @@ Onecta. Sin hardware que añadir, sin ingeniería inversa: sus unidades siguen
 funcionando exactamente como hoy, Gladys simplemente se convierte en otro mando a
 distancia.
 
-> **Se requiere Gladys 5.1 o posterior** (widgets del panel, activadores y
-> acciones de escena). El store no ofrecerá la integración a una instancia más
-> antigua.
+> **Se requiere Gladys 5.3 o posterior** (widgets del panel, activadores y
+> acciones de escena, palabras clave de búsqueda del store). El store no
+> ofrecerá la integración a una instancia más antigua.
 
 ## Qué obtiene
 

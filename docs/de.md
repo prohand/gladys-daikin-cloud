@@ -5,9 +5,9 @@ Daikin-Onecta-Cloud-API** — dieselbe Cloud, mit der auch die Onecta-App sprich
 Keine zusätzliche Hardware, kein Reverse Engineering: Deine Geräte funktionieren
 genau wie bisher, Gladys wird einfach zu einer weiteren Fernbedienung.
 
-> **Gladys 5.1 oder neuer ist erforderlich** (Dashboard-Widgets, Szenen-Auslöser
-> und Szenen-Aktionen). Der Store bietet die Integration einer älteren Instanz
-> nicht an.
+> **Gladys 5.3 oder neuer ist erforderlich** (Dashboard-Widgets, Szenen-Auslöser
+> und Szenen-Aktionen, Suchbegriffe des Stores). Der Store bietet die
+> Integration einer älteren Instanz nicht an.
 
 ## Was du erhältst
 

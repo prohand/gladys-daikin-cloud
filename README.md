@@ -11,9 +11,10 @@ and started from the
 
 > User documentation: [English](./docs/en.md) · [Français](./docs/fr.md) · [Deutsch](./docs/de.md) · [Español](./docs/es.md)
 
-Requires **Gladys 5.1 or later**: the manifest declares dashboard `widgets`,
-`scene_triggers` and `scene_actions` (and the store catalog `categories`),
-fields older cores reject as unknown.
+Requires **Gladys 5.3 or later**: the manifest declares the store search
+`keywords` (5.3), dashboard `widgets`, `scene_triggers` and `scene_actions`
+(5.1) and the store catalog `categories`, fields older cores reject as
+unknown.
 
 ## Features
 
@@ -121,7 +122,7 @@ fixed labels the UI cannot restrict, so "Medium" had to stand for "manual" —
 a control nobody could read. The louvers get one air conditioning feature per
 axis, matching what Daikin drives and what the Onecta app shows; a core without
 the per-axis type folds them into a single `fan.rock-setting` whose bitmap
-encoding carries both — a step of the catalog ladder the manifest's 5.1
+encoding carries both — a step of the catalog ladder the manifest's 5.3
 minimum now puts out of reach, kept because the ladder probes rather than
 assumes.
 
@@ -158,11 +159,13 @@ bumps `package.json` and the manifest (version _and_ image tag), then builds and
 pushes a multi-arch image (`linux/amd64` + `linux/arm64`) to `ghcr.io`.
 
 The manifest declares `categories: ["climate"]` — the shelf the integration
-sits on in the store catalog, out of the twelve keys of the store vocabulary
+sits on in the store catalog, out of the sixteen keys of the store vocabulary
 (1 to 3 per integration; without any, it only shows under "All" and in
-search). The field requires `gladys_version` to start at 4.86.0 or later, the
-`widgets`/`scene_triggers`/`scene_actions` fields at 5.1.0 or later, and the
-store validator enforces that coupling:
+search) — and `keywords`, the search-only terms of the catalog (Daikin model
+ranges, "heat pump" in four languages…). `categories` requires
+`gladys_version` to start at 4.86.0 or later, the
+`widgets`/`scene_triggers`/`scene_actions` fields at 5.1.0 or later,
+`keywords` at 5.3.0 or later, and the store validator enforces that coupling:
 
 ```bash
 npx github:GladysAssistant/integration-store .
