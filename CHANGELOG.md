@@ -6,6 +6,8 @@ All notable changes to this integration are documented here. The format follows
 
 ## [Unreleased]
 
+## [4.5.0] - 2026-10-25
+
 ### Added
 
 - Store search keywords (Daikin model ranges such as Altherma, Emura, Perfera, Stylish, and "heat
@@ -246,7 +248,8 @@ First public release.
 
 - Publish min/max on the On/Off feature, and warn to save before connecting
 
-[Unreleased]: https://github.com/prohand/gladys-daikin-cloud/compare/v4.4.1...HEAD
+[Unreleased]: https://github.com/prohand/gladys-daikin-cloud/compare/v4.5.0...HEAD
+[4.5.0]: https://github.com/prohand/gladys-daikin-cloud/compare/v4.4.1...v4.5.0
 [4.4.1]: https://github.com/prohand/gladys-daikin-cloud/compare/v4.4.0...v4.4.1
 [4.4.0]: https://github.com/prohand/gladys-daikin-cloud/compare/v4.3.3...v4.4.0
 [4.3.3]: https://github.com/prohand/gladys-daikin-cloud/compare/v4.3.2...v4.3.3
