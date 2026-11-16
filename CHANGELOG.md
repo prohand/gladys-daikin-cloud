@@ -6,6 +6,8 @@ All notable changes to this integration are documented here. The format follows
 
 ## [Unreleased]
 
+## [4.5.2] - 2026-11-16
+
 - Update `@gladysassistant/integration-sdk` to 0.16.1 (security update).
 
 ## [4.5.1] - 2026-11-16
@@ -254,7 +256,8 @@ First public release.
 
 - Publish min/max on the On/Off feature, and warn to save before connecting
 
-[Unreleased]: https://github.com/prohand/gladys-daikin-cloud/compare/v4.5.1...HEAD
+[Unreleased]: https://github.com/prohand/gladys-daikin-cloud/compare/v4.5.2...HEAD
+[4.5.2]: https://github.com/prohand/gladys-daikin-cloud/compare/v4.5.1...v4.5.2
 [4.5.1]: https://github.com/prohand/gladys-daikin-cloud/compare/v4.5.0...v4.5.1
 [4.5.0]: https://github.com/prohand/gladys-daikin-cloud/compare/v4.4.1...v4.5.0
 [4.4.1]: https://github.com/prohand/gladys-daikin-cloud/compare/v4.4.0...v4.4.1
